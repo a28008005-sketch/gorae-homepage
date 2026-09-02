@@ -60,6 +60,8 @@ jobs:
         run: node tools/blog/build.mjs
 
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true   # Pages가 꺼져 있으면 자동으로 켠다
 
       - uses: actions/upload-pages-artifact@v3
         with:
