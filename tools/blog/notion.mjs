@@ -62,17 +62,17 @@ async function queryAll(token, databaseId) {
   try {
     await run(`/databases/${databaseId}/query`);
   } catch (err) {
-    const needsDataSource =
-      err.status === 400 &&
-      /data.?source/i.test(err.message || '');
-    if (!needsDataSource) throw err;
-
-    const db = await call(token, `/databases/${databaseId}`);
-    const ds = db.data_sources?.[0]?.id;
-    if (!ds) throw new NotionError('표에서 데이터 소스를 찾지 못했습니다.');
-    pages.length = 0;
-    cursor = undefined;
-    await run(`/data_sources/${ds}/query`);
+    // 새 방식으로 한 번 더 시도한다. 그것도 안 되면 처음 오류를 그대로 알려준다.
+    try {
+      const db = await call(token, `/databases/${databaseId}`);
+      const ds = db.data_sources?.[0]?.id;
+      if (!ds) throw err;
+      pages.length = 0;
+      cursor = undefined;
+      await run(`/data_sources/${ds}/query`);
+    } catch {
+      throw err;
+    }
   }
 
   return pages;
