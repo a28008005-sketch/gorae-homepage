@@ -52,9 +52,13 @@ var App = (function () {
     current = p.route;
     currentQuery = p.query;
 
-    /* 학부모용 읽기 전용 리포트 */
+    /* 학부모용 읽기 전용 화면 (학습 리포트 · 납부 확인서) */
     if (current === 'report') {
       Views.share.renderReport(viewEl, p.query.d || '');
+      return;
+    }
+    if (current === 'receipt') {
+      Views.tuition.renderReceipt(viewEl, p.query.d || '');
       return;
     }
     document.body.classList.remove('share-mode');
@@ -73,7 +77,7 @@ var App = (function () {
   /** 현재 화면 다시 그리기 (데이터 변경 후) */
   function rerender() {
     var view = Views[current];
-    if (!view || current === 'report') return;
+    if (!view || current === 'report' || current === 'receipt') return;
     setSub(view.sub());
     view.render(viewEl);
   }

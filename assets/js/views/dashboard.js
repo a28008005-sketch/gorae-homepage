@@ -65,6 +65,29 @@ Views.dashboard = (function () {
     }).join('');
   }
 
+  function unpaidList(pay) {
+    var list = pay.list.filter(function (p) {
+      var k = Store.paymentStatus(p).key;
+      return k === 'overdue' || k === 'partial' || k === 'due';
+    }).sort(function (a, b) {
+      return Store.paymentStatus(b).overdue - Store.paymentStatus(a).overdue;
+    });
+    if (!pay.list.length) {
+      return '<div class="hint">이번 달 청구서가 아직 없습니다. <a href="#/tuition" style="color:#1a7fd4;font-weight:600">청구서를 생성</a>해 주세요.</div>';
+    }
+    if (!list.length) {
+      return '<div class="empty" style="padding:26px 12px"><span class="big">💰</span>이번 달 수강료를 모두 받았습니다.</div>';
+    }
+    return list.slice(0, 6).map(function (p) {
+      var s = Store.student(p.studentId);
+      var st = Store.paymentStatus(p);
+      var remain = (Number(p.amount) || 0) - (Number(p.paidAmount) || 0);
+      return '<div class="memo-item"><div class="txt"><b>' + U.esc(s ? s.name : '') + '</b> ' +
+        '<span class="tag ' + st.tag + '">' + U.esc(st.label) + '</span>' +
+        '<br><span style="font-size:12px;color:#63778a">' + U.won(remain) + ' · 기한 ' + U.esc(p.dueDate || '-') + '</span></div></div>';
+    }).join('') + (list.length > 6 ? '<div class="hint" style="margin-top:8px">외 ' + (list.length - 6) + '명</div>' : '');
+  }
+
   function render(el) {
     var o = Store.dayOverview(U.ymd());
     var all = Store.students();
@@ -72,6 +95,7 @@ Views.dashboard = (function () {
     var waiting = all.filter(function (s) { return s.status === '대기생'; });
     var resting = all.filter(function (s) { return s.status === '휴원생'; });
     var seated = active.filter(function (s) { return s.seat; }).length;
+    var pay = Store.paymentSummary(U.ym(new Date()));
 
     el.innerHTML =
       '<div class="stack">' +
@@ -81,11 +105,11 @@ Views.dashboard = (function () {
           '<div class="val">' + o.rate + '<small>%</small></div>' +
           '<div class="sub">출석 ' + o.present + ' · 결석 ' + o.absent + ' · 미체크 ' + o.unmarked + '</div></div>' +
         '<div class="stat"><div class="lbl">등록생</div><div class="val">' + active.length + '<small>명</small></div>' +
-          '<div class="sub">대기 ' + waiting.length + ' · 휴원 ' + resting.length + '</div></div>' +
+          '<div class="sub">대기 ' + waiting.length + ' · 휴원 ' + resting.length + ' · 좌석 ' + seated + '/' + Store.get().academy.seatCount + '</div></div>' +
         '<div class="stat"><div class="lbl">오늘 수업</div><div class="val">' + o.expected.length + '<small>명</small></div>' +
           '<div class="sub">' + o.day + '요일 수업 예정</div></div>' +
-        '<div class="stat"><div class="lbl">좌석 배정</div><div class="val">' + seated + '<small>/' + Store.get().academy.seatCount + '</small></div>' +
-          '<div class="sub">미배정 ' + (active.length - seated) + '명</div></div>' +
+        '<div class="stat"><div class="lbl">이달 수강료 수납률</div><div class="val">' + pay.rate + '<small>%</small></div>' +
+          '<div class="sub">' + (pay.outstanding ? '미수납 ' + U.num(pay.outstanding) + '원 · ' + pay.unpaidCount + '명' : '미수납 없음') + '</div></div>' +
       '</div>' +
 
       '<div class="grid g-21">' +
@@ -98,6 +122,7 @@ Views.dashboard = (function () {
           '<div class="card-b">' + patrolToday() + '</div></div>' +
       '</div>' +
 
+      '<div class="grid g-21">' +
       '<div class="card"><div class="card-h"><h2>업무 메모</h2><div class="sp"></div>' +
         '<span class="hint">오늘 / 이번주 / 미뤄두기로 나눠 기록하세요</span></div>' +
         '<div class="card-b">' +
@@ -114,6 +139,11 @@ Views.dashboard = (function () {
             '<div><div class="section-title">💤 미뤄두기</div>' + taskList('later') + '</div>' +
           '</div>' +
         '</div></div>' +
+
+        '<div class="card"><div class="card-h"><h2>수강료 미납</h2><div class="sp"></div>' +
+          '<a class="btn sm" href="#/tuition">납부 관리 →</a></div>' +
+          '<div class="card-b">' + unpaidList(pay) + '</div></div>' +
+      '</div>' +
 
       '</div>';
 

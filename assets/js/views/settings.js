@@ -12,7 +12,8 @@ Views.settings = (function () {
       attendance: d.attendance.length,
       patrols: d.patrols.length,
       memos: d.memos.length,
-      tasks: d.tasks.length
+      tasks: d.tasks.length,
+      payments: d.payments.length
     };
   }
 
@@ -29,6 +30,7 @@ Views.settings = (function () {
         name: n, grade: grades[i], status: '등록생', seat: String(i + 1),
         days: dayset[i], time: times[i],
         phone: '', parentPhone: '010-0000-000' + i, parentEmail: '',
+        fee: i >= 6 ? 280000 : '', billingDay: '',
         note: ''
       });
     });
@@ -63,6 +65,22 @@ Views.settings = (function () {
       });
     });
 
+    // 이번 달 · 지난 달 수강료 청구서와 납부 기록
+    [U.ym(U.parseYmd(U.daysAgo(35))), U.ym(new Date())].forEach(function (m, mi) {
+      Store.generateBills(m);
+      Store.payments({ month: m }).forEach(function (p, i) {
+        // 지난 달은 모두 납부, 이번 달은 일부만 납부된 상태로 둡니다.
+        var paid = mi === 0 ? true : (i % 3 !== 0);
+        if (!paid) return;
+        Store.savePayment({
+          id: p.id,
+          paidAmount: p.amount,
+          paidDate: m + '-' + U.pad(Math.min(5 + i, 28)),
+          method: i % 2 === 0 ? '계좌이체' : '현금'
+        });
+      });
+    });
+
     Store.addTask('9월 레벨테스트 예약 학부모 안내', 'today');
     Store.addTask('원서 신간 라이브러리 등록', 'week');
   }
@@ -84,6 +102,18 @@ Views.settings = (function () {
             '<label class="fld full">수업 시간대 <span style="font-weight:400">(쉼표로 구분)</span>' +
               '<input type="text" id="a-times" value="' + U.esc(ac.times.join(', ')) + '"></label>' +
           '</div>' +
+
+          '<div class="section-title">수강료 기본 설정</div>' +
+          '<div class="form-grid">' +
+            '<label class="fld">기본 월 수강료<input type="number" id="a-fee" step="1000" value="' + (ac.defaultFee || 0) + '"></label>' +
+            '<label class="fld">기본 납부일 <span style="font-weight:400">(매월)</span>' +
+              '<input type="number" id="a-bday" min="1" max="31" value="' + (ac.billingDay || 10) + '"></label>' +
+            '<label class="fld">입금 은행<input type="text" id="a-bank" value="' + U.esc(ac.bankName || '') + '" placeholder="농협"></label>' +
+            '<label class="fld">예금주<input type="text" id="a-holder" value="' + U.esc(ac.bankHolder || '') + '" placeholder="홍길동"></label>' +
+            '<label class="fld full">계좌번호<input type="text" id="a-acct" value="' + U.esc(ac.bankAccount || '') + '" placeholder="123-4567-8910-11"></label>' +
+          '</div>' +
+          '<p class="hint" style="margin:10px 0 0">계좌 정보는 미납 안내 문자에 자동으로 들어갑니다. 학생별 수강료가 비어 있으면 기본 수강료로 청구됩니다.</p>' +
+
           '<button class="btn primary" id="a-save" style="margin-top:14px">학원 정보 저장</button>' +
         '</div></div>' +
 
@@ -103,6 +133,7 @@ Views.settings = (function () {
               '<span class="tag blue">순회 ' + c.patrols + '</span>' +
               '<span class="tag blue">메모 ' + c.memos + '</span>' +
               '<span class="tag blue">업무 ' + c.tasks + '</span>' +
+              '<span class="tag blue">수강료 ' + c.payments + '</span>' +
             '</div>' +
           '</div></div>' +
 
@@ -126,7 +157,12 @@ Views.settings = (function () {
         address: el.querySelector('#a-addr').value.trim(),
         phone: el.querySelector('#a-phone').value.trim(),
         site: el.querySelector('#a-site').value.trim(),
-        times: times.length ? times : ['1시', '2시', '3시', '4시']
+        times: times.length ? times : ['1시', '2시', '3시', '4시'],
+        defaultFee: Number(el.querySelector('#a-fee').value) || 0,
+        billingDay: Math.min(Math.max(Number(el.querySelector('#a-bday').value) || 10, 1), 31),
+        bankName: el.querySelector('#a-bank').value.trim(),
+        bankHolder: el.querySelector('#a-holder').value.trim(),
+        bankAccount: el.querySelector('#a-acct').value.trim()
       });
       UI.toast('학원 정보를 저장했습니다.');
       App.refreshBrand();

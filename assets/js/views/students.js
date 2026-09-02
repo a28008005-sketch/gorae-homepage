@@ -71,6 +71,10 @@ Views.students = (function () {
       '<label class="fld">학생 연락처<input type="tel" id="f-phone" value="' + U.esc(s.phone || '') + '" placeholder="010-0000-0000"></label>' +
       '<label class="fld">학부모 연락처<input type="tel" id="f-pphone" value="' + U.esc(s.parentPhone || '') + '" placeholder="010-0000-0000"></label>' +
       '<label class="fld">학부모 이메일<input type="email" id="f-pmail" value="' + U.esc(s.parentEmail || '') + '" placeholder="parent@email.com"></label>' +
+      '<label class="fld">월 수강료 <span style="font-weight:400">(비우면 기본값 ' + U.num(ac.defaultFee) + '원)</span>' +
+        '<input type="number" id="f-fee" step="1000" value="' + (s.fee === undefined || s.fee === '' ? '' : U.esc(s.fee)) + '" placeholder="' + U.num(ac.defaultFee) + '"></label>' +
+      '<label class="fld">납부일 <span style="font-weight:400">(매월)</span>' +
+        '<input type="number" id="f-bday" min="1" max="31" value="' + (s.billingDay || '') + '" placeholder="' + U.esc(ac.billingDay) + '"></label>' +
       '<label class="fld full">특이사항<textarea id="f-note" placeholder="알레르기, 등하원 방법, 성향 등">' + U.esc(s.note || '') + '</textarea></label>' +
     '</div>';
   }
@@ -105,6 +109,8 @@ Views.students = (function () {
             phone: w.querySelector('#f-phone').value.trim(),
             parentPhone: w.querySelector('#f-pphone').value.trim(),
             parentEmail: w.querySelector('#f-pmail').value.trim(),
+            fee: w.querySelector('#f-fee').value === '' ? '' : Number(w.querySelector('#f-fee').value),
+            billingDay: w.querySelector('#f-bday').value === '' ? '' : Number(w.querySelector('#f-bday').value),
             note: w.querySelector('#f-note').value.trim()
           });
           UI.close();
@@ -139,6 +145,7 @@ Views.students = (function () {
     var sum = Store.summarize(s.id, monthStart, U.ymd());
     var recent = Store.attendanceRange(s.id, U.daysAgo(30), U.ymd()).slice(-10).reverse();
     var memos = Store.memos(s.id).slice(0, 5);
+    var pay = Store.paymentHistory(s.id);
 
     var body =
       '<div class="grid g-2" style="gap:18px">' +
@@ -150,6 +157,8 @@ Views.students = (function () {
           '<dt>학생 연락처</dt><dd>' + U.esc(U.phone(s.phone) || '-') + '</dd>' +
           '<dt>학부모</dt><dd>' + U.esc(U.phone(s.parentPhone) || '-') + '</dd>' +
           '<dt>이메일</dt><dd>' + U.esc(s.parentEmail || '-') + '</dd>' +
+          '<dt>월 수강료</dt><dd>' + U.won(Store.feeOf(s)) + ' · 매월 ' +
+            (s.billingDay || Store.get().academy.billingDay) + '일</dd>' +
           '<dt>특이사항</dt><dd>' + (s.note ? U.esc(s.note) : '-') + '</dd>' +
         '</dl></div>' +
         '<div>' +
@@ -173,6 +182,25 @@ Views.students = (function () {
             '<td>' + (r.homework ? '✅' : '–') + '</td><td>' + U.esc(r.note || '') + '</td></tr>';
         }).join('') + '</tbody></table></div>'
         : '<div class="hint">기록이 없습니다.</div>') +
+
+      '<div class="section-title">수강료 납부 이력</div>' +
+      (pay.list.length
+        ? '<div class="row" style="gap:6px;margin-bottom:8px">' +
+            '<span class="tag blue">누적 청구 ' + U.won(pay.billed) + '</span>' +
+            '<span class="tag ok">수납 ' + U.won(pay.collected) + '</span>' +
+            (pay.outstanding > 0 ? '<span class="tag bad">미수납 ' + U.won(pay.outstanding) + '</span>' : '') +
+          '</div>' +
+          '<div class="table-wrap"><table class="tbl" style="min-width:auto">' +
+          '<thead><tr><th>청구월</th><th class="num">청구액</th><th class="num">납부액</th><th>상태</th><th>납부일</th></tr></thead><tbody>' +
+          pay.list.slice(0, 8).map(function (p) {
+            var st = Store.paymentStatus(p);
+            return '<tr><td>' + U.humanMonth(p.month) + '</td>' +
+              '<td class="num">' + U.num(p.amount) + '</td>' +
+              '<td class="num">' + U.num(p.paidAmount || 0) + '</td>' +
+              '<td><span class="tag ' + st.tag + '">' + U.esc(st.label) + '</span></td>' +
+              '<td>' + U.esc(p.paidDate || '-') + '</td></tr>';
+          }).join('') + '</tbody></table></div>'
+        : '<div class="hint">청구 기록이 없습니다. 수강료 납부 화면에서 청구서를 생성해 주세요.</div>') +
 
       '<div class="section-title">메모</div>' +
       '<div class="row" style="margin-bottom:8px">' +
@@ -248,10 +276,12 @@ Views.students = (function () {
     el.querySelector('#f-dy').addEventListener('change', function (e) { filter.day = e.target.value; refresh(); });
 
     el.querySelector('#csv').addEventListener('click', function () {
-      var head = ['이름', '학년', '좌석', '요일', '시간', '등록여부', '학생연락처', '학부모연락처', '학부모이메일', '특이사항'];
+      var head = ['이름', '학년', '좌석', '요일', '시간', '등록여부', '학생연락처', '학부모연락처',
+                  '학부모이메일', '월수강료', '납부일', '특이사항'];
       var body = Store.students().filter(matches).map(function (s) {
         return [s.name, s.grade, s.seat, (s.days || []).join('·'), s.time, s.status,
-                s.phone, s.parentPhone, s.parentEmail, s.note];
+                s.phone, s.parentPhone, s.parentEmail,
+                Store.feeOf(s), s.billingDay || Store.get().academy.billingDay, s.note];
       });
       U.download('고래영어_학생명부_' + U.ymd() + '.csv', U.toCsv([head].concat(body)), 'text/csv');
       UI.toast('CSV 파일을 내려받았습니다.');

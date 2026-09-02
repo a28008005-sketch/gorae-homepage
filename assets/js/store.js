@@ -14,6 +14,7 @@ var Store = (function () {
   var FLAGS = ['지각', '외출', '조퇴'];
   var PATROL_STATES = ['🟢 학습중', '💤 졸음', '🏃 이탈/부재', '📱 휴대폰 사용', '💬 잡담/소란'];
   var WEEKDAYS = ['월', '화', '수', '목', '금', '토'];
+  var PAY_METHODS = ['계좌이체', '현금', '카드', '기타'];
 
   var DEFAULTS = {
     version: 1,
@@ -24,13 +25,19 @@ var Store = (function () {
       phone: '010-3803-8335',
       site: 'https://englishwhale.com',
       seatCount: 20,
-      times: ['1시', '2시', '3시', '4시', '5시', '6시', '7시', '8시']
+      times: ['1시', '2시', '3시', '4시', '5시', '6시', '7시', '8시'],
+      defaultFee: 250000,
+      billingDay: 10,
+      bankName: '',
+      bankAccount: '',
+      bankHolder: ''
     },
     students: [],
     attendance: [],
     patrols: [],
     memos: [],
-    tasks: []
+    tasks: [],
+    payments: []
   };
 
   var data = null;
@@ -114,6 +121,7 @@ var Store = (function () {
     d.attendance = d.attendance.filter(function (a) { return a.studentId !== id; });
     d.patrols = d.patrols.filter(function (p) { return p.studentId !== id; });
     d.memos = d.memos.filter(function (m) { return m.studentId !== id; });
+    d.payments = d.payments.filter(function (p) { return p.studentId !== id; });
     save();
   }
   /** 특정 요일에 수업이 있는 등록생 */
@@ -234,6 +242,126 @@ var Store = (function () {
     save();
   }
 
+  /* ---------- 수강료 납부 ---------- */
+  /** 청구서 목록 (월 / 학생 / 상태로 필터) */
+  function payments(opts) {
+    opts = opts || {};
+    var list = get().payments.slice();
+    if (opts.month) list = list.filter(function (p) { return p.month === opts.month; });
+    if (opts.studentId) list = list.filter(function (p) { return p.studentId === opts.studentId; });
+    return list.sort(function (a, b) { return a.month < b.month ? 1 : -1; });
+  }
+  function paymentFor(studentId, month) {
+    return get().payments.filter(function (p) {
+      return p.studentId === studentId && p.month === month;
+    })[0] || null;
+  }
+
+  /** 학생의 월 수강료 (개인 설정 > 학원 기본값) */
+  function feeOf(s) {
+    var v = (s && s.fee !== undefined && s.fee !== '') ? Number(s.fee) : Number(get().academy.defaultFee);
+    return isNaN(v) ? 0 : v;
+  }
+  /** 청구서의 납부 기한 계산 */
+  function dueDateFor(month, billingDay) {
+    var p = month.split('-');
+    var last = new Date(+p[0], +p[1], 0).getDate();
+    var day = Math.min(Math.max(parseInt(billingDay, 10) || get().academy.billingDay || 10, 1), last);
+    return month + '-' + U.pad(day);
+  }
+
+  /**
+   * 청구서 상태 판정
+   *  면제(청구액 0) / 완납 / 부분납부 / 연체 / 청구
+   */
+  function paymentStatus(p, today) {
+    today = today || U.ymd();
+    var amount = Number(p.amount) || 0;
+    var paid = Number(p.paidAmount) || 0;
+    if (amount <= 0) return { key: 'exempt', label: '면제', tag: 'gray', overdue: 0 };
+    if (paid >= amount) return { key: 'paid', label: '완납', tag: 'ok', overdue: 0 };
+    var overdue = p.dueDate && today > p.dueDate ? U.dayDiff(p.dueDate, today) : 0;
+    if (paid > 0) {
+      return {
+        key: 'partial',
+        label: overdue ? '부분납부 · ' + overdue + '일 경과' : '부분납부',
+        tag: 'warn', overdue: overdue
+      };
+    }
+    if (overdue) return { key: 'overdue', label: '미납 ' + overdue + '일', tag: 'bad', overdue: overdue };
+    return { key: 'due', label: '청구', tag: 'blue', overdue: 0 };
+  }
+
+  function savePayment(p) {
+    var d = get();
+    if (p.id) {
+      for (var i = 0; i < d.payments.length; i++) {
+        if (d.payments[i].id === p.id) { d.payments[i] = Object.assign(d.payments[i], p); break; }
+      }
+    } else {
+      p.id = U.uid('pay');
+      p.createdAt = new Date().toISOString();
+      d.payments.push(p);
+    }
+    save();
+    return p.id;
+  }
+  function deletePayment(id) {
+    var d = get();
+    d.payments = d.payments.filter(function (p) { return p.id !== id; });
+    save();
+  }
+
+  /**
+   * 해당 월 청구서 일괄 생성.
+   * 이미 청구서가 있는 학생은 건드리지 않고, 등록생만 대상으로 합니다.
+   * @return 새로 만든 청구서 수
+   */
+  function generateBills(month) {
+    var made = 0;
+    students({ active: true }).forEach(function (s) {
+      if (paymentFor(s.id, month)) return;
+      savePayment({
+        studentId: s.id, month: month,
+        amount: feeOf(s),
+        paidAmount: 0, paidDate: '', method: '', note: '',
+        dueDate: dueDateFor(month, s.billingDay)
+      });
+      made++;
+    });
+    return made;
+  }
+
+  /** 월 전체 수납 집계 */
+  function paymentSummary(month) {
+    var list = payments({ month: month });
+    var billed = 0, collected = 0, counts = { paid: 0, partial: 0, overdue: 0, due: 0, exempt: 0 };
+    list.forEach(function (p) {
+      billed += Number(p.amount) || 0;
+      collected += Number(p.paidAmount) || 0;
+      counts[paymentStatus(p).key]++;
+    });
+    return {
+      list: list, billed: billed, collected: collected,
+      outstanding: Math.max(0, billed - collected),
+      rate: U.pct(collected, billed), counts: counts,
+      unpaidCount: counts.overdue + counts.partial + counts.due
+    };
+  }
+
+  /** 한 학생의 납부 이력 요약 */
+  function paymentHistory(studentId) {
+    var list = payments({ studentId: studentId });
+    var billed = 0, collected = 0, unpaidMonths = [];
+    list.forEach(function (p) {
+      billed += Number(p.amount) || 0;
+      collected += Number(p.paidAmount) || 0;
+      var st = paymentStatus(p);
+      if (st.key === 'overdue' || st.key === 'partial') unpaidMonths.push(p.month);
+    });
+    return { list: list, billed: billed, collected: collected, outstanding: billed - collected, unpaidMonths: unpaidMonths };
+  }
+
   /* ---------- 집계 ---------- */
   /** 한 학생의 기간 통계 (노션의 출석률 / 체크사항 수식과 동일한 의미) */
   function summarize(studentId, from, to) {
@@ -306,7 +434,7 @@ var Store = (function () {
 
   return {
     STATUS: STATUS, GRADES: GRADES, FLAGS: FLAGS,
-    PATROL_STATES: PATROL_STATES, WEEKDAYS: WEEKDAYS,
+    PATROL_STATES: PATROL_STATES, WEEKDAYS: WEEKDAYS, PAY_METHODS: PAY_METHODS,
     get: get, save: save, onChange: onChange,
     students: students, student: student, saveStudent: saveStudent,
     archiveStudent: archiveStudent, deleteStudent: deleteStudent,
@@ -316,6 +444,9 @@ var Store = (function () {
     patrols: patrols, savePatrol: savePatrol, deletePatrol: deletePatrol, isIssue: isIssue,
     memos: memos, addMemo: addMemo, deleteMemo: deleteMemo,
     tasks: tasks, addTask: addTask, updateTask: updateTask, deleteTask: deleteTask,
+    payments: payments, paymentFor: paymentFor, feeOf: feeOf, dueDateFor: dueDateFor,
+    paymentStatus: paymentStatus, savePayment: savePayment, deletePayment: deletePayment,
+    generateBills: generateBills, paymentSummary: paymentSummary, paymentHistory: paymentHistory,
     summarize: summarize, dayOverview: dayOverview,
     exportJson: exportJson, importJson: importJson, resetAll: resetAll, saveAcademy: saveAcademy
   };

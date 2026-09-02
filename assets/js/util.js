@@ -74,6 +74,25 @@ var U = (function () {
     return Math.round((num / den) * 1000) / 10;
   }
 
+  /** 금액 -> '120,000원' */
+  function won(n) {
+    var v = Math.round(Number(n) || 0);
+    return v.toLocaleString('ko-KR') + '원';
+  }
+  /** 금액 -> '120,000' (단위 없음) */
+  function num(n) {
+    return (Math.round(Number(n) || 0)).toLocaleString('ko-KR');
+  }
+  /** 'YYYY-MM' -> '2026년 9월' */
+  function humanMonth(m) {
+    var p = String(m || '').split('-');
+    return p[0] + '년 ' + (+p[1]) + '월';
+  }
+  /** 두 날짜(YYYY-MM-DD) 사이의 일수 (b - a) */
+  function dayDiff(a, b) {
+    return Math.round((parseYmd(b) - parseYmd(a)) / 86400000);
+  }
+
   /** 한국 전화번호 하이픈 */
   function phone(v) {
     var s = String(v || '').replace(/[^0-9]/g, '');
@@ -140,6 +159,7 @@ var U = (function () {
     DAYS: DAYS, pad: pad, ymd: ymd, ym: ym, parseYmd: parseYmd, dayOf: dayOf,
     human: human, shortDate: shortDate, hhmm: hhmm, nowLocalInput: nowLocalInput,
     daysInMonth: daysInMonth, daysAgo: daysAgo, uid: uid, esc: esc, pct: pct,
+    won: won, num: num, humanMonth: humanMonth, dayDiff: dayDiff,
     phone: phone, byName: byName, encodeData: encodeData, decodeData: decodeData,
     download: download, toCsv: toCsv, copy: copy
   };
