@@ -165,7 +165,7 @@ ${links.map(([label, href]) =>
     </ul>
     <div class="nav-cta">
       <a class="phone-chip" href="tel:010-3803-8335">010-3803-8335</a>
-      <a class="btn btn-solid" href="${base}index.html#contact">상담 신청</a>
+      <a class="btn btn-solid" href="https://forms.gle/qz8bCWyDeZGTb6p59" target="_blank" rel="noopener">상담 신청</a>
     </div>
   </div>
 </nav>

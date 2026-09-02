@@ -23,11 +23,7 @@
     --accent-strong: #93691D;
     --line: rgba(10,30,50,0.12);
     --shadow: rgba(10,30,50,0.16);
-    --sky: #2E6FB7;
-    --sky-deep: #1B4F87;
     --sky-soft: #DCEAF7;
-    --bubble: #FFFFFF;
-    --blush: #F2A6B4;
   }
 
   @media (prefers-color-scheme: dark) {
@@ -37,7 +33,7 @@
       --paper: #081826; --paper-alt: #0E2237; --surface: #10293F;
       --accent: #E3B768; --accent-strong: #F0CB8C;
       --line: rgba(231,238,243,0.14); --shadow: rgba(0,0,0,0.45);
-      --sky: #6FA8DC; --sky-deep: #8FC4EA; --sky-soft: #173650; --bubble: #10293F; --blush: #C97E8D;
+      --sky-soft: #173650;
     }
   }
   :root[data-theme="dark"] {
@@ -46,7 +42,7 @@
     --paper: #081826; --paper-alt: #0E2237; --surface: #10293F;
     --accent: #E3B768; --accent-strong: #F0CB8C;
     --line: rgba(231,238,243,0.14); --shadow: rgba(0,0,0,0.45);
-      --sky: #6FA8DC; --sky-deep: #8FC4EA; --sky-soft: #173650; --bubble: #10293F; --blush: #C97E8D;
+      --sky-soft: #173650;
   }
 
   * { box-sizing: border-box; }
@@ -246,144 +242,22 @@
   table.level-table td:first-child { font-weight: 700; color: var(--brand); white-space: nowrap; }
   table.level-table tr:last-child td { border-bottom: none; }
 
-  /* ---------- BRAND ART: 고래 마스코트 · 말풍선 · 아이콘 ---------- */
-  .whale { width: 100%; height: auto; display: block; }
-
-  .bubble {
-    display: inline-flex; align-items: center; gap: 0.5em;
-    background: var(--bubble); border: 1.5px solid var(--sky);
-    color: var(--brand); font-weight: 700; font-size: 0.87rem; line-height: 1.45;
-    padding: 0.6em 1.15em; border-radius: 999px; position: relative;
-    box-shadow: 0 12px 26px -20px var(--shadow);
-  }
-  .bubble::after {
-    content: ""; position: absolute; left: 24px; bottom: -7px; width: 12px; height: 12px;
-    background: var(--bubble); border-right: 1.5px solid var(--sky); border-bottom: 1.5px solid var(--sky);
-    transform: rotate(45deg);
-  }
-  .bubble.tail-left::after { left: auto; right: 24px; }
-  .bubble .spark { color: var(--accent); font-size: 1em; }
-
+  /* ---------- 카드 아이콘 ---------- */
   .icon-badge {
     width: 44px; height: 44px; border-radius: 13px; flex: none;
     display: grid; place-items: center;
     background: var(--brand-tint); color: var(--brand);
     transition: background 0.18s ease, color 0.18s ease;
   }
-  .icon-badge svg { width: 22px; height: 22px; stroke: currentColor; fill: none;
-    stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+  .icon-badge svg {
+    width: 22px; height: 22px; stroke: currentColor; fill: none;
+    stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
+  }
   .cat-card:hover .icon-badge { background: var(--brand); color: #fff; }
   a.cat-card .icon-badge { background: var(--sky-soft); }
   .cat-card .card-top { display: flex; align-items: center; justify-content: space-between; gap: 0.9rem; }
-
-  /* ---------- HERO 마스코트 ---------- */
-  .hero { overflow: hidden; }
-  .hero-mascot { display: flex; align-items: flex-end; gap: 0.9rem; margin-top: 1.8rem; }
-  .hero-mascot .whale { width: 92px; flex: none; transform: scaleX(-1); }
-  .hero-mascot .bubble { margin-bottom: 1.1rem; }
-
-  /* ---------- 프로그램 카드 상단 아이콘 ---------- */
   .prog-detail > header { align-items: center; }
   .prog-detail .icon-badge { margin-right: 0.2rem; }
-
-  /* ---------- 원장 소개: 사진 + 글 2단 ---------- */
-  .director-panel {
-    display: grid; grid-template-columns: minmax(0, 290px) minmax(0, 1fr);
-    gap: clamp(1.8rem, 4vw, 3.2rem); align-items: center;
-    max-width: 960px; text-align: left;
-  }
-  .director-panel::before { left: clamp(2.2rem, 4vw, 3.2rem); transform: none; }
-  .director-copy { display: flex; flex-direction: column; align-items: flex-start; }
-  .portrait {
-    position: relative; width: 100%; aspect-ratio: 4 / 5; border-radius: 20px;
-    overflow: hidden; border: 1px solid var(--line);
-    background: linear-gradient(165deg, var(--sky-soft), var(--brand-tint));
-    display: grid; place-items: center;
-  }
-  .portrait img { width: 100%; height: 100%; object-fit: cover; object-position: center top; }
-  .portrait .whale { width: 58%; }
-  .portrait figcaption {
-    position: absolute; left: 0; right: 0; bottom: 0; padding: 0.7rem 0.9rem;
-    background: linear-gradient(transparent, rgba(0,36,63,0.82));
-    color: #fff; font-size: 0.78rem; font-weight: 600; letter-spacing: 0.01em;
-  }
-  @media (max-width: 820px) {
-    .director-panel { grid-template-columns: 1fr; }
-    .portrait { max-width: 260px; margin: 0 auto; }
-    .director-panel::before { left: 50%; transform: translateX(-50%); }
-  }
-
-  /* ---------- 비전 섹션 마스코트 ---------- */
-  .vision-art { display: flex; justify-content: center; align-items: flex-end; gap: 0.9rem; margin-top: 2rem; }
-  .vision-art .whale { width: 84px; flex: none; }
-  .director-copy .director-body { margin: 0; text-align: left; }
-  .director-copy .director-role { align-self: stretch; }
-  .director-copy .bubble { margin: 1.5rem 0 0; }
-  .vision-art .bubble { margin-bottom: 1rem; }
-
-  /* ---------- 상담 신청 모달 ---------- */
-  .modal-backdrop {
-    position: fixed; inset: 0; z-index: 100; padding: 1.1rem;
-    background: rgba(6,20,34,0.58); overflow-y: auto;
-    display: flex; align-items: flex-start; justify-content: center;
-  }
-  .modal-backdrop[hidden] { display: none; }
-  .modal-card {
-    width: min(560px, 100%); background: var(--surface); color: var(--ink);
-    border-radius: 22px; padding: clamp(1.5rem, 4vw, 2.1rem);
-    box-shadow: 0 44px 90px -34px rgba(0,0,0,0.55); position: relative;
-    border: 1px solid var(--line); margin: auto;
-  }
-  .modal-card h2 { font-size: 1.4rem; margin: 0.5rem 0 0.4rem; }
-  .modal-lede { color: var(--ink-soft); font-size: 0.92rem; margin: 0 0 1.3rem; }
-  .modal-close {
-    position: absolute; top: 0.9rem; right: 0.9rem; width: 36px; height: 36px;
-    border-radius: 10px; border: 1px solid var(--line); background: var(--paper);
-    color: var(--ink-soft); font-size: 1.15rem; line-height: 1; cursor: pointer;
-  }
-  .modal-close:hover { color: var(--brand); border-color: var(--brand); }
-  .modal-head { display: flex; align-items: center; gap: 0.9rem; }
-  .modal-head .whale { width: 54px; flex: none; }
-
-  .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem; }
-  @media (max-width: 520px) { .field-grid { grid-template-columns: 1fr; } }
-  .field { display: flex; flex-direction: column; gap: 0.35rem; }
-  .field.full { grid-column: 1 / -1; }
-  .field label { font-size: 0.82rem; font-weight: 700; color: var(--ink-soft); }
-  .field label .req { color: var(--accent-strong); }
-  .field input, .field select, .field textarea {
-    font: inherit; font-size: 0.94rem; color: var(--ink); background: var(--paper);
-    border: 1px solid var(--line); border-radius: 10px; padding: 0.68em 0.85em; width: 100%;
-  }
-  .field textarea { min-height: 84px; resize: vertical; line-height: 1.6; }
-  .field input:focus, .field select:focus, .field textarea:focus {
-    outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--brand);
-  }
-  .field .err { font-size: 0.78rem; color: #C0392B; font-weight: 600; }
-  :root[data-theme="dark"] .field .err, :root:not([data-theme="light"]) .field .err { color: #F0938A; }
-  @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .field .err { color: #C0392B; } }
-  .field.has-error input, .field.has-error select { border-color: #C0392B; }
-
-  .modal-actions { display: flex; flex-direction: column; gap: 0.6rem; margin-top: 1.4rem; }
-  .modal-actions .btn { width: 100%; }
-  .modal-alt { display: grid; grid-template-columns: repeat(auto-fit, minmax(146px, 1fr)); gap: 0.6rem; }
-  .modal-result { margin-top: 1rem; display: flex; flex-direction: column; gap: 0.8rem; }
-  .modal-result[hidden] { display: none; }
-  .modal-result pre {
-    margin: 0; font-family: inherit; font-size: 0.86rem; line-height: 1.75;
-    white-space: pre-wrap; word-break: keep-all; color: var(--ink);
-    background: var(--paper-alt); border: 1px solid var(--line); border-radius: 12px;
-    padding: 0.9rem 1rem; max-height: 200px; overflow-y: auto;
-  }
-  .modal-note {
-    margin: 1.1rem 0 0; font-size: 0.8rem; color: var(--ink-faint); line-height: 1.65;
-    border-top: 1px solid var(--line); padding-top: 0.9rem;
-  }
-  .modal-status {
-    margin-top: 0.9rem; font-size: 0.86rem; font-weight: 600; color: var(--brand);
-    background: var(--brand-tint); border-radius: 10px; padding: 0.7em 0.9em;
-  }
-  .modal-status[hidden] { display: none; }
 
   /* ---------- 블로그 공통 ---------- */
   .blog-head { padding: clamp(2.4rem, 5vw, 3.6rem) 0 clamp(1.4rem, 3vw, 2rem); }
@@ -497,7 +371,7 @@
     </ul>
     <div class="nav-cta">
       <a class="phone-chip" href="tel:010-3803-8335">010-3803-8335</a>
-      <a class="btn btn-solid" href="../../index.html#contact">상담 신청</a>
+      <a class="btn btn-solid" href="https://forms.gle/qz8bCWyDeZGTb6p59" target="_blank" rel="noopener">상담 신청</a>
     </div>
   </div>
 </nav>
