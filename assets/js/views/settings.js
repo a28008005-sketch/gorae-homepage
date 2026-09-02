@@ -323,5 +323,5 @@ Views.settings = (function () {
     });
   }
 
-  return { title: title, sub: sub, render: render };
+  return { title: title, sub: sub, render: render, seedSample: seedSample };
 })();

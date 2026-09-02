@@ -10,6 +10,14 @@
 ### 방법 A — 파일을 그대로 열기 (가장 간단)
 `index.html` 파일을 더블클릭하면 바로 열립니다. 인터넷 연결도 필요 없습니다.
 
+파일 하나로 들고 다니고 싶다면 [`dist/고래영어-원생관리.html`](dist/) 을 받으세요.
+CSS·JS가 모두 안에 들어 있어 그 파일 하나만 있으면 어디서든 열립니다. 다시 만들 때는:
+
+```
+node tools/bundle.js            # dist/고래영어-원생관리.html
+node tools/bundle.js --demo     # 예시 데이터가 들어간 미리보기용
+```
+
 ### 방법 B — GitHub Pages로 올리기 (학부모 공유 링크까지 쓰려면 권장)
 1. 저장소 → **Settings → Pages**
 2. Source: `Deploy from a branch`, Branch: `main` (또는 이 브랜치) / `root` 선택 후 저장
