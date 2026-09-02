@@ -1,3 +1,6 @@
 .DS_Store
 node_modules/
 *.log
+
+# 노션 열쇠 (절대 깃허브에 올라가면 안 됨)
+tools/blog/.env.local
