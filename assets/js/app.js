@@ -22,6 +22,11 @@ var App = (function () {
 
   function query() { return currentQuery; }
 
+  /** 로그인 없이 열려야 하는 화면인지 */
+  function isPublicRoute() {
+    return current === 'report' || current === 'receipt';
+  }
+
   function setTitle(t) { titleEl.textContent = t; document.title = t + ' · 고래영어 원생관리'; }
   function setSub(s) { subEl.textContent = s || ''; }
 
@@ -114,12 +119,21 @@ var App = (function () {
     window.addEventListener('hashchange', route);
     if (!location.hash) location.hash = '#/dashboard';
     route();
+
+    // 클라우드 모드면 연결을 복구하고, 로그인이 필요하면 화면을 덮습니다.
+    AuthUI.mountStatus();
+    Sync.init().then(function () {
+      // 학부모용 공개 화면(리포트 · 납부확인서)은 로그인 없이 열려야 합니다.
+      if (!isPublicRoute()) AuthUI.gate();
+      refreshBrand();
+      rerender();
+    });
   }
 
   document.addEventListener('DOMContentLoaded', boot);
 
   return {
     rerender: rerender, setSub: setSub, setTitle: setTitle,
-    refreshBrand: refreshBrand, query: query
+    refreshBrand: refreshBrand, query: query, isPublicRoute: isPublicRoute
   };
 })();

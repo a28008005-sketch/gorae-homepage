@@ -42,8 +42,34 @@ var Store = (function () {
 
   var data = null;
   var listeners = [];
+  var changeListeners = [];
+
+  /** 컬렉션 이름 <-> 동기화 종류(kind) 매핑 */
+  var KINDS = {
+    student: 'students', attendance: 'attendance', patrol: 'patrols',
+    memo: 'memos', task: 'tasks', payment: 'payments'
+  };
 
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
+
+  /** 레코드에 수정 시각을 찍습니다. 동기화의 기준값입니다. */
+  function stamp(rec) {
+    rec.updatedAt = new Date().toISOString();
+    return rec;
+  }
+
+  /** 변경된 레코드를 구독자(동기화 엔진)에게 알립니다. */
+  function emitChange(kind, id) {
+    changeListeners.forEach(function (fn) {
+      try { fn(kind, id); } catch (e) { /* 구독자 오류가 저장을 막지 않도록 */ }
+    });
+  }
+  function onRecordChange(fn) { changeListeners.push(fn); }
+
+  /** 살아있는 레코드만 (소프트 삭제 제외) */
+  function alive(list) {
+    return list.filter(function (r) { return !r.deleted; });
+  }
 
   function load() {
     var raw = null;
@@ -66,11 +92,20 @@ var Store = (function () {
     return data;
   }
 
-  function save() {
+  /**
+   * @param {{kind:string,id:string}|Array|undefined} changed
+   *        바뀐 레코드. 넘기면 동기화 대기열에 올라갑니다.
+   */
+  function save(changed) {
     try {
       localStorage.setItem(KEY, JSON.stringify(data));
     } catch (e) {
       if (window.UI) UI.toast('저장 공간이 부족합니다. 설정에서 백업 후 정리해 주세요.', true);
+    }
+    if (changed) {
+      (Array.isArray(changed) ? changed : [changed]).forEach(function (c) {
+        emitChange(c.kind, c.id);
+      });
     }
     listeners.forEach(function (fn) { fn(); });
   }
@@ -81,7 +116,7 @@ var Store = (function () {
   /* ---------- 학생 ---------- */
   function students(opts) {
     opts = opts || {};
-    var list = get().students.filter(function (s) {
+    var list = alive(get().students).filter(function (s) {
       return opts.includeArchived ? true : !s.archived;
     });
     if (opts.status) list = list.filter(function (s) { return s.status === opts.status; });
@@ -89,21 +124,25 @@ var Store = (function () {
     return list.slice().sort(U.byName);
   }
   function student(id) {
-    return get().students.filter(function (s) { return s.id === id; })[0] || null;
+    return alive(get().students).filter(function (s) { return s.id === id; })[0] || null;
   }
   function saveStudent(s) {
     var d = get();
+    var rec = null;
     if (s.id) {
       for (var i = 0; i < d.students.length; i++) {
-        if (d.students[i].id === s.id) { d.students[i] = Object.assign(d.students[i], s); break; }
+        if (d.students[i].id === s.id) { rec = Object.assign(d.students[i], s); break; }
       }
-    } else {
-      s.id = U.uid('stu');
-      s.createdAt = new Date().toISOString();
-      d.students.push(s);
     }
-    save();
-    return s.id;
+    if (!rec) {
+      s.id = s.id || U.uid('stu');
+      s.createdAt = s.createdAt || new Date().toISOString();
+      rec = s;
+      d.students.push(rec);
+    }
+    stamp(rec);
+    save({ kind: 'student', id: rec.id });
+    return rec.id;
   }
   /** 보관(퇴원 처리) — 기록은 남기고 명부에서만 감춥니다 */
   function archiveStudent(id, on) {
@@ -112,17 +151,31 @@ var Store = (function () {
     s.archived = !!on;
     if (on && s.status !== '퇴원생') s.status = '퇴원생';
     s.seat = on ? '' : s.seat;
-    save();
+    stamp(s);
+    save({ kind: 'student', id: s.id });
   }
-  /** 완전 삭제 — 학생과 연결된 모든 기록을 함께 지웁니다 */
+  /**
+   * 삭제 — 학생과 연결된 모든 기록에 삭제 표시를 합니다.
+   * 완전히 지우지 않고 표시만 남기는 이유는, 다른 선생님 기기에도
+   * '이 기록은 지워졌다'는 사실이 전달되어야 하기 때문입니다.
+   */
   function deleteStudent(id) {
     var d = get();
-    d.students = d.students.filter(function (s) { return s.id !== id; });
-    d.attendance = d.attendance.filter(function (a) { return a.studentId !== id; });
-    d.patrols = d.patrols.filter(function (p) { return p.studentId !== id; });
-    d.memos = d.memos.filter(function (m) { return m.studentId !== id; });
-    d.payments = d.payments.filter(function (p) { return p.studentId !== id; });
-    save();
+    var changed = [];
+    function kill(list, kind, match) {
+      list.forEach(function (r) {
+        if (r.deleted || !match(r)) return;
+        r.deleted = true;
+        stamp(r);
+        changed.push({ kind: kind, id: r.id });
+      });
+    }
+    kill(d.students, 'student', function (s) { return s.id === id; });
+    kill(d.attendance, 'attendance', function (a) { return a.studentId === id; });
+    kill(d.patrols, 'patrol', function (p) { return p.studentId === id; });
+    kill(d.memos, 'memo', function (m) { return m.studentId === id; });
+    kill(d.payments, 'payment', function (p) { return p.studentId === id; });
+    save(changed);
   }
   /** 특정 요일에 수업이 있는 등록생 */
   function studentsOnDay(dayKo) {
@@ -138,15 +191,15 @@ var Store = (function () {
 
   /* ---------- 출결 · 일일학습 ---------- */
   function attendanceOn(date) {
-    return get().attendance.filter(function (a) { return a.date === date; });
+    return alive(get().attendance).filter(function (a) { return a.date === date; });
   }
   function attendanceFor(studentId, date) {
-    return get().attendance.filter(function (a) {
+    return alive(get().attendance).filter(function (a) {
       return a.studentId === studentId && a.date === date;
     })[0] || null;
   }
   function attendanceRange(studentId, from, to) {
-    return get().attendance.filter(function (a) {
+    return alive(get().attendance).filter(function (a) {
       return a.studentId === studentId && a.date >= from && a.date <= to;
     }).sort(function (x, y) { return x.date < y.date ? -1 : 1; });
   }
@@ -162,7 +215,8 @@ var Store = (function () {
       d.attendance.push(rec);
     }
     Object.keys(patch).forEach(function (k) { rec[k] = patch[k]; });
-    save();
+    stamp(rec);
+    save({ kind: 'attendance', id: rec.id });
     return rec;
   }
   function toggleFlag(studentId, date, flag) {
@@ -176,7 +230,7 @@ var Store = (function () {
   /* ---------- 순회 점검 ---------- */
   function patrols(opts) {
     opts = opts || {};
-    var list = get().patrols.slice();
+    var list = alive(get().patrols).slice();
     if (opts.date) list = list.filter(function (p) { return (p.at || '').slice(0, 10) === opts.date; });
     if (opts.studentId) list = list.filter(function (p) { return p.studentId === opts.studentId; });
     if (opts.from) list = list.filter(function (p) { return (p.at || '').slice(0, 10) >= opts.from; });
@@ -185,74 +239,86 @@ var Store = (function () {
   }
   function savePatrol(p) {
     var d = get();
+    var rec = null;
     if (p.id) {
       for (var i = 0; i < d.patrols.length; i++) {
-        if (d.patrols[i].id === p.id) { d.patrols[i] = Object.assign(d.patrols[i], p); break; }
+        if (d.patrols[i].id === p.id) { rec = Object.assign(d.patrols[i], p); break; }
       }
-    } else {
-      p.id = U.uid('pat');
-      d.patrols.push(p);
     }
-    save();
-    return p.id;
+    if (!rec) { p.id = p.id || U.uid('pat'); rec = p; d.patrols.push(rec); }
+    stamp(rec);
+    save({ kind: 'patrol', id: rec.id });
+    return rec.id;
   }
   function deletePatrol(id) {
-    var d = get();
-    d.patrols = d.patrols.filter(function (p) { return p.id !== id; });
-    save();
+    return softDelete('patrols', 'patrol', id);
   }
   /** 주의가 필요한 상태(학습중 제외) 인지 */
   function isIssue(state) { return state !== PATROL_STATES[0]; }
 
   /* ---------- 메모 ---------- */
   function memos(studentId) {
-    var list = get().memos.slice();
+    var list = alive(get().memos).slice();
     if (studentId) list = list.filter(function (m) { return m.studentId === studentId; });
     return list.sort(function (a, b) { return a.date < b.date ? 1 : -1; });
   }
   function addMemo(m) {
-    m.id = U.uid('memo');
+    m.id = m.id || U.uid('memo');
     m.date = m.date || U.ymd();
+    stamp(m);
     get().memos.push(m);
-    save();
+    save({ kind: 'memo', id: m.id });
   }
   function deleteMemo(id) {
-    var d = get();
-    d.memos = d.memos.filter(function (m) { return m.id !== id; });
-    save();
+    return softDelete('memos', 'memo', id);
   }
 
   /* ---------- 업무 메모 ---------- */
   function tasks(bucket) {
-    var list = get().tasks.slice();
+    var list = alive(get().tasks).slice();
     if (bucket) list = list.filter(function (t) { return t.bucket === bucket; });
     return list;
   }
   function addTask(text, bucket) {
-    get().tasks.push({ id: U.uid('task'), text: text, bucket: bucket || 'today', done: false, at: new Date().toISOString() });
-    save();
+    var t = stamp({ id: U.uid('task'), text: text, bucket: bucket || 'today', done: false, at: new Date().toISOString() });
+    get().tasks.push(t);
+    save({ kind: 'task', id: t.id });
   }
   function updateTask(id, patch) {
-    get().tasks.forEach(function (t) { if (t.id === id) Object.assign(t, patch); });
-    save();
+    get().tasks.forEach(function (t) {
+      if (t.id === id) { Object.assign(t, patch); stamp(t); }
+    });
+    save({ kind: 'task', id: id });
   }
   function deleteTask(id) {
-    var d = get();
-    d.tasks = d.tasks.filter(function (t) { return t.id !== id; });
-    save();
+    return softDelete('tasks', 'task', id);
+  }
+
+  /** 컬렉션에서 한 레코드에 삭제 표시 */
+  function softDelete(collection, kind, id) {
+    var list = get()[collection];
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].id === id) {
+        list[i].deleted = true;
+        stamp(list[i]);
+        save({ kind: kind, id: id });
+        return true;
+      }
+    }
+    return false;
   }
 
   /* ---------- 수강료 납부 ---------- */
   /** 청구서 목록 (월 / 학생 / 상태로 필터) */
   function payments(opts) {
     opts = opts || {};
-    var list = get().payments.slice();
+    var list = alive(get().payments).slice();
     if (opts.month) list = list.filter(function (p) { return p.month === opts.month; });
     if (opts.studentId) list = list.filter(function (p) { return p.studentId === opts.studentId; });
     return list.sort(function (a, b) { return a.month < b.month ? 1 : -1; });
   }
   function paymentFor(studentId, month) {
-    return get().payments.filter(function (p) {
+    return alive(get().payments).filter(function (p) {
       return p.studentId === studentId && p.month === month;
     })[0] || null;
   }
@@ -294,22 +360,24 @@ var Store = (function () {
 
   function savePayment(p) {
     var d = get();
+    var rec = null;
     if (p.id) {
       for (var i = 0; i < d.payments.length; i++) {
-        if (d.payments[i].id === p.id) { d.payments[i] = Object.assign(d.payments[i], p); break; }
+        if (d.payments[i].id === p.id) { rec = Object.assign(d.payments[i], p); break; }
       }
-    } else {
-      p.id = U.uid('pay');
-      p.createdAt = new Date().toISOString();
-      d.payments.push(p);
     }
-    save();
-    return p.id;
+    if (!rec) {
+      p.id = p.id || U.uid('pay');
+      p.createdAt = p.createdAt || new Date().toISOString();
+      rec = p;
+      d.payments.push(rec);
+    }
+    stamp(rec);
+    save({ kind: 'payment', id: rec.id });
+    return rec.id;
   }
   function deletePayment(id) {
-    var d = get();
-    d.payments = d.payments.filter(function (p) { return p.id !== id; });
-    save();
+    return softDelete('payments', 'payment', id);
   }
 
   /**
@@ -410,6 +478,82 @@ var Store = (function () {
     };
   }
 
+  /* ---------- 동기화 지원 ---------- */
+  /** 모든 레코드를 {kind, id, data, updatedAt, deleted} 형태로 펼칩니다. */
+  function allRecords() {
+    var d = get(), out = [];
+    Object.keys(KINDS).forEach(function (kind) {
+      (d[KINDS[kind]] || []).forEach(function (r) {
+        out.push({
+          kind: kind, id: r.id, data: r,
+          updatedAt: r.updatedAt || '1970-01-01T00:00:00.000Z',
+          deleted: !!r.deleted
+        });
+      });
+    });
+    out.push({
+      kind: 'academy', id: 'main', data: d.academy,
+      updatedAt: d.academy.updatedAt || '1970-01-01T00:00:00.000Z',
+      deleted: false
+    });
+    return out;
+  }
+
+  /** 한 레코드를 kind+id 로 찾습니다. */
+  function findRecord(kind, id) {
+    var d = get();
+    if (kind === 'academy') return d.academy;
+    var list = d[KINDS[kind]];
+    if (!list) return null;
+    for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
+    return null;
+  }
+
+  /**
+   * 서버에서 받은 레코드를 병합합니다.
+   * 같은 레코드가 양쪽에서 바뀐 경우 updatedAt 이 나중인 쪽을 남깁니다.
+   * @return 실제로 반영된 건수
+   */
+  function applyRemote(rows) {
+    var d = get(), n = 0;
+    (rows || []).forEach(function (row) {
+      if (!row || !row.kind) return;
+      var incoming = row.data || {};
+      incoming.updatedAt = row.updatedAt || incoming.updatedAt;
+      if (row.deleted) incoming.deleted = true;
+
+      if (row.kind === 'academy') {
+        if (!d.academy.updatedAt || d.academy.updatedAt < incoming.updatedAt) {
+          d.academy = incoming; n++;
+        }
+        return;
+      }
+      var list = d[KINDS[row.kind]];
+      if (!list) return;
+      var local = findRecord(row.kind, row.id);
+      if (!local) {
+        incoming.id = row.id;
+        list.push(incoming); n++;
+      } else if (!local.updatedAt || local.updatedAt < incoming.updatedAt) {
+        // 제자리 교체 — 다른 참조가 깨지지 않도록 키를 덮어씁니다.
+        Object.keys(local).forEach(function (k) { delete local[k]; });
+        Object.assign(local, incoming, { id: row.id });
+        n++;
+      }
+    });
+    if (n) save();
+    return n;
+  }
+
+  /** 모든 레코드에 새 수정 시각을 찍습니다 (백업 복원 · 최초 업로드용) */
+  function stampAll() {
+    var recs = allRecords();
+    var now = new Date().toISOString();
+    recs.forEach(function (r) { r.data.updatedAt = now; r.updatedAt = now; });
+    save();
+    return recs.map(function (r) { return { kind: r.kind, id: r.id }; });
+  }
+
   /* ---------- 백업 / 복원 ---------- */
   function exportJson() { return JSON.stringify(get(), null, 2); }
   function importJson(text) {
@@ -419,15 +563,29 @@ var Store = (function () {
     }
     localStorage.setItem(KEY, JSON.stringify(parsed));
     load();
-    save();
+    // 복원한 기록이 클라우드로도 올라가도록 전부 새 시각을 찍습니다.
+    save(stampAll());
   }
   function resetAll() {
+    // 삭제 표시를 남겨야 다른 기기에도 초기화가 전달됩니다.
+    var changed = [];
+    var d = get();
+    Object.keys(KINDS).forEach(function (kind) {
+      (d[KINDS[kind]] || []).forEach(function (r) {
+        if (r.deleted) return;
+        r.deleted = true; stamp(r);
+        changed.push({ kind: kind, id: r.id });
+      });
+    });
+    save(changed);
     data = clone(DEFAULTS);
-    save();
+    try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) {}
+    listeners.forEach(function (fn) { fn(); });
   }
   function saveAcademy(patch) {
     Object.assign(get().academy, patch);
-    save();
+    stamp(get().academy);
+    save({ kind: 'academy', id: 'main' });
   }
 
   load();
@@ -435,7 +593,8 @@ var Store = (function () {
   return {
     STATUS: STATUS, GRADES: GRADES, FLAGS: FLAGS,
     PATROL_STATES: PATROL_STATES, WEEKDAYS: WEEKDAYS, PAY_METHODS: PAY_METHODS,
-    get: get, save: save, onChange: onChange,
+    get: get, save: save, onChange: onChange, onRecordChange: onRecordChange,
+    allRecords: allRecords, findRecord: findRecord, applyRemote: applyRemote, stampAll: stampAll,
     students: students, student: student, saveStudent: saveStudent,
     archiveStudent: archiveStudent, deleteStudent: deleteStudent,
     studentsOnDay: studentsOnDay, seatMap: seatMap,

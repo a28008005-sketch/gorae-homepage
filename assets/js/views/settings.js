@@ -85,6 +85,104 @@ Views.settings = (function () {
     Store.addTask('원서 신간 라이브러리 등록', 'week');
   }
 
+  /** 클라우드 연결 카드 */
+  function cloudBox() {
+    var cfg = Sync.config();
+    if (!Sync.isCloud()) {
+      return '<p class="hint" style="margin-top:0">지금은 <b>이 기기에만 저장</b>하는 모드입니다. ' +
+        '선생님들이 각자 기기에서 같은 명부와 출결을 보려면 클라우드를 연결하세요. ' +
+        '연결해도 기록은 이 기기에 그대로 남고, 인터넷이 끊겨도 계속 입력할 수 있습니다.</p>' +
+        '<div class="form-grid" style="margin-top:14px">' +
+          '<label class="fld full">Supabase 프로젝트 URL' +
+            '<input type="text" id="c-url" placeholder="https://xxxxxxxx.supabase.co"></label>' +
+          '<label class="fld full">공개 키 (anon public key)' +
+            '<textarea id="c-key" placeholder="eyJhbGciOi..." style="min-height:70px;font-size:12px"></textarea></label>' +
+        '</div>' +
+        '<div class="row" style="margin-top:12px">' +
+          '<button class="btn primary" id="c-connect">클라우드 연결</button>' +
+          '<a class="btn" href="docs/서버형-설치안내.md" target="_blank" rel="noopener">설치 안내 보기</a>' +
+        '</div>' +
+        '<p class="hint" style="margin-top:12px">⚠️ 여기에는 반드시 <b>anon public</b> 키만 넣으세요. ' +
+        'service_role 키는 브라우저에 넣으면 안 됩니다.</p>';
+    }
+    var u = Sync.currentUser();
+    return '<div class="row" style="gap:6px;margin-bottom:12px">' +
+        '<span class="tag ok">클라우드 연결됨</span>' +
+        (u ? '<span class="tag blue">' + U.esc(u.email || '') + '</span>' : '<span class="tag warn">로그아웃 상태</span>') +
+        '<span class="tag gray">보낼 기록 ' + Sync.pendingCount() + '건</span>' +
+      '</div>' +
+      '<dl class="kv"><dt>서버</dt><dd style="word-break:break-all;font-size:12.5px">' + U.esc(cfg.url) + '</dd></dl>' +
+      '<div class="section-title">이 기기의 기록 올리기</div>' +
+      '<p class="hint" style="margin-top:0">이 기기에 있는 기록 전체를 클라우드로 올립니다. ' +
+      '처음 옮길 때나 백업 파일을 불러온 직후에 한 번만 누르시면 됩니다.</p>' +
+      '<div class="row" style="margin-top:12px">' +
+        '<button class="btn primary" id="c-upload">전체 올리기</button>' +
+        '<button class="btn" id="c-sync">지금 동기화</button>' +
+        '<button class="btn danger" id="c-off">연결 해제</button>' +
+      '</div>';
+  }
+
+  function bindCloud(el, rerenderBox) {
+    var connect = el.querySelector('#c-connect');
+    if (connect) {
+      connect.addEventListener('click', function () {
+        var url = el.querySelector('#c-url').value.trim();
+        var key = el.querySelector('#c-key').value.trim();
+        if (!/^https?:\/\//.test(url) || !key) {
+          UI.toast('프로젝트 URL과 공개 키를 모두 입력해 주세요.', true); return;
+        }
+        if (/service_role/.test(key)) {
+          UI.toast('service_role 키는 사용할 수 없습니다. anon public 키를 넣어 주세요.', true); return;
+        }
+        connect.disabled = true; connect.textContent = '연결 중…';
+        Sync.enableCloud(url, key).then(function () {
+          UI.toast('클라우드에 연결했습니다. 로그인해 주세요.');
+          AuthUI.gate('연결되었습니다. 학원 계정으로 로그인해 주세요.');
+          rerenderBox();
+        }).catch(function (e) {
+          Sync.disableCloud();
+          UI.toast(e.message || '연결에 실패했습니다.', true);
+          rerenderBox();
+        });
+      });
+    }
+
+    var upload = el.querySelector('#c-upload');
+    if (upload) {
+      upload.addEventListener('click', function () {
+        UI.confirm('이 기기의 기록 전체를 클라우드로 올릴까요?<br>' +
+          '<span style="font-size:13px;color:#63778a">같은 기록이 클라우드에 이미 있다면 이 기기의 내용으로 덮어씁니다.</span>',
+          function () {
+            upload.disabled = true; upload.textContent = '올리는 중…';
+            Sync.uploadAll().then(function (n) {
+              UI.toast(n + '건을 올렸습니다.');
+              rerenderBox();
+            }).catch(function (e) {
+              UI.toast(e.message || '업로드에 실패했습니다.', true);
+              rerenderBox();
+            });
+          }, { yes: '올리기' });
+      });
+    }
+
+    var sync = el.querySelector('#c-sync');
+    if (sync) sync.addEventListener('click', function () {
+      sync.disabled = true; sync.textContent = '동기화 중…';
+      Sync.syncNow().then(function () { UI.toast('동기화했습니다.'); App.rerender(); });
+    });
+
+    var off = el.querySelector('#c-off');
+    if (off) off.addEventListener('click', function () {
+      UI.confirm('클라우드 연결을 해제할까요?<br>' +
+        '<span style="font-size:13px;color:#63778a">이 기기의 기록은 그대로 남고, 이후 변경은 다른 선생님께 전달되지 않습니다.</span>',
+        function () {
+          Sync.disableCloud();
+          UI.toast('연결을 해제했습니다.');
+          rerenderBox();
+        }, { danger: true, yes: '해제' });
+    });
+  }
+
   function render(el) {
     var ac = Store.get().academy;
     var c = counts();
@@ -119,8 +217,11 @@ Views.settings = (function () {
 
         '<div class="stack">' +
           '<div class="card"><div class="card-h"><h2>데이터 백업</h2></div><div class="card-b">' +
-            '<p class="hint" style="margin-top:0">모든 기록은 <b>이 브라우저 안에만</b> 저장됩니다. ' +
-            '컴퓨터를 바꾸거나 브라우저 데이터를 지우면 사라지므로, 주기적으로 백업 파일을 내려받아 두세요.</p>' +
+            '<p class="hint" style="margin-top:0">' + (Sync.isCloud()
+              ? '기록은 <b>이 기기와 클라우드 양쪽에</b> 저장됩니다. 기기 한 대가 고장 나도 기록은 남지만, ' +
+                '학기마다 한 번씩 백업 파일을 받아 두시면 더 안전합니다.'
+              : '모든 기록은 <b>이 브라우저 안에만</b> 저장됩니다. ' +
+                '컴퓨터를 바꾸거나 브라우저 데이터를 지우면 사라지므로, 주기적으로 백업 파일을 내려받아 두세요.') + '</p>' +
             '<div class="row" style="margin-top:14px">' +
               '<button class="btn primary" id="b-export">백업 파일 내보내기</button>' +
               '<button class="btn" id="b-import">백업 파일 불러오기</button>' +
@@ -137,6 +238,10 @@ Views.settings = (function () {
             '</div>' +
           '</div></div>' +
 
+          '<div class="card"><div class="card-h"><h2>여러 기기에서 함께 쓰기</h2></div><div class="card-b" id="cloud-box">' +
+            cloudBox() +
+          '</div></div>' +
+
           '<div class="card"><div class="card-h"><h2>초기 설정 도우미</h2></div><div class="card-b">' +
             '<p class="hint" style="margin-top:0">기능을 먼저 둘러보고 싶다면 예시 학생 8명과 3주치 출결 기록을 넣어볼 수 있습니다.</p>' +
             '<div class="row" style="margin-top:12px">' +
@@ -147,6 +252,8 @@ Views.settings = (function () {
         '</div>' +
 
       '</div>';
+
+    bindCloud(el, function () { render(el); });
 
     el.querySelector('#a-save').addEventListener('click', function () {
       var times = el.querySelector('#a-times').value.split(',')
