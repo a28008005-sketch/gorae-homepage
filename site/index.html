@@ -397,6 +397,7 @@
       <li><a href="#curriculum">커리큘럼</a></li>
       <li><a href="#director">원장 소개</a></li>
       <li><a href="#reviews">학부모 후기</a></li>
+      <li><a href="blog/index.html">블로그</a></li>
       <li><a href="#contact">오시는 길</a></li>
     </ul>
     <div class="nav-cta">
@@ -791,7 +792,8 @@
   toggleNavShadow();
   window.addEventListener('scroll', toggleNavShadow, { passive: true });
 
-  var navLinks = Array.prototype.slice.call(document.querySelectorAll('.nav-links a'));
+  var navLinks = Array.prototype.slice.call(document.querySelectorAll('.nav-links a'))
+    .filter(function (a) { return (a.getAttribute('href') || '').charAt(0) === '#'; });
   var sections = navLinks
     .map(function (a) { return document.querySelector(a.getAttribute('href')); })
     .filter(Boolean);

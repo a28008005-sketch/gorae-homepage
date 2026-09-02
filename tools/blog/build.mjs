@@ -139,6 +139,9 @@ async function main() {
     });
     posts = result.posts;
     warnings = result.warnings;
+  } else if (process.env.BLOG_REQUIRE_NOTION) {
+    // 배포 중에는 예시 글이 실제 홈페이지에 올라가면 안 된다
+    throw new Error('노션 열쇠(NOTION_TOKEN)와 표 주소(NOTION_DATABASE_ID)가 필요합니다.');
   } else {
     mode = 'sample';
     posts = JSON.parse(await readFile(join(HERE, 'sample.json'), 'utf8'));
