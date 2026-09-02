@@ -121,6 +121,36 @@ export const BLOG_CSS = `
   .blog-foot a:hover { color: var(--brand); }
   body { display: flex; flex-direction: column; min-height: 100vh; }
   main { flex: 1; }
+
+  /* ---------- 바로가기 (블로그 · 카톡 · 전화) ---------- */
+  .quick {
+    position: fixed; right: clamp(10px, 1.6vw, 18px); top: 50%; transform: translateY(-50%);
+    z-index: 60; display: flex; flex-direction: column; gap: 8px;
+  }
+  .quick a {
+    width: 58px; padding: 8px 4px 6px; border-radius: 16px;
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    background: var(--surface); border: 1px solid var(--line);
+    box-shadow: 0 12px 26px -16px var(--shadow);
+    text-decoration: none; color: var(--ink-soft);
+    transition: transform .16s ease, box-shadow .16s ease;
+  }
+  .quick a:hover { transform: translateY(-2px); color: var(--brand); }
+  .quick a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .quick svg { width: 26px; height: 26px; display: block; }
+  .quick span { font-size: 10px; font-weight: 700; letter-spacing: -0.02em; }
+  @media (max-width: 760px) {
+    .quick {
+      right: 0; left: 0; top: auto; bottom: 0; transform: none;
+      flex-direction: row; gap: 0;
+      background: var(--surface); border-top: 1px solid var(--line);
+      padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
+    }
+    .quick a { flex: 1; width: auto; border: 0; box-shadow: none; border-radius: 10px; background: transparent; padding: 6px 2px; }
+    .quick a:hover { transform: none; }
+    .quick span { font-size: 11px; }
+    body { padding-bottom: 68px; }
+  }
 `;
 
 const esc = (s) => String(s ?? '')
@@ -173,6 +203,21 @@ ${links.map(([label, href]) =>
 <main>
 ${body}
 </main>
+
+<nav class="quick" aria-label="바로가기">
+  <a href="https://blog.naver.com/superstar8335" target="_blank" rel="noopener">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="6" fill="#03C75A"/><path d="M8 16.6V7.4h3.1l2.7 4.5V7.4h2.2v9.2h-3.1l-2.7-4.5v4.5z" fill="#fff"/></svg>
+    <span>블로그</span>
+  </a>
+  <a href="https://pf.kakao.com/_xexaZcn" target="_blank" rel="noopener">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="6" fill="#FEE500"/><path d="M12 6.1c-3.4 0-6.2 2.2-6.2 4.9 0 1.7 1.1 3.2 2.8 4.1l-.6 2.3c-.1.3.2.5.4.3l2.7-1.8h.9c3.4 0 6.2-2.2 6.2-4.9S15.4 6.1 12 6.1z" fill="#3C1E1E"/></svg>
+    <span>카톡</span>
+  </a>
+  <a href="tel:010-3803-8335">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="6" fill="#003C70"/><path d="M8.5 6.4h2.1l1.1 2.9-1.4 1a8.3 8.3 0 0 0 3.4 3.4l1-1.4 2.9 1.1v2.2c0 .7-.6 1.3-1.3 1.2A10.3 10.3 0 0 1 7.3 7.7c-.1-.7.5-1.3 1.2-1.3z" fill="#fff"/></svg>
+    <span>전화</span>
+  </a>
+</nav>
 
 <footer class="blog-foot">
   <div class="wrap">
