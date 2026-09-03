@@ -1,7 +1,8 @@
 /*
  * 단일 파일 빌드
- *   node tools/bundle.js          -> dist/고래영어-원생관리.html
- *   node tools/bundle.js --demo   -> dist/고래영어-원생관리-미리보기.html (예시 데이터 자동 입력)
+ *   node tools/bundle.js              -> dist/고래영어-원생관리.html
+ *   node tools/bundle.js --demo       -> dist/고래영어-원생관리-미리보기.html (예시 데이터 자동 입력)
+ *   node tools/bundle.js --demo --artifact -> dist/artifact.html (Artifact 업로드용 조각)
  *
  * CSS 와 JS 를 index.html 안에 그대로 넣어 파일 하나로 만듭니다.
  * USB 에 담아 다니거나 메일로 보내 열어보기 좋습니다.
@@ -11,6 +12,8 @@ const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
 const demo = process.argv.includes('--demo');
+// --artifact: html/head/body 껍데기를 뺀 조각. Artifact 로 올릴 때 씁니다.
+const artifact = process.argv.includes('--artifact');
 const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
 
 let html = read('index.html');
@@ -27,8 +30,20 @@ html = html.replace(/<script src="([^"]+)"><\/script>/g, (m, src) =>
 const REPO = 'https://github.com/a28008005-sketch/gorae-homepage/blob/main';
 html = html.replace(/href="docs\/([^"]+)"/g, `href="${REPO}/docs/$1"`);
 
+// 마지막 </body> 앞에 끼워 넣습니다.
+// 워크시트 생성기 코드 안에도 '</body>' 문자열이 있어서, 첫 번째를 바꾸면
+// 스크립트 한가운데를 잘라 파일이 깨집니다.
+function insertBeforeBodyEnd(doc, snippet) {
+  const i = doc.lastIndexOf('</body>');
+  return doc.slice(0, i) + snippet + doc.slice(i);
+}
+function insertBeforeStyleEnd(doc, snippet) {
+  const i = doc.indexOf('</style>');
+  return doc.slice(0, i) + snippet + doc.slice(i);
+}
+
 if (demo) {
-  html = html.replace('</body>', `
+  html = insertBeforeBodyEnd(html, `
 <script>
 /* 미리보기 전용 — 처음 열었을 때 예시 학생과 기록을 넣어 화면을 보여줍니다. */
 (function () {
@@ -54,9 +69,9 @@ if (demo) {
   });
 })();
 </script>
-</body>`);
+`);
 
-  html = html.replace('</style>', `
+  html = insertBeforeStyleEnd(html, `
 .demo-strip{
   display:flex;align-items:flex-start;gap:12px;
   margin:16px 26px 0;padding:11px 15px;
@@ -66,10 +81,20 @@ if (demo) {
 .demo-strip b{color:#0a5b52}
 .demo-strip button{margin-left:auto;flex:0 0 auto;color:#0d8375}
 @media(max-width:760px){ .demo-strip{margin:12px 14px 0} }
-</style>`);
+`);
+}
+
+if (artifact) {
+  // <title> + <style> + body 내용만 남깁니다.
+  const styles = [];
+  html.replace(/<style>[\s\S]*?<\/style>/, (m) => { styles.push(m); return m; });
+  const start = html.indexOf('<body>') + '<body>'.length;
+  const end = html.lastIndexOf('</body>');
+  html = '<title>고래영어 원생관리</title>\n' + styles.join('\n') + '\n' + html.slice(start, end);
 }
 
 fs.mkdirSync(path.join(ROOT, 'dist'), { recursive: true });
-const out = demo ? 'dist/고래영어-원생관리-미리보기.html' : 'dist/고래영어-원생관리.html';
+const out = artifact ? 'dist/artifact.html'
+  : demo ? 'dist/고래영어-원생관리-미리보기.html' : 'dist/고래영어-원생관리.html';
 fs.writeFileSync(path.join(ROOT, out), html, 'utf8');
 console.log(out + '  (' + Math.round(html.length / 1024) + ' KB)');

@@ -2837,33 +2837,7 @@ var Worksheet = (function () {
       '<meta name="viewport" content="width=device-width, initial-scale=1">' +
       '<title>Book Report — ' + e(b.title) + '</title>' +
       '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:ital,wght@0,400;0,600;0,700;0,800;1,600&family=Bricolage+Grotesque:opsz,wght@12..96,700&display=swap">' +
-      '<style>' + WORKSHEET_CSS + '</style></head><body>' + body + '
-<script>
-/* 미리보기 전용 — 처음 열었을 때 예시 학생과 기록을 넣어 화면을 보여줍니다. */
-(function () {
-  function seed() {
-    if (Store.students().length) return;      // 이미 쓰던 기록이 있으면 건드리지 않습니다
-    Views.settings.seedSample();
-  }
-  function banner() {
-    var el = document.getElementById('view');
-    if (!el || document.getElementById('demo-strip')) return;
-    var d = document.createElement('div');
-    d.id = 'demo-strip';
-    d.className = 'demo-strip';
-    d.innerHTML =
-      '<span><b>미리보기</b> · 아래 학생과 기록은 기능을 보여드리기 위한 <b>예시</b>입니다. ' +
-      '입력해 보셔도 이 브라우저에만 저장되고 실제 학원 자료에는 영향이 없습니다.</span>' +
-      '<button class="x-btn" aria-label="닫기">&times;</button>';
-    d.querySelector('button').addEventListener('click', function () { d.remove(); });
-    el.parentNode.insertBefore(d, el);
-  }
-  document.addEventListener('DOMContentLoaded', function () {
-    setTimeout(function () { seed(); banner(); if (window.App) App.rerender(); }, 60);
-  });
-})();
-</script>
-</body></html>';
+      '<style>' + WORKSHEET_CSS + '</style></head><body>' + body + '</body></html>';
   }
 
   /** 파일 이름 (책 제목 + 학생) */
@@ -6188,6 +6162,32 @@ var App = (function () {
   };
 })();
 
+</script>
+
+<script>
+/* 미리보기 전용 — 처음 열었을 때 예시 학생과 기록을 넣어 화면을 보여줍니다. */
+(function () {
+  function seed() {
+    if (Store.students().length) return;      // 이미 쓰던 기록이 있으면 건드리지 않습니다
+    Views.settings.seedSample();
+  }
+  function banner() {
+    var el = document.getElementById('view');
+    if (!el || document.getElementById('demo-strip')) return;
+    var d = document.createElement('div');
+    d.id = 'demo-strip';
+    d.className = 'demo-strip';
+    d.innerHTML =
+      '<span><b>미리보기</b> · 아래 학생과 기록은 기능을 보여드리기 위한 <b>예시</b>입니다. ' +
+      '입력해 보셔도 이 브라우저에만 저장되고 실제 학원 자료에는 영향이 없습니다.</span>' +
+      '<button class="x-btn" aria-label="닫기">&times;</button>';
+    d.querySelector('button').addEventListener('click', function () { d.remove(); });
+    el.parentNode.insertBefore(d, el);
+  }
+  document.addEventListener('DOMContentLoaded', function () {
+    setTimeout(function () { seed(); banner(); if (window.App) App.rerender(); }, 60);
+  });
+})();
 </script>
 </body>
 </html>
