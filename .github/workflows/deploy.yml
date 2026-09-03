@@ -1,0 +1,77 @@
+# 고래영어 홈페이지 자동 배포
+#
+# 하는 일
+#   1. 노션 '고래영어 블로그' 표에서 공개 글을 읽어와 블로그 화면을 만든다
+#   2. 홈페이지와 블로그를 GitHub Pages에 올린다
+#
+# 언제 도는지
+#   · 사람이 직접 실행할 때만 돈다 (Actions 탭 → Run workflow)
+#
+#   ★ 원장님 지시: 홈페이지는 '발행'하라고 말할 때만 올린다.
+#     그래서 자동 실행(push / 매일 예약)을 모두 껐다.
+#     파일을 저장소에 올리는 것만으로는 홈페이지가 바뀌지 않는다.
+
+name: 홈페이지 배포
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: 블로그 만들기
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: 노션 열쇠가 있는지 확인
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+        run: |
+          if [ -z "$NOTION_TOKEN" ]; then
+            echo "::error::NOTION_TOKEN이 없습니다. 저장소 Settings → Secrets and variables → Actions 에서 이름이 정확한지 확인해 주세요."
+            exit 1
+          fi
+          if [ -z "$NOTION_DATABASE_ID" ]; then
+            echo "::error::NOTION_DATABASE_ID가 없습니다. 저장소 Settings → Secrets and variables → Actions 에서 확인해 주세요."
+            exit 1
+          fi
+
+      - name: 노션에서 글 받아와 블로그 만들기
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+          BLOG_REQUIRE_NOTION: '1'
+        run: node tools/blog/build.mjs
+
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true   # Pages가 꺼져 있으면 자동으로 켠다
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    name: 홈페이지 올리기
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

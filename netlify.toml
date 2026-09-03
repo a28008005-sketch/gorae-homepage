@@ -1,0 +1,25 @@
+# 네틀리파이 배포 설정
+# 이 파일이 있으면 네틀리파이가 빌드 방법을 자동으로 읽어갑니다.
+# 화면에서 따로 입력하지 않아도 됩니다.
+
+[build]
+  # 노션에서 글을 받아와 블로그를 만든다
+  command = "node tools/blog/build.mjs"
+  # 실제로 인터넷에 올릴 폴더
+  publish = "site"
+
+[build.environment]
+  NODE_VERSION = "22"
+  # 노션 열쇠가 없으면 예시 글을 올리지 않고 실패시킨다
+  BLOG_REQUIRE_NOTION = "1"
+
+# 없는 주소로 들어오면 홈페이지로 보낸다
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 404
+
+[[headers]]
+  for = "/img/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
