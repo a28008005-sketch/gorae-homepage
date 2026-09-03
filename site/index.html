@@ -329,7 +329,59 @@
   }
   .prog-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-  /* ---------- 바로가기 (블로그 · 카톡 · 전화) ---------- */
+  /* ---------- 모바일 메뉴 (햄버거) ---------- */
+  .nav { position: sticky; }
+  .nav-toggle {
+    display: none; width: 42px; height: 42px; flex: none; padding: 0;
+    align-items: center; justify-content: center;
+    border: 1px solid var(--line); border-radius: 11px;
+    background: var(--surface); color: var(--ink); cursor: pointer;
+  }
+  .nav-toggle svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; }
+  .nav-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .nav-toggle .ic-close { display: none; }
+  .nav-toggle[aria-expanded="true"] .ic-open { display: none; }
+  .nav-toggle[aria-expanded="true"] .ic-close { display: block; }
+
+  .nav-panel { display: none; }
+
+  @media (max-width: 780px) {
+    .nav-toggle { display: inline-flex; }
+    .nav-panel {
+      display: block; position: absolute; left: 0; right: 0; top: 100%;
+      background: var(--surface); border-bottom: 1px solid var(--line);
+      box-shadow: 0 18px 34px -22px var(--shadow);
+      max-height: 0; overflow: hidden; visibility: hidden;
+      transition: max-height 0.26s ease, visibility 0s linear 0.26s;
+    }
+    .nav-panel.open {
+      max-height: 78vh; overflow-y: auto; visibility: visible;
+      transition: max-height 0.26s ease, visibility 0s;
+    }
+    .nav-panel ul { list-style: none; margin: 0; padding: 0; }
+    .nav-panel li + li { border-top: 1px solid var(--line); }
+    .nav-panel a {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.95rem clamp(1.25rem, 4vw, 2.5rem);
+      font-size: 1rem; font-weight: 600; color: var(--ink); text-decoration: none;
+    }
+    .nav-panel a::after { content: "\203A"; color: var(--ink-faint); font-size: 1.15rem; line-height: 1; }
+    .nav-panel a:active { background: var(--paper-alt); }
+    .nav-panel .panel-call {
+      justify-content: center; gap: 0.5em;
+      margin: 0.7rem clamp(1.25rem, 4vw, 2.5rem) 1rem;
+      padding: 0.85em; border-radius: 11px;
+      background: var(--brand-tint); color: var(--brand); font-weight: 700;
+      border-top: 0;
+    }
+    .nav-panel .panel-call::after { content: none; }
+    .nav-inner { gap: 0.7rem; }
+    .nav-cta { gap: 0.5rem; }
+    .nav-cta .btn { padding: 0.7em 1em; font-size: 0.86rem; }
+  }
+  @media (prefers-reduced-motion: reduce) { .nav-panel { transition: none; } }
+
+  /* ---------- 바로가기 (블로그 · 인스타 · 카톡 · 전화) ---------- */
   .quick {
     position: fixed; right: clamp(10px, 1.6vw, 18px); top: 50%; transform: translateY(-50%);
     z-index: 60; display: flex; flex-direction: column; gap: 8px;
@@ -381,21 +433,13 @@
     .prog-detail.collapsible .prog-toggle { display: block; }
     .prog-detail.collapsible > header { margin-bottom: 0; }
 
-    /* 바로가기는 아래 고정 막대로 */
-    .quick {
-      right: 0; left: 0; top: auto; bottom: 0; transform: none;
-      flex-direction: row; gap: 0;
-      background: var(--surface); border-top: 1px solid var(--line);
-      box-shadow: 0 -8px 22px -16px var(--shadow);
-      padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
-    }
-    .quick a {
-      flex: 1; width: auto; border: 0; box-shadow: none;
-      border-radius: 10px; background: transparent; padding: 6px 2px;
-    }
-    .quick a:hover { transform: none; box-shadow: none; }
-    .quick span { font-size: 11px; }
-    body { padding-bottom: 68px; }
+    /* 바로가기는 휴대폰에서도 오른쪽에 세로로 붙어 있는다 */
+    .quick { right: 6px; gap: 6px; transition: opacity 0.18s ease; }
+    /* 메뉴가 열려 있는 동안에는 메뉴 항목을 가리지 않도록 잠시 숨긴다 */
+    body.menu-open .quick { opacity: 0; pointer-events: none; }
+    .quick a { width: 46px; padding: 6px 3px 5px; border-radius: 13px; }
+    .quick svg { width: 22px; height: 22px; }
+    .quick span { font-size: 9px; }
   }
 </style>
 </head>
@@ -418,7 +462,24 @@
     <div class="nav-cta">
       <a class="phone-chip" href="tel:010-3803-8335">010-3803-8335</a>
       <a class="btn btn-solid" href="https://forms.gle/qz8bCWyDeZGTb6p59" target="_blank" rel="noopener">상담 신청</a>
+      <button type="button" class="nav-toggle" id="nav-toggle" aria-expanded="false" aria-controls="nav-panel" aria-label="메뉴 열기">
+        <svg class="ic-open" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        <svg class="ic-close" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
     </div>
+  </div>
+
+  <div class="nav-panel" id="nav-panel">
+    <ul>
+        <li><a href="#strengths">강점</a></li>
+        <li><a href="#programs">프로그램</a></li>
+        <li><a href="#curriculum">커리큘럼</a></li>
+        <li><a href="#director">원장 소개</a></li>
+        <li><a href="#reviews">학부모 후기</a></li>
+        <li><a href="blog/index.html">블로그</a></li>
+        <li><a href="#contact">오시는 길</a></li>
+    </ul>
+    <a class="panel-call" href="tel:010-3803-8335">전화 상담 010-3803-8335</a>
   </div>
 </nav>
 
@@ -881,6 +942,47 @@
   }
   window.addEventListener('hashchange', openFromHash);
   openFromHash();
+})();
+</script>
+
+
+<script>
+/* ===== 모바일 메뉴 여닫기 ===== */
+(function () {
+  var btn = document.getElementById('nav-toggle');
+  var panel = document.getElementById('nav-panel');
+  if (!btn || !panel) return;
+
+  function setOpen(open) {
+    panel.classList.toggle('open', open);
+    document.body.classList.toggle('menu-open', open);
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    btn.setAttribute('aria-label', open ? '메뉴 닫기' : '메뉴 열기');
+  }
+
+  btn.addEventListener('click', function () {
+    setOpen(!panel.classList.contains('open'));
+  });
+
+  /* 메뉴를 고르면 닫는다 */
+  panel.addEventListener('click', function (e) {
+    if (e.target.closest('a')) setOpen(false);
+  });
+
+  /* 바깥을 누르거나 Esc를 누르면 닫는다 */
+  document.addEventListener('click', function (e) {
+    if (!panel.classList.contains('open')) return;
+    if (e.target.closest('.nav')) return;
+    setOpen(false);
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') setOpen(false);
+  });
+
+  /* 화면을 넓히면(가로 회전 등) 열린 채로 남지 않게 */
+  window.addEventListener('resize', function () {
+    if (window.innerWidth > 780) setOpen(false);
+  });
 })();
 </script>
 
