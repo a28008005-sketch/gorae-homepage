@@ -178,6 +178,7 @@ export function page({ theme, title, description, body, depth = 0, active = 'blo
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(description)}">
+<link rel="canonical" href="https://whalejinju.kr/blog/">
 ${theme.fonts}
 <style>${theme.css}${BLOG_CSS}</style>
 </head>
