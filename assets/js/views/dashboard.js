@@ -23,9 +23,9 @@ Views.dashboard = (function () {
     return pending.map(function (s) {
       return '<div class="att-row" data-sid="' + s.id + '">' +
         '<div class="att-who">' +
-          '<span class="seat">' + (s.seat ? U.esc(s.seat) : '–') + '</span>' +
+          '<span class="klass-dot" style="background:' + U.esc(Store.scheduleOf(s).color || '#cbd5e0') + '"></span>' +
           '<span><span class="nm">' + U.esc(s.name) + '</span><br>' +
-          '<span class="gr">' + U.esc(s.grade || '') + (s.time ? ' · ' + U.esc(s.time) : '') + '</span></span>' +
+          '<span class="gr">' + U.esc(Store.scheduleOf(s).className || s.grade || '') + '</span></span>' +
         '</div>' +
         '<div class="att-checks">' +
           '<button class="btn sm" data-mark="출석">출석</button>' +
@@ -38,17 +38,21 @@ Views.dashboard = (function () {
     }).join('');
   }
 
-  function patrolToday() {
-    var list = Store.patrols({ date: U.ymd() });
-    if (!list.length) return UI.emptyBox('오늘 기록된 순회 점검이 없습니다.', '🔍');
-    return list.slice(0, 6).map(function (p) {
-      var s = Store.student(p.studentId);
-      var issue = (p.states || []).some(Store.isIssue);
+  /** 오늘 기록된 수업 태도 */
+  function attitudeToday() {
+    var list = Store.attendanceOn(U.ymd()).filter(function (r) { return (r.attitude || []).length; });
+    if (!list.length) return UI.emptyBox('오늘 기록된 수업 태도가 없습니다.', '🙂');
+    // 주의가 필요한 학생을 위로 올립니다.
+    list.sort(function (a, b) {
+      return ((b.attitude || []).some(Store.isIssue) ? 1 : 0) - ((a.attitude || []).some(Store.isIssue) ? 1 : 0);
+    });
+    return list.slice(0, 7).map(function (r) {
+      var s = Store.student(r.studentId);
+      var issue = (r.attitude || []).some(Store.isIssue);
       return '<div class="memo-item">' +
-        '<span class="dt">' + U.hhmm(p.at) + '</span>' +
         '<div class="txt"><b>' + U.esc(s ? s.name : '(삭제된 학생)') + '</b> ' +
-          '<span class="tag ' + (issue ? 'warn' : 'ok') + '">' + U.esc((p.states || []).join(' ')) + '</span>' +
-          (p.action ? '<br><span style="font-size:12.5px;color:#63778a">조치: ' + U.esc(p.action) + '</span>' : '') +
+          '<span class="tag ' + (issue ? 'warn' : 'ok') + '">' + U.esc((r.attitude || []).join(' ')) + '</span>' +
+          (r.attitudeNote ? '<br><span style="font-size:12.5px;color:#63778a">' + U.esc(r.attitudeNote) + '</span>' : '') +
         '</div></div>';
     }).join('');
   }
@@ -94,7 +98,7 @@ Views.dashboard = (function () {
     var active = all.filter(function (s) { return s.status === '등록생'; });
     var waiting = all.filter(function (s) { return s.status === '대기생'; });
     var resting = all.filter(function (s) { return s.status === '휴원생'; });
-    var seated = active.filter(function (s) { return s.seat; }).length;
+    var classCount = Store.classes().length;
     var pay = Store.paymentSummary(U.ym(new Date()));
 
     el.innerHTML =
@@ -105,7 +109,7 @@ Views.dashboard = (function () {
           '<div class="val">' + o.rate + '<small>%</small></div>' +
           '<div class="sub">출석 ' + o.present + ' · 결석 ' + o.absent + ' · 미체크 ' + o.unmarked + '</div></div>' +
         '<div class="stat"><div class="lbl">등록생</div><div class="val">' + active.length + '<small>명</small></div>' +
-          '<div class="sub">대기 ' + waiting.length + ' · 휴원 ' + resting.length + ' · 좌석 ' + seated + '/' + Store.get().academy.seatCount + '</div></div>' +
+          '<div class="sub">대기 ' + waiting.length + ' · 휴원 ' + resting.length + ' · 반 ' + classCount + '개</div></div>' +
         '<div class="stat"><div class="lbl">오늘 수업</div><div class="val">' + o.expected.length + '<small>명</small></div>' +
           '<div class="sub">' + o.day + '요일 수업 예정</div></div>' +
         '<div class="stat"><div class="lbl">이달 수강료 수납률</div><div class="val">' + pay.rate + '<small>%</small></div>' +
@@ -117,9 +121,9 @@ Views.dashboard = (function () {
           '<a class="btn sm" href="#/attendance">전체 출결표 →</a></div>' +
           '<div class="card-b tight" id="quick">' + quickCheck(o) + '</div></div>' +
 
-        '<div class="card"><div class="card-h"><h2>오늘 순회 점검</h2><div class="sp"></div>' +
-          '<a class="btn sm" href="#/patrol">기록하기</a></div>' +
-          '<div class="card-b">' + patrolToday() + '</div></div>' +
+        '<div class="card"><div class="card-h"><h2>오늘 수업 태도</h2><div class="sp"></div>' +
+          '<a class="btn sm" href="#/attendance">기록하기</a></div>' +
+          '<div class="card-b">' + attitudeToday() + '</div></div>' +
       '</div>' +
 
       '<div class="grid g-21">' +

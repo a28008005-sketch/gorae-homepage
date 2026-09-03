@@ -2,7 +2,7 @@
 window.Views = window.Views || {};
 Views.students = (function () {
 
-  var filter = { q: '', status: '', grade: '', day: '' };
+  var filter = { q: '', status: '', grade: '', day: '', classId: '' };
 
   function title() { return '학생 명부'; }
   function sub() {
@@ -15,7 +15,11 @@ Views.students = (function () {
   function matches(s) {
     if (filter.status && s.status !== filter.status) return false;
     if (filter.grade && s.grade !== filter.grade) return false;
-    if (filter.day && (s.days || []).indexOf(filter.day) < 0) return false;
+    if (filter.classId) {
+      if (filter.classId === '__none__') { if (s.classId) return false; }
+      else if (s.classId !== filter.classId) return false;
+    }
+    if (filter.day && Store.scheduleOf(s).days.indexOf(filter.day) < 0) return false;
     if (filter.q) {
       var hay = [s.name, s.grade, s.phone, s.parentPhone, s.parentEmail, s.note].join(' ').toLowerCase();
       if (hay.indexOf(filter.q.toLowerCase()) < 0) return false;
@@ -30,11 +34,14 @@ Views.students = (function () {
     return list.map(function (s) {
       var rec = Store.attendanceFor(s.id, today);
       var sum = Store.summarize(s.id, U.ym(new Date()) + '-01', today);
+      var sc = Store.scheduleOf(s);
       return '<tr class="clickable" data-open="' + s.id + '">' +
         '<td class="nm">' + U.esc(s.name) + '</td>' +
         '<td>' + U.esc(s.grade || '-') + '</td>' +
-        '<td>' + (s.seat ? U.esc(s.seat) + '번' : '<span style="color:#b3c1cd">미배정</span>') + '</td>' +
-        '<td>' + U.esc((s.days || []).join('·') || '-') + (s.time ? ' <span class="tag gray">' + U.esc(s.time) + '</span>' : '') + '</td>' +
+        '<td>' + (sc.className
+            ? '<span class="klass-dot" style="background:' + U.esc(sc.color) + '"></span>' + U.esc(sc.className)
+            : '<span style="color:#b3c1cd">미배정</span>') + '</td>' +
+        '<td>' + U.esc(sc.days.join('·') || '-') + (sc.time ? ' <span class="tag gray">' + U.esc(sc.time) + '</span>' : '') + '</td>' +
         '<td>' + UI.statusTag(s.status) + '</td>' +
         '<td>' + UI.attTag(rec) + '</td>' +
         '<td class="num">' + (sum.total ? sum.rate + '%' : '-') + '</td>' +
@@ -47,27 +54,22 @@ Views.students = (function () {
   function form(s) {
     s = s || {};
     var ac = Store.get().academy;
-    var seatOpts = [];
-    for (var i = 1; i <= ac.seatCount; i++) seatOpts.push(String(i));
-    var taken = Store.seatMap();
-
     return '<div class="form-grid">' +
       '<label class="fld">학생 이름 *<input type="text" id="f-name" value="' + U.esc(s.name || '') + '" placeholder="홍길동"></label>' +
       '<label class="fld">학년<select id="f-grade">' + UI.options(Store.GRADES, s.grade, '선택 안 함') + '</select></label>' +
       '<label class="fld">등록 여부<select id="f-status">' + UI.options(Store.STATUS, s.status || '등록생') + '</select></label>' +
-      '<label class="fld">좌석<select id="f-seat"><option value="">미배정</option>' +
-        seatOpts.map(function (n) {
-          var owner = taken[n];
-          var busy = owner && owner.id !== s.id;
-          return '<option value="' + n + '"' + (String(s.seat) === n ? ' selected' : '') + (busy ? ' disabled' : '') + '>' +
-            n + '번' + (busy ? ' (' + U.esc(owner.name) + ')' : '') + '</option>';
+      '<label class="fld">반<select id="f-class"><option value="">반 미배정</option>' +
+        Store.classes().map(function (c) {
+          return '<option value="' + c.id + '"' + (s.classId === c.id ? ' selected' : '') + '>' +
+            U.esc(c.name) + (c.days && c.days.length ? ' (' + U.esc(c.days.join('')) + (c.time ? ' ' + U.esc(c.time) : '') + ')' : '') +
+            '</option>';
         }).join('') + '</select></label>' +
-      '<label class="fld full">수업 요일' +
+      '<label class="fld full" id="own-sched">개인 수업 요일 <span style="font-weight:400">(반에 넣으면 반 시간표를 따릅니다)</span>' +
         '<div class="chips" id="f-days">' + Store.WEEKDAYS.map(function (d) {
           var on = (s.days || []).indexOf(d) >= 0;
           return '<button type="button" class="chip' + (on ? ' on blue' : '') + '" data-day="' + d + '">' + d + '</button>';
         }).join('') + '</div></label>' +
-      '<label class="fld">수업 시간<select id="f-time">' + UI.options(ac.times, s.time, '선택 안 함') + '</select></label>' +
+      '<label class="fld">개인 수업 시간<select id="f-time">' + UI.options(ac.times, s.time, '선택 안 함') + '</select></label>' +
       '<label class="fld">학생 연락처<input type="tel" id="f-phone" value="' + U.esc(s.phone || '') + '" placeholder="010-0000-0000"></label>' +
       '<label class="fld">학부모 연락처<input type="tel" id="f-pphone" value="' + U.esc(s.parentPhone || '') + '" placeholder="010-0000-0000"></label>' +
       '<label class="fld">학부모 이메일<input type="email" id="f-pmail" value="' + U.esc(s.parentEmail || '') + '" placeholder="parent@email.com"></label>' +
@@ -103,7 +105,7 @@ Views.students = (function () {
             name: name,
             grade: w.querySelector('#f-grade').value,
             status: w.querySelector('#f-status').value,
-            seat: w.querySelector('#f-seat').value,
+            classId: w.querySelector('#f-class').value,
             days: days,
             time: w.querySelector('#f-time').value,
             phone: w.querySelector('#f-phone').value.trim(),
@@ -123,7 +125,7 @@ Views.students = (function () {
             UI.close();
             UI.confirm(
               '<b>' + U.esc(s.name) + '</b> 학생을 삭제할까요?<br>' +
-              '<span style="color:#63778a;font-size:13px">출결 · 순회점검 · 메모 기록이 모두 함께 삭제되며 되돌릴 수 없습니다.<br>' +
+              '<span style="color:#63778a;font-size:13px">출결 · 수강료 · 메모 기록이 모두 함께 삭제되며 되돌릴 수 없습니다.<br>' +
               '기록을 남기려면 대신 등록 여부를 <b>퇴원생</b>으로 바꿔 주세요.</span>',
               function () {
                 Store.deleteStudent(s.id);
@@ -146,13 +148,16 @@ Views.students = (function () {
     var recent = Store.attendanceRange(s.id, U.daysAgo(30), U.ymd()).slice(-10).reverse();
     var memos = Store.memos(s.id).slice(0, 5);
     var pay = Store.paymentHistory(s.id);
+    var sc = Store.scheduleOf(s);
 
     var body =
       '<div class="grid g-2" style="gap:18px">' +
         '<div><dl class="kv">' +
           '<dt>학년</dt><dd>' + U.esc(s.grade || '-') + '</dd>' +
-          '<dt>좌석</dt><dd>' + (s.seat ? U.esc(s.seat) + '번' : '미배정') + '</dd>' +
-          '<dt>수업</dt><dd>' + U.esc((s.days || []).join('·') || '-') + (s.time ? ' / ' + U.esc(s.time) : '') + '</dd>' +
+          '<dt>반</dt><dd>' + (sc.className
+              ? '<span class="klass-dot" style="background:' + U.esc(sc.color) + '"></span>' + U.esc(sc.className)
+              : '미배정') + '</dd>' +
+          '<dt>수업</dt><dd>' + U.esc(sc.days.join('·') || '-') + (sc.time ? ' / ' + U.esc(sc.time) : '') + '</dd>' +
           '<dt>등록 여부</dt><dd>' + UI.statusTag(s.status) + '</dd>' +
           '<dt>학생 연락처</dt><dd>' + U.esc(U.phone(s.phone) || '-') + '</dd>' +
           '<dt>학부모</dt><dd>' + U.esc(U.phone(s.parentPhone) || '-') + '</dd>' +
@@ -167,7 +172,7 @@ Views.students = (function () {
             '<div class="report-stat"><div class="v">' + sum.rate + '%</div><div class="l">출석률</div></div>' +
             '<div class="report-stat"><div class="v">' + sum.present + '/' + sum.total + '</div><div class="l">출석 / 수업</div></div>' +
             '<div class="report-stat"><div class="v">' + sum.homework + '</div><div class="l">숙제 완료</div></div>' +
-            '<div class="report-stat"><div class="v">' + sum.patrolIssues + '</div><div class="l">순회 체크</div></div>' +
+            '<div class="report-stat"><div class="v">' + sum.attitudeIssues + '</div><div class="l">태도 주의</div></div>' +
           '</div>' +
           '<div class="hint" style="margin-top:8px">지각 ' + sum.flags['지각'] + ' · 외출 ' + sum.flags['외출'] + ' · 조퇴 ' + sum.flags['조퇴'] + '</div>' +
         '</div>' +
@@ -175,9 +180,13 @@ Views.students = (function () {
 
       '<div class="section-title">최근 출결 (30일)</div>' +
       (recent.length ? '<div class="table-wrap"><table class="tbl" style="min-width:auto">' +
-        '<thead><tr><th>날짜</th><th>출결</th><th>플래너</th><th>계획실천</th><th>숙제</th><th>비고</th></tr></thead><tbody>' +
+        '<thead><tr><th>날짜</th><th>출결</th><th>수업 태도</th><th>플래너</th><th>계획실천</th><th>숙제</th><th>비고</th></tr></thead><tbody>' +
         recent.map(function (r) {
+          var att = r.attitude || [];
           return '<tr><td>' + U.shortDate(r.date) + '</td><td>' + UI.attTag(r) + '</td>' +
+            '<td>' + (att.length
+              ? '<span class="tag ' + (att.some(Store.isIssue) ? 'warn' : 'ok') + '">' + U.esc(att.join(' ')) + '</span>'
+              : '–') + '</td>' +
             '<td>' + (r.planner ? '✅' : '–') + '</td><td>' + (r.planDone ? '✅' : '–') + '</td>' +
             '<td>' + (r.homework ? '✅' : '–') + '</td><td>' + U.esc(r.note || '') + '</td></tr>';
         }).join('') + '</tbody></table></div>'
@@ -257,11 +266,14 @@ Views.students = (function () {
             '<input type="search" id="q" placeholder="이름 · 연락처 · 특이사항 검색" value="' + U.esc(filter.q) + '" style="flex:1;min-width:180px">' +
             '<select id="f-st" style="width:120px">' + UI.options(Store.STATUS, filter.status, '전체 상태') + '</select>' +
             '<select id="f-gr" style="width:120px">' + UI.options(Store.GRADES, filter.grade, '전체 학년') + '</select>' +
+            '<select id="f-cl" style="width:140px">' +
+              UI.options(Store.classes().map(function (c) { return { value: c.id, label: c.name }; })
+                .concat([{ value: '__none__', label: '반 미배정' }]), filter.classId, '전체 반') + '</select>' +
             '<select id="f-dy" style="width:110px">' + UI.options(Store.WEEKDAYS, filter.day, '전체 요일') + '</select>' +
           '</div>' +
         '</div>' +
         '<div class="table-wrap"><table class="tbl">' +
-          '<thead><tr><th>이름</th><th>학년</th><th>좌석</th><th>수업</th><th>등록</th><th>오늘 출결</th><th>이달 출석률</th><th>학부모 연락처</th></tr></thead>' +
+          '<thead><tr><th>이름</th><th>학년</th><th>반</th><th>수업</th><th>등록</th><th>오늘 출결</th><th>이달 출석률</th><th>학부모 연락처</th></tr></thead>' +
           '<tbody id="rows">' + rows() + '</tbody>' +
         '</table></div>' +
       '</div>';
@@ -273,13 +285,15 @@ Views.students = (function () {
     el.querySelector('#q').addEventListener('input', function (e) { filter.q = e.target.value; refresh(); });
     el.querySelector('#f-st').addEventListener('change', function (e) { filter.status = e.target.value; refresh(); });
     el.querySelector('#f-gr').addEventListener('change', function (e) { filter.grade = e.target.value; refresh(); });
+    el.querySelector('#f-cl').addEventListener('change', function (e) { filter.classId = e.target.value; refresh(); });
     el.querySelector('#f-dy').addEventListener('change', function (e) { filter.day = e.target.value; refresh(); });
 
     el.querySelector('#csv').addEventListener('click', function () {
-      var head = ['이름', '학년', '좌석', '요일', '시간', '등록여부', '학생연락처', '학부모연락처',
+      var head = ['이름', '학년', '반', '요일', '시간', '등록여부', '학생연락처', '학부모연락처',
                   '학부모이메일', '월수강료', '납부일', '특이사항'];
       var body = Store.students().filter(matches).map(function (s) {
-        return [s.name, s.grade, s.seat, (s.days || []).join('·'), s.time, s.status,
+        var sc = Store.scheduleOf(s);
+        return [s.name, s.grade, sc.className, sc.days.join('·'), sc.time, s.status,
                 s.phone, s.parentPhone, s.parentEmail,
                 Store.feeOf(s), s.billingDay || Store.get().academy.billingDay, s.note];
       });

@@ -10,7 +10,7 @@ Views.settings = (function () {
     return {
       students: d.students.length,
       attendance: d.attendance.length,
-      patrols: d.patrols.length,
+      classes: d.classes.length,
       memos: d.memos.length,
       tasks: d.tasks.length,
       payments: d.payments.length
@@ -19,16 +19,24 @@ Views.settings = (function () {
 
   /** 처음 사용해 보는 원장님을 위한 예시 데이터 */
   function seedSample() {
+    // 반 3개 — 학생은 반의 시간표를 따릅니다.
+    var classDefs = [
+      { name: '파닉스 A반', days: ['월', '수', '금'], time: '3시', teacher: '원장', capacity: 6 },
+      { name: '초등 리딩반', days: ['화', '목'], time: '5시', teacher: '원장', capacity: 6 },
+      { name: '중등 패턴반', days: ['월', '수', '금'], time: '6시', teacher: '원장', capacity: 5 }
+    ];
+    var classIds = classDefs.map(function (c) { return Store.saveClass(c); });
+
     var names = ['김서준', '이하은', '박도윤', '최지우', '정시우', '강예린', '윤하준', '임채원'];
     var grades = ['3학년', '4학년', '4학년', '5학년', '5학년', '6학년', '중1', '중2'];
-    var dayset = [['월', '수', '금'], ['화', '목'], ['월', '수', '금'], ['화', '목'],
-                  ['월', '수', '금'], ['화', '목'], ['월', '수', '금'], ['화', '목']];
-    var times = ['3시', '4시', '3시', '5시', '4시', '5시', '6시', '6시'];
+    var belongs = [0, 1, 0, 1, 0, 1, 2, 2];   // 각 학생이 속한 반
+    var dayset = belongs.map(function (b) { return classDefs[b].days; });
 
     var ids = names.map(function (n, i) {
       return Store.saveStudent({
-        name: n, grade: grades[i], status: '등록생', seat: String(i + 1),
-        days: dayset[i], time: times[i],
+        name: n, grade: grades[i], status: '등록생',
+        classId: classIds[belongs[i]],
+        days: [], time: '',
         phone: '', parentPhone: '010-0000-000' + i, parentEmail: '',
         fee: i >= 6 ? 280000 : '', billingDay: '',
         note: ''
@@ -44,8 +52,16 @@ Views.settings = (function () {
         var roll = Math.random();
         var status = roll > 0.12 ? '출석' : '결석';
         var flags = (status === '출석' && Math.random() > 0.85) ? ['지각'] : [];
+        // 수업 태도 — 대부분 집중, 가끔 주의 항목
+        var attitude = [];
+        if (status === '출석') {
+          var r = Math.random();
+          if (r > 0.88) attitude = [Store.ATTITUDES[1 + Math.floor(Math.random() * 4)]];
+          else if (r > 0.35) attitude = [Store.ATTITUDES[0]];
+        }
         Store.setAttendance(id, date, {
-          status: status, flags: flags,
+          status: status, flags: flags, attitude: attitude,
+          attitudeNote: (attitude.length && Store.isIssue(attitude[0])) ? '자리 정돈 후 재집중 안내' : '',
           planner: status === '출석' && Math.random() > 0.25,
           planDone: status === '출석' && Math.random() > 0.35,
           homework: status === '출석' && Math.random() > 0.3,
@@ -53,17 +69,6 @@ Views.settings = (function () {
         });
       });
     }
-
-    // 오늘 순회 점검 몇 건
-    ids.slice(0, 4).forEach(function (id, i) {
-      Store.savePatrol({
-        studentId: id,
-        at: new Date(Date.now() - i * 25 * 60000).toISOString(),
-        states: [i === 1 ? Store.PATROL_STATES[1] : Store.PATROL_STATES[0]],
-        action: i === 1 ? '잠깐 스트레칭 후 재집중 안내' : '',
-        note: ''
-      });
-    });
 
     // 이번 달 · 지난 달 수강료 청구서와 납부 기록
     [U.ym(U.parseYmd(U.daysAgo(35))), U.ym(new Date())].forEach(function (m, mi) {
@@ -231,7 +236,7 @@ Views.settings = (function () {
             '<div class="row" style="gap:6px">' +
               '<span class="tag blue">학생 ' + c.students + '</span>' +
               '<span class="tag blue">출결 ' + c.attendance + '</span>' +
-              '<span class="tag blue">순회 ' + c.patrols + '</span>' +
+              '<span class="tag blue">반 ' + c.classes + '</span>' +
               '<span class="tag blue">메모 ' + c.memos + '</span>' +
               '<span class="tag blue">업무 ' + c.tasks + '</span>' +
               '<span class="tag blue">수강료 ' + c.payments + '</span>' +

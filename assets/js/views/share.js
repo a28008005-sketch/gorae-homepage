@@ -20,12 +20,12 @@ Views.share = (function () {
     return {
       v: 1,
       academy: { name: ac.name, campus: ac.campus, phone: ac.phone, address: ac.address },
-      student: { name: s.name, grade: s.grade || '', seat: s.seat || '' },
+      student: { name: s.name, grade: s.grade || '', className: Store.scheduleOf(s).className },
       period: { from: from, to: to },
       stats: {
         total: sum.total, present: sum.present, absent: sum.absent, rate: sum.rate,
         planner: sum.planner, planDone: sum.planDone, homework: sum.homework,
-        homeworkRate: sum.homeworkRate, flags: sum.flags, patrolIssues: sum.patrolIssues
+        homeworkRate: sum.homeworkRate, flags: sum.flags, attitudeIssues: sum.attitudeIssues
       },
       records: sum.records.map(function (r) {
         return { d: r.date, s: r.status, f: r.flags || [], p: !!r.planner, c: !!r.planDone, h: !!r.homework, n: r.note || '' };
@@ -55,7 +55,8 @@ Views.share = (function () {
       '<div class="report-hd">' +
         '<div style="font-size:12.5px;color:#c9e3f8">🐋 ' + U.esc(rep.academy.name) + ' ' + U.esc(rep.academy.campus) + ' 학습 리포트</div>' +
         '<div class="who" style="margin-top:6px">' + U.esc(rep.student.name) +
-          (rep.student.grade ? ' <span style="font-size:14px;font-weight:500">· ' + U.esc(rep.student.grade) + '</span>' : '') + '</div>' +
+          (rep.student.grade ? ' <span style="font-size:14px;font-weight:500">· ' + U.esc(rep.student.grade) + '</span>' : '') +
+          (rep.student.className ? ' <span style="font-size:13px;font-weight:500;opacity:.85">· ' + U.esc(rep.student.className) + '</span>' : '') + '</div>' +
         '<div class="sub">' + U.human(rep.period.from) + ' ~ ' + U.human(rep.period.to) + '</div>' +
       '</div>' +
       '<div class="report-bd">' +

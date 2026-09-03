@@ -26,7 +26,7 @@ Views.stats = (function () {
       t.present += d.sum.present; t.absent += d.sum.absent; t.marked += d.sum.total;
       t.planner += d.sum.planner; t.homework += d.sum.homework;
       t.late += d.sum.flags['지각']; t.out += d.sum.flags['외출']; t.early += d.sum.flags['조퇴'];
-      t.issues += d.sum.patrolIssues;
+      t.issues += d.sum.attitudeIssues;
     });
     return t;
   }
@@ -66,8 +66,8 @@ Views.stats = (function () {
           '<div class="sub">지각 ' + t.late + ' · 외출 ' + t.out + ' · 조퇴 ' + t.early + '</div></div>' +
         '<div class="stat"><div class="lbl">숙제 이행</div><div class="val">' + U.pct(t.homework, t.marked) + '<small>%</small></div>' +
           '<div class="sub">' + t.homework + '회 완료</div></div>' +
-        '<div class="stat"><div class="lbl">순회 주의</div><div class="val">' + t.issues + '<small>건</small></div>' +
-          '<div class="sub">졸음 · 이탈 · 휴대폰 등</div></div>' +
+        '<div class="stat"><div class="lbl">태도 주의</div><div class="val">' + t.issues + '<small>일</small></div>' +
+          '<div class="sub">졸음 · 이탈 · 휴대폰 · 잡담</div></div>' +
       '</div>' +
 
       '<div class="grid g-21" style="margin-bottom:16px">' +
@@ -81,7 +81,7 @@ Views.stats = (function () {
           (lowest.length ? lowest.map(function (d) {
             return '<div class="memo-item"><div class="txt"><b>' + U.esc(d.s.name) + '</b>' +
               '<br><span style="font-size:12px;color:#63778a">출석률 ' + d.sum.rate + '% · 결석 ' + d.sum.absent +
-              '회 · 지각 ' + d.sum.flags['지각'] + '회 · 순회 주의 ' + d.sum.patrolIssues + '건</span></div></div>';
+              '회 · 지각 ' + d.sum.flags['지각'] + '회 · 태도 주의 ' + d.sum.attitudeIssues + '일</span></div></div>';
           }).join('') : '<div class="hint">집계할 출결 기록이 없습니다.</div>') +
         '</div></div>' +
       '</div>' +
@@ -91,17 +91,17 @@ Views.stats = (function () {
 
       '<div class="card"><div class="card-h"><h2>학생별 상세 집계</h2></div>' +
         '<div class="table-wrap"><table class="tbl">' +
-          '<thead><tr><th>학생</th><th>학년</th><th class="num">수업</th><th class="num">출석</th><th class="num">결석</th>' +
+          '<thead><tr><th>학생</th><th>반</th><th class="num">수업</th><th class="num">출석</th><th class="num">결석</th>' +
           '<th class="num">출석률</th><th class="num">지각</th><th class="num">외출</th><th class="num">조퇴</th>' +
-          '<th class="num">플래너</th><th class="num">숙제</th><th class="num">순회주의</th></tr></thead><tbody>' +
+          '<th class="num">플래너</th><th class="num">숙제</th><th class="num">태도주의</th></tr></thead><tbody>' +
           (data.length ? data.map(function (d) {
             return '<tr class="clickable" data-open="' + d.s.id + '">' +
-              '<td class="nm">' + U.esc(d.s.name) + '</td><td>' + U.esc(d.s.grade || '-') + '</td>' +
+              '<td class="nm">' + U.esc(d.s.name) + '</td><td>' + U.esc(Store.scheduleOf(d.s).className || '-') + '</td>' +
               '<td class="num">' + d.sum.total + '</td><td class="num">' + d.sum.present + '</td>' +
               '<td class="num">' + d.sum.absent + '</td><td class="num">' + (d.sum.total ? d.sum.rate + '%' : '-') + '</td>' +
               '<td class="num">' + d.sum.flags['지각'] + '</td><td class="num">' + d.sum.flags['외출'] + '</td>' +
               '<td class="num">' + d.sum.flags['조퇴'] + '</td><td class="num">' + d.sum.planner + '</td>' +
-              '<td class="num">' + d.sum.homework + '</td><td class="num">' + d.sum.patrolIssues + '</td></tr>';
+              '<td class="num">' + d.sum.homework + '</td><td class="num">' + d.sum.attitudeIssues + '</td></tr>';
           }).join('') : '<tr><td colspan="12">' + UI.emptyBox('등록생이 없습니다.', '🧒') + '</td></tr>') +
         '</tbody></table></div></div>';
 
@@ -116,11 +116,11 @@ Views.stats = (function () {
     });
 
     el.querySelector('#csv').addEventListener('click', function () {
-      var head = ['학생', '학년', '수업일수', '출석', '결석', '출석률(%)', '지각', '외출', '조퇴', '플래너작성', '숙제완료', '순회주의'];
+      var head = ['학생', '반', '수업일수', '출석', '결석', '출석률(%)', '지각', '외출', '조퇴', '플래너작성', '숙제완료', '태도주의'];
       var body = rowsData().map(function (d) {
-        return [d.s.name, d.s.grade, d.sum.total, d.sum.present, d.sum.absent, d.sum.rate,
+        return [d.s.name, Store.scheduleOf(d.s).className, d.sum.total, d.sum.present, d.sum.absent, d.sum.rate,
                 d.sum.flags['지각'], d.sum.flags['외출'], d.sum.flags['조퇴'],
-                d.sum.planner, d.sum.homework, d.sum.patrolIssues];
+                d.sum.planner, d.sum.homework, d.sum.attitudeIssues];
       });
       U.download('고래영어_월간통계_' + month + '.csv', U.toCsv([head].concat(body)), 'text/csv');
       UI.toast('CSV 파일을 내려받았습니다.');

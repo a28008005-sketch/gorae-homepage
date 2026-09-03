@@ -210,10 +210,11 @@ table.tbl .nm{font-weight:700}
 }
 .att-row:last-child{border-bottom:0}
 .att-who{display:flex;align-items:center;gap:9px;min-width:0}
-.att-who .seat{
-  width:26px;height:26px;border-radius:8px;background:var(--blue-soft);color:#14588f;
-  display:grid;place-items:center;font-size:11.5px;font-weight:700;flex:0 0 auto;
+.klass-dot{
+  width:9px;height:9px;border-radius:50%;flex:0 0 auto;display:inline-block;
+  margin-right:5px;vertical-align:middle;
 }
+.att-who .klass-dot{margin-right:0}
 .att-who .nm{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .att-who .gr{font-size:11.5px;color:var(--muted)}
 .att-checks{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
@@ -225,22 +226,6 @@ table.tbl .nm{font-weight:700}
 }
 .check.on{background:var(--mint-soft);border-color:#a9e5dd;color:#0d8375}
 .check input{display:none}
-
-/* ---------- Seats ---------- */
-.seat-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
-.seat-cell{
-  border:1px solid var(--line);border-radius:12px;padding:11px 10px;min-height:76px;
-  background:#fff;cursor:pointer;position:relative;transition:border-color .12s,box-shadow .12s;
-}
-.seat-cell:hover{border-color:var(--blue);box-shadow:0 3px 12px rgba(26,127,212,.13)}
-.seat-cell .no{position:absolute;top:7px;right:9px;font-size:11px;color:#9fb0be;font-weight:700}
-.seat-cell .who{font-weight:700;font-size:13.5px;margin-top:14px}
-.seat-cell .meta{font-size:11.5px;color:var(--muted);margin-top:2px}
-.seat-cell.empty-seat{background:#fafcfd;border-style:dashed}
-.seat-cell.empty-seat .who{color:#b3c1cd;font-weight:600}
-.seat-cell.att-present{border-color:#9fdcbd;background:var(--ok-soft)}
-.seat-cell.att-absent{border-color:#f0c4c2;background:var(--bad-soft)}
-.seat-cell.att-late{border-color:#f2d5a6;background:var(--warn-soft)}
 
 /* ---------- Timetable ---------- */
 .tt{display:grid;grid-template-columns:70px repeat(5,1fr);gap:8px}
@@ -320,7 +305,6 @@ body.share-mode .content{padding:0}
   .g-4{grid-template-columns:repeat(2,1fr)}
   .g-3{grid-template-columns:repeat(2,1fr)}
   .g-21,.g-12{grid-template-columns:1fr}
-  .seat-grid{grid-template-columns:repeat(4,1fr)}
 }
 @media(max-width:760px){
   .only-mobile{display:grid;place-items:center}
@@ -329,7 +313,6 @@ body.share-mode .content{padding:0}
   .content{padding:16px 14px 32px}
   .topbar{padding:12px 14px}
   .g-4,.g-3,.g-2,.form-grid{grid-template-columns:1fr}
-  .seat-grid{grid-template-columns:repeat(3,1fr)}
   .att-row{grid-template-columns:1fr;gap:8px}
   .report-stats{grid-template-columns:repeat(2,1fr)}
   .tt{grid-template-columns:56px repeat(5,1fr);gap:5px;font-size:11px}
@@ -386,6 +369,63 @@ body.share-mode .content{padding:0}
   .gate-card{padding:26px 22px}
 }
 
+/* ---------- 반(클래스) ---------- */
+.class-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.class-card{
+  border:1px solid var(--line);border-radius:13px;padding:14px 15px;background:#fff;
+  border-left:4px solid var(--klass);display:flex;flex-direction:column;gap:10px;
+}
+.class-top{display:flex;align-items:flex-start;gap:10px}
+.class-top>div{flex:1;min-width:0}
+.class-name{font-weight:700;font-size:14.5px;letter-spacing:-.2px}
+.class-meta{font-size:12px;color:var(--muted);margin-top:3px}
+.class-note{font-size:12px;color:var(--muted);background:#f6f9fc;border-radius:8px;padding:7px 10px}
+.class-members{display:flex;flex-wrap:wrap;gap:5px;min-height:24px}
+.class-actions{display:flex;gap:7px;margin-top:auto;padding-top:2px}
+
+.pill{
+  background:var(--blue-soft);color:#14588f;border-radius:7px;padding:3px 8px;
+  font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;border:0;
+}
+.pill:hover{background:#d5e8f9}
+
+.swatch{
+  width:26px;height:26px;border-radius:8px;border:2px solid transparent;cursor:pointer;padding:0;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.08);
+}
+.swatch.on{border-color:var(--ink);box-shadow:inset 0 0 0 2px #fff}
+
+/* 시간표 블록 */
+.tt-block{
+  display:block;width:100%;text-align:left;border:0;cursor:pointer;
+  background:color-mix(in srgb, var(--klass) 12%, #fff);
+  border-left:3px solid var(--klass);border-radius:8px;
+  padding:6px 8px;margin-bottom:5px;font-family:inherit;
+}
+.tt-block:hover{background:color-mix(in srgb, var(--klass) 20%, #fff)}
+.tt-block b{display:block;font-size:12px;color:var(--ink);letter-spacing:-.2px}
+.tt-block span{display:block;font-size:11px;color:var(--muted);margin-top:1px}
+
+/* 학생 배정 목록 */
+.member-list{max-height:52vh;overflow-y:auto;border:1px solid var(--line);border-radius:11px}
+.member-row{
+  display:flex;align-items:center;gap:10px;padding:9px 13px;
+  border-bottom:1px solid #eef2f6;cursor:pointer;font-size:13.5px;
+}
+.member-row:last-child{border-bottom:0}
+.member-row:hover{background:#f8fbfd}
+.member-name{font-weight:700}
+
+/* 출결 행의 수업 태도 줄 */
+.att-attitude{margin-bottom:6px;align-items:center}
+.att-label{
+  font-size:11.5px;font-weight:700;color:var(--muted);
+  margin-right:2px;white-space:nowrap;
+}
+@media(max-width:760px){
+  .class-grid{grid-template-columns:1fr}
+}
+
 
 .demo-strip{
   display:flex;align-items:flex-start;gap:12px;
@@ -414,9 +454,7 @@ body.share-mode .content{padding:0}
       <a href="#/dashboard"  data-route="dashboard"><i>📊</i><span>대시보드</span></a>
       <a href="#/students"   data-route="students"><i>🧒</i><span>학생 명부</span></a>
       <a href="#/attendance" data-route="attendance"><i>✅</i><span>출결 · 일일학습</span></a>
-      <a href="#/patrol"     data-route="patrol"><i>🔍</i><span>순회 점검</span></a>
-      <a href="#/seats"      data-route="seats"><i>🪑</i><span>좌석 배치</span></a>
-      <a href="#/classes"    data-route="classes"><i>🗓️</i><span>수업 시간표</span></a>
+      <a href="#/classes"    data-route="classes"><i>🗓️</i><span>반 · 시간표</span></a>
       <a href="#/tuition"    data-route="tuition"><i>💳</i><span>수강료 납부</span></a>
       <a href="#/stats"      data-route="stats"><i>📈</i><span>통계</span></a>
       <a href="#/share"      data-route="share"><i>💌</i><span>학부모 공유</span></a>
@@ -628,7 +666,7 @@ var U = (function () {
  * 노션 [프리미엄] 고래영어 학생관리의 데이터 구조를 그대로 옮겼습니다.
  *  - 학생 명부      -> students
  *  - 일일 학습 관리  -> attendance (출결 + 플래너/계획실천/숙제)
- *  - 순회 점검 기록  -> patrols
+ *  - 순회 점검 기록  -> 일일학습 안의 '수업 태도'로 합쳤습니다
  *  - 메모           -> memos
  *  - 업무 메모       -> tasks
  */
@@ -638,7 +676,9 @@ var Store = (function () {
   var STATUS = ['등록생', '대기생', '휴원생', '퇴원생'];
   var GRADES = ['1학년', '2학년', '3학년', '4학년', '5학년', '6학년', '중1', '중2', '중3'];
   var FLAGS = ['지각', '외출', '조퇴'];
-  var PATROL_STATES = ['🟢 학습중', '💤 졸음', '🏃 이탈/부재', '📱 휴대폰 사용', '💬 잡담/소란'];
+  // 수업 태도 (예전 '순회 점검 기록'을 일일학습 안으로 합쳤습니다)
+  var ATTITUDES = ['🟢 집중', '💤 졸음', '🏃 이탈/부재', '📱 휴대폰 사용', '💬 잡담/소란'];
+  var CLASS_COLORS = ['#1a7fd4', '#17b7a6', '#d98218', '#8a6ad4', '#d5453f', '#12a05c', '#c2557f', '#4a7a99'];
   var WEEKDAYS = ['월', '화', '수', '목', '금', '토'];
   var PAY_METHODS = ['계좌이체', '현금', '카드', '기타'];
 
@@ -658,9 +698,11 @@ var Store = (function () {
       bankAccount: '',
       bankHolder: ''
     },
+    meta: {},
+    classes: [],
     students: [],
     attendance: [],
-    patrols: [],
+    patrols: [],   // 예전 순회 점검 기록 — 일일학습으로 옮긴 뒤 사용하지 않습니다
     memos: [],
     tasks: [],
     payments: []
@@ -672,11 +714,14 @@ var Store = (function () {
 
   /** 컬렉션 이름 <-> 동기화 종류(kind) 매핑 */
   var KINDS = {
-    student: 'students', attendance: 'attendance', patrol: 'patrols',
+    klass: 'classes', student: 'students', attendance: 'attendance',
     memo: 'memos', task: 'tasks', payment: 'payments'
   };
 
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
+
+  /** 주의가 필요한 태도인지 (집중 외 전부) */
+  function isIssue(state) { return state !== ATTITUDES[0]; }
 
   /** 레코드에 수정 시각을 찍습니다. 동기화의 기준값입니다. */
   function stamp(rec) {
@@ -739,6 +784,70 @@ var Store = (function () {
   function onChange(fn) { listeners.push(fn); }
   function get() { if (!data) load(); return data; }
 
+  /* ---------- 반 (클래스) ---------- */
+  function classes() {
+    return alive(get().classes).slice().sort(function (a, b) {
+      var ta = get().academy.times.indexOf(a.time), tb = get().academy.times.indexOf(b.time);
+      if (ta !== tb) return ta - tb;
+      return String(a.name || '').localeCompare(String(b.name || ''), 'ko');
+    });
+  }
+  function klass(id) {
+    if (!id) return null;
+    return alive(get().classes).filter(function (c) { return c.id === id; })[0] || null;
+  }
+  function saveClass(c) {
+    var d = get(), rec = null;
+    if (c.id) {
+      for (var i = 0; i < d.classes.length; i++) {
+        if (d.classes[i].id === c.id) { rec = Object.assign(d.classes[i], c); break; }
+      }
+    }
+    if (!rec) {
+      c.id = c.id || U.uid('cls');
+      if (!c.color) c.color = CLASS_COLORS[d.classes.length % CLASS_COLORS.length];
+      rec = c;
+      d.classes.push(rec);
+    }
+    stamp(rec);
+    save({ kind: 'klass', id: rec.id });
+    return rec.id;
+  }
+  /** 반 삭제 — 소속 학생은 미배정으로 돌립니다 (학생 기록은 그대로) */
+  function deleteClass(id) {
+    var d = get(), changed = [];
+    d.classes.forEach(function (c) {
+      if (c.id === id && !c.deleted) {
+        c.deleted = true; stamp(c);
+        changed.push({ kind: 'klass', id: c.id });
+      }
+    });
+    d.students.forEach(function (s) {
+      if (s.classId === id) {
+        s.classId = ''; stamp(s);
+        changed.push({ kind: 'student', id: s.id });
+      }
+    });
+    save(changed);
+  }
+  function studentsInClass(classId) {
+    return students().filter(function (s) { return s.classId === classId; });
+  }
+  /**
+   * 학생의 실제 수업 요일·시간.
+   * 반에 속해 있으면 반의 시간표를, 아니면 학생 개인 설정을 씁니다.
+   */
+  function scheduleOf(s) {
+    var c = s && s.classId ? klass(s.classId) : null;
+    return {
+      days: c ? (c.days || []) : (s && s.days ? s.days : []),
+      time: c ? (c.time || '') : (s && s.time ? s.time : ''),
+      className: c ? c.name : '',
+      color: c ? c.color : '',
+      classId: c ? c.id : ''
+    };
+  }
+
   /* ---------- 학생 ---------- */
   function students(opts) {
     opts = opts || {};
@@ -798,7 +907,6 @@ var Store = (function () {
     }
     kill(d.students, 'student', function (s) { return s.id === id; });
     kill(d.attendance, 'attendance', function (a) { return a.studentId === id; });
-    kill(d.patrols, 'patrol', function (p) { return p.studentId === id; });
     kill(d.memos, 'memo', function (m) { return m.studentId === id; });
     kill(d.payments, 'payment', function (p) { return p.studentId === id; });
     save(changed);
@@ -806,13 +914,8 @@ var Store = (function () {
   /** 특정 요일에 수업이 있는 등록생 */
   function studentsOnDay(dayKo) {
     return students({ active: true }).filter(function (s) {
-      return (s.days || []).indexOf(dayKo) >= 0;
+      return scheduleOf(s).days.indexOf(dayKo) >= 0;
     });
-  }
-  function seatMap() {
-    var m = {};
-    students().forEach(function (s) { if (s.seat) m[String(s.seat)] = s; });
-    return m;
   }
 
   /* ---------- 출결 · 일일학습 ---------- */
@@ -836,7 +939,8 @@ var Store = (function () {
     if (!rec) {
       rec = {
         id: U.uid('att'), studentId: studentId, date: date,
-        status: '', flags: [], planner: false, planDone: false, homework: false, note: ''
+        status: '', flags: [], planner: false, planDone: false, homework: false,
+        attitude: [], attitudeNote: '', note: ''
       };
       d.attendance.push(rec);
     }
@@ -844,6 +948,14 @@ var Store = (function () {
     stamp(rec);
     save({ kind: 'attendance', id: rec.id });
     return rec;
+  }
+  /** 수업 태도 항목 켜고 끄기 */
+  function toggleAttitude(studentId, date, state) {
+    var rec = attendanceFor(studentId, date);
+    var list = rec && rec.attitude ? rec.attitude.slice() : [];
+    var i = list.indexOf(state);
+    if (i >= 0) list.splice(i, 1); else list.push(state);
+    return setAttendance(studentId, date, { attitude: list });
   }
   function toggleFlag(studentId, date, flag) {
     var rec = attendanceFor(studentId, date);
@@ -853,34 +965,52 @@ var Store = (function () {
     return setAttendance(studentId, date, { flags: flags });
   }
 
-  /* ---------- 순회 점검 ---------- */
-  function patrols(opts) {
-    opts = opts || {};
-    var list = alive(get().patrols).slice();
-    if (opts.date) list = list.filter(function (p) { return (p.at || '').slice(0, 10) === opts.date; });
-    if (opts.studentId) list = list.filter(function (p) { return p.studentId === opts.studentId; });
-    if (opts.from) list = list.filter(function (p) { return (p.at || '').slice(0, 10) >= opts.from; });
-    if (opts.to) list = list.filter(function (p) { return (p.at || '').slice(0, 10) <= opts.to; });
-    return list.sort(function (a, b) { return a.at < b.at ? 1 : -1; });
-  }
-  function savePatrol(p) {
+  /* ---------- 예전 순회 점검 기록 옮기기 ---------- */
+  /** 예전 상태 이름 -> 지금 수업 태도 이름 */
+  var ATTITUDE_ALIAS = { '🟢 학습중': '🟢 집중' };
+
+  /**
+   * 예전에 따로 쌓아 둔 순회 점검 기록을 그날의 일일학습 기록 안으로 합칩니다.
+   * 한 번만 실행되며, 옮긴 뒤 원래 기록에는 삭제 표시를 합니다.
+   */
+  function migratePatrols() {
     var d = get();
-    var rec = null;
-    if (p.id) {
-      for (var i = 0; i < d.patrols.length; i++) {
-        if (d.patrols[i].id === p.id) { rec = Object.assign(d.patrols[i], p); break; }
+    if (!d.meta) d.meta = {};
+    if (d.meta.patrolsMerged) return 0;
+    var list = (d.patrols || []).filter(function (p) { return !p.deleted; });
+    if (!list.length) { d.meta.patrolsMerged = true; return 0; }
+
+    var moved = 0;
+    list.forEach(function (p) {
+      var date = String(p.at || '').slice(0, 10);
+      if (!date || !p.studentId) return;
+      var rec = attendanceFor(p.studentId, date);
+      var attitude = (rec && rec.attitude ? rec.attitude.slice() : []);
+      (p.states || []).forEach(function (st) {
+        var name = ATTITUDE_ALIAS[st] || st;
+        if (attitude.indexOf(name) < 0) attitude.push(name);
+      });
+      // 다른 기기에서 이미 옮긴 내용을 또 붙이지 않도록 중복은 걸러냅니다.
+      var notes = [];
+      function addNote(t) {
+        t = String(t || '').trim();
+        if (t && notes.indexOf(t) < 0) notes.push(t);
       }
-    }
-    if (!rec) { p.id = p.id || U.uid('pat'); rec = p; d.patrols.push(rec); }
-    stamp(rec);
-    save({ kind: 'patrol', id: rec.id });
-    return rec.id;
+      if (rec && rec.attitudeNote) String(rec.attitudeNote).split(' / ').forEach(addNote);
+      addNote(p.action);
+      addNote(p.note);
+      setAttendance(p.studentId, date, {
+        attitude: attitude,
+        attitudeNote: notes.join(' / ')
+      });
+      p.deleted = true;
+      stamp(p);
+      moved++;
+    });
+    d.meta.patrolsMerged = true;
+    save();
+    return moved;
   }
-  function deletePatrol(id) {
-    return softDelete('patrols', 'patrol', id);
-  }
-  /** 주의가 필요한 상태(학습중 제외) 인지 */
-  function isIssue(state) { return state !== PATROL_STATES[0]; }
 
   /* ---------- 메모 ---------- */
   function memos(studentId) {
@@ -1071,17 +1201,20 @@ var Store = (function () {
       (r.flags || []).forEach(function (f) { if (flagCount[f] !== undefined) flagCount[f]++; });
     });
     var marked = present + absent;
-    var pats = patrols({ studentId: studentId, from: from, to: to });
-    var issues = 0;
-    pats.forEach(function (p) {
-      if ((p.states || []).some(isIssue)) issues++;
+    // 수업 태도에 주의 항목(졸음 · 이탈 · 휴대폰 · 잡담)이 찍힌 날 수
+    var issues = 0, attitudeCount = {};
+    ATTITUDES.forEach(function (a) { attitudeCount[a] = 0; });
+    recs.forEach(function (r) {
+      var list = r.attitude || [];
+      list.forEach(function (a) { if (attitudeCount[a] !== undefined) attitudeCount[a]++; });
+      if (list.some(isIssue)) issues++;
     });
     return {
       records: recs, total: marked, present: present, absent: absent,
       rate: U.pct(present, marked),
       planner: planner, planDone: planDone, homework: homework,
       plannerRate: U.pct(planner, marked), homeworkRate: U.pct(homework, marked),
-      flags: flagCount, patrols: pats, patrolIssues: issues
+      flags: flagCount, attitude: attitudeCount, attitudeIssues: issues
     };
   }
 
@@ -1215,25 +1348,30 @@ var Store = (function () {
   }
 
   load();
+  migratePatrols();
 
   return {
     STATUS: STATUS, GRADES: GRADES, FLAGS: FLAGS,
-    PATROL_STATES: PATROL_STATES, WEEKDAYS: WEEKDAYS, PAY_METHODS: PAY_METHODS,
+    ATTITUDES: ATTITUDES, WEEKDAYS: WEEKDAYS, PAY_METHODS: PAY_METHODS,
+    CLASS_COLORS: CLASS_COLORS,
     get: get, save: save, onChange: onChange, onRecordChange: onRecordChange,
     allRecords: allRecords, findRecord: findRecord, applyRemote: applyRemote, stampAll: stampAll,
     students: students, student: student, saveStudent: saveStudent,
     archiveStudent: archiveStudent, deleteStudent: deleteStudent,
-    studentsOnDay: studentsOnDay, seatMap: seatMap,
+    studentsOnDay: studentsOnDay,
     attendanceOn: attendanceOn, attendanceFor: attendanceFor, attendanceRange: attendanceRange,
     setAttendance: setAttendance, toggleFlag: toggleFlag,
-    patrols: patrols, savePatrol: savePatrol, deletePatrol: deletePatrol, isIssue: isIssue,
+    isIssue: isIssue, toggleAttitude: toggleAttitude,
+    classes: classes, klass: klass, saveClass: saveClass, deleteClass: deleteClass,
+    studentsInClass: studentsInClass, scheduleOf: scheduleOf,
     memos: memos, addMemo: addMemo, deleteMemo: deleteMemo,
     tasks: tasks, addTask: addTask, updateTask: updateTask, deleteTask: deleteTask,
     payments: payments, paymentFor: paymentFor, feeOf: feeOf, dueDateFor: dueDateFor,
     paymentStatus: paymentStatus, savePayment: savePayment, deletePayment: deletePayment,
     generateBills: generateBills, paymentSummary: paymentSummary, paymentHistory: paymentHistory,
     summarize: summarize, dayOverview: dayOverview,
-    exportJson: exportJson, importJson: importJson, resetAll: resetAll, saveAcademy: saveAcademy
+    exportJson: exportJson, importJson: importJson, resetAll: resetAll, saveAcademy: saveAcademy,
+    migratePatrols: migratePatrols
   };
 })();
 
@@ -1946,9 +2084,9 @@ Views.dashboard = (function () {
     return pending.map(function (s) {
       return '<div class="att-row" data-sid="' + s.id + '">' +
         '<div class="att-who">' +
-          '<span class="seat">' + (s.seat ? U.esc(s.seat) : '–') + '</span>' +
+          '<span class="klass-dot" style="background:' + U.esc(Store.scheduleOf(s).color || '#cbd5e0') + '"></span>' +
           '<span><span class="nm">' + U.esc(s.name) + '</span><br>' +
-          '<span class="gr">' + U.esc(s.grade || '') + (s.time ? ' · ' + U.esc(s.time) : '') + '</span></span>' +
+          '<span class="gr">' + U.esc(Store.scheduleOf(s).className || s.grade || '') + '</span></span>' +
         '</div>' +
         '<div class="att-checks">' +
           '<button class="btn sm" data-mark="출석">출석</button>' +
@@ -1961,17 +2099,21 @@ Views.dashboard = (function () {
     }).join('');
   }
 
-  function patrolToday() {
-    var list = Store.patrols({ date: U.ymd() });
-    if (!list.length) return UI.emptyBox('오늘 기록된 순회 점검이 없습니다.', '🔍');
-    return list.slice(0, 6).map(function (p) {
-      var s = Store.student(p.studentId);
-      var issue = (p.states || []).some(Store.isIssue);
+  /** 오늘 기록된 수업 태도 */
+  function attitudeToday() {
+    var list = Store.attendanceOn(U.ymd()).filter(function (r) { return (r.attitude || []).length; });
+    if (!list.length) return UI.emptyBox('오늘 기록된 수업 태도가 없습니다.', '🙂');
+    // 주의가 필요한 학생을 위로 올립니다.
+    list.sort(function (a, b) {
+      return ((b.attitude || []).some(Store.isIssue) ? 1 : 0) - ((a.attitude || []).some(Store.isIssue) ? 1 : 0);
+    });
+    return list.slice(0, 7).map(function (r) {
+      var s = Store.student(r.studentId);
+      var issue = (r.attitude || []).some(Store.isIssue);
       return '<div class="memo-item">' +
-        '<span class="dt">' + U.hhmm(p.at) + '</span>' +
         '<div class="txt"><b>' + U.esc(s ? s.name : '(삭제된 학생)') + '</b> ' +
-          '<span class="tag ' + (issue ? 'warn' : 'ok') + '">' + U.esc((p.states || []).join(' ')) + '</span>' +
-          (p.action ? '<br><span style="font-size:12.5px;color:#63778a">조치: ' + U.esc(p.action) + '</span>' : '') +
+          '<span class="tag ' + (issue ? 'warn' : 'ok') + '">' + U.esc((r.attitude || []).join(' ')) + '</span>' +
+          (r.attitudeNote ? '<br><span style="font-size:12.5px;color:#63778a">' + U.esc(r.attitudeNote) + '</span>' : '') +
         '</div></div>';
     }).join('');
   }
@@ -2017,7 +2159,7 @@ Views.dashboard = (function () {
     var active = all.filter(function (s) { return s.status === '등록생'; });
     var waiting = all.filter(function (s) { return s.status === '대기생'; });
     var resting = all.filter(function (s) { return s.status === '휴원생'; });
-    var seated = active.filter(function (s) { return s.seat; }).length;
+    var classCount = Store.classes().length;
     var pay = Store.paymentSummary(U.ym(new Date()));
 
     el.innerHTML =
@@ -2028,7 +2170,7 @@ Views.dashboard = (function () {
           '<div class="val">' + o.rate + '<small>%</small></div>' +
           '<div class="sub">출석 ' + o.present + ' · 결석 ' + o.absent + ' · 미체크 ' + o.unmarked + '</div></div>' +
         '<div class="stat"><div class="lbl">등록생</div><div class="val">' + active.length + '<small>명</small></div>' +
-          '<div class="sub">대기 ' + waiting.length + ' · 휴원 ' + resting.length + ' · 좌석 ' + seated + '/' + Store.get().academy.seatCount + '</div></div>' +
+          '<div class="sub">대기 ' + waiting.length + ' · 휴원 ' + resting.length + ' · 반 ' + classCount + '개</div></div>' +
         '<div class="stat"><div class="lbl">오늘 수업</div><div class="val">' + o.expected.length + '<small>명</small></div>' +
           '<div class="sub">' + o.day + '요일 수업 예정</div></div>' +
         '<div class="stat"><div class="lbl">이달 수강료 수납률</div><div class="val">' + pay.rate + '<small>%</small></div>' +
@@ -2040,9 +2182,9 @@ Views.dashboard = (function () {
           '<a class="btn sm" href="#/attendance">전체 출결표 →</a></div>' +
           '<div class="card-b tight" id="quick">' + quickCheck(o) + '</div></div>' +
 
-        '<div class="card"><div class="card-h"><h2>오늘 순회 점검</h2><div class="sp"></div>' +
-          '<a class="btn sm" href="#/patrol">기록하기</a></div>' +
-          '<div class="card-b">' + patrolToday() + '</div></div>' +
+        '<div class="card"><div class="card-h"><h2>오늘 수업 태도</h2><div class="sp"></div>' +
+          '<a class="btn sm" href="#/attendance">기록하기</a></div>' +
+          '<div class="card-b">' + attitudeToday() + '</div></div>' +
       '</div>' +
 
       '<div class="grid g-21">' +
@@ -2113,7 +2255,7 @@ Views.dashboard = (function () {
 window.Views = window.Views || {};
 Views.students = (function () {
 
-  var filter = { q: '', status: '', grade: '', day: '' };
+  var filter = { q: '', status: '', grade: '', day: '', classId: '' };
 
   function title() { return '학생 명부'; }
   function sub() {
@@ -2126,7 +2268,11 @@ Views.students = (function () {
   function matches(s) {
     if (filter.status && s.status !== filter.status) return false;
     if (filter.grade && s.grade !== filter.grade) return false;
-    if (filter.day && (s.days || []).indexOf(filter.day) < 0) return false;
+    if (filter.classId) {
+      if (filter.classId === '__none__') { if (s.classId) return false; }
+      else if (s.classId !== filter.classId) return false;
+    }
+    if (filter.day && Store.scheduleOf(s).days.indexOf(filter.day) < 0) return false;
     if (filter.q) {
       var hay = [s.name, s.grade, s.phone, s.parentPhone, s.parentEmail, s.note].join(' ').toLowerCase();
       if (hay.indexOf(filter.q.toLowerCase()) < 0) return false;
@@ -2141,11 +2287,14 @@ Views.students = (function () {
     return list.map(function (s) {
       var rec = Store.attendanceFor(s.id, today);
       var sum = Store.summarize(s.id, U.ym(new Date()) + '-01', today);
+      var sc = Store.scheduleOf(s);
       return '<tr class="clickable" data-open="' + s.id + '">' +
         '<td class="nm">' + U.esc(s.name) + '</td>' +
         '<td>' + U.esc(s.grade || '-') + '</td>' +
-        '<td>' + (s.seat ? U.esc(s.seat) + '번' : '<span style="color:#b3c1cd">미배정</span>') + '</td>' +
-        '<td>' + U.esc((s.days || []).join('·') || '-') + (s.time ? ' <span class="tag gray">' + U.esc(s.time) + '</span>' : '') + '</td>' +
+        '<td>' + (sc.className
+            ? '<span class="klass-dot" style="background:' + U.esc(sc.color) + '"></span>' + U.esc(sc.className)
+            : '<span style="color:#b3c1cd">미배정</span>') + '</td>' +
+        '<td>' + U.esc(sc.days.join('·') || '-') + (sc.time ? ' <span class="tag gray">' + U.esc(sc.time) + '</span>' : '') + '</td>' +
         '<td>' + UI.statusTag(s.status) + '</td>' +
         '<td>' + UI.attTag(rec) + '</td>' +
         '<td class="num">' + (sum.total ? sum.rate + '%' : '-') + '</td>' +
@@ -2158,27 +2307,22 @@ Views.students = (function () {
   function form(s) {
     s = s || {};
     var ac = Store.get().academy;
-    var seatOpts = [];
-    for (var i = 1; i <= ac.seatCount; i++) seatOpts.push(String(i));
-    var taken = Store.seatMap();
-
     return '<div class="form-grid">' +
       '<label class="fld">학생 이름 *<input type="text" id="f-name" value="' + U.esc(s.name || '') + '" placeholder="홍길동"></label>' +
       '<label class="fld">학년<select id="f-grade">' + UI.options(Store.GRADES, s.grade, '선택 안 함') + '</select></label>' +
       '<label class="fld">등록 여부<select id="f-status">' + UI.options(Store.STATUS, s.status || '등록생') + '</select></label>' +
-      '<label class="fld">좌석<select id="f-seat"><option value="">미배정</option>' +
-        seatOpts.map(function (n) {
-          var owner = taken[n];
-          var busy = owner && owner.id !== s.id;
-          return '<option value="' + n + '"' + (String(s.seat) === n ? ' selected' : '') + (busy ? ' disabled' : '') + '>' +
-            n + '번' + (busy ? ' (' + U.esc(owner.name) + ')' : '') + '</option>';
+      '<label class="fld">반<select id="f-class"><option value="">반 미배정</option>' +
+        Store.classes().map(function (c) {
+          return '<option value="' + c.id + '"' + (s.classId === c.id ? ' selected' : '') + '>' +
+            U.esc(c.name) + (c.days && c.days.length ? ' (' + U.esc(c.days.join('')) + (c.time ? ' ' + U.esc(c.time) : '') + ')' : '') +
+            '</option>';
         }).join('') + '</select></label>' +
-      '<label class="fld full">수업 요일' +
+      '<label class="fld full" id="own-sched">개인 수업 요일 <span style="font-weight:400">(반에 넣으면 반 시간표를 따릅니다)</span>' +
         '<div class="chips" id="f-days">' + Store.WEEKDAYS.map(function (d) {
           var on = (s.days || []).indexOf(d) >= 0;
           return '<button type="button" class="chip' + (on ? ' on blue' : '') + '" data-day="' + d + '">' + d + '</button>';
         }).join('') + '</div></label>' +
-      '<label class="fld">수업 시간<select id="f-time">' + UI.options(ac.times, s.time, '선택 안 함') + '</select></label>' +
+      '<label class="fld">개인 수업 시간<select id="f-time">' + UI.options(ac.times, s.time, '선택 안 함') + '</select></label>' +
       '<label class="fld">학생 연락처<input type="tel" id="f-phone" value="' + U.esc(s.phone || '') + '" placeholder="010-0000-0000"></label>' +
       '<label class="fld">학부모 연락처<input type="tel" id="f-pphone" value="' + U.esc(s.parentPhone || '') + '" placeholder="010-0000-0000"></label>' +
       '<label class="fld">학부모 이메일<input type="email" id="f-pmail" value="' + U.esc(s.parentEmail || '') + '" placeholder="parent@email.com"></label>' +
@@ -2214,7 +2358,7 @@ Views.students = (function () {
             name: name,
             grade: w.querySelector('#f-grade').value,
             status: w.querySelector('#f-status').value,
-            seat: w.querySelector('#f-seat').value,
+            classId: w.querySelector('#f-class').value,
             days: days,
             time: w.querySelector('#f-time').value,
             phone: w.querySelector('#f-phone').value.trim(),
@@ -2234,7 +2378,7 @@ Views.students = (function () {
             UI.close();
             UI.confirm(
               '<b>' + U.esc(s.name) + '</b> 학생을 삭제할까요?<br>' +
-              '<span style="color:#63778a;font-size:13px">출결 · 순회점검 · 메모 기록이 모두 함께 삭제되며 되돌릴 수 없습니다.<br>' +
+              '<span style="color:#63778a;font-size:13px">출결 · 수강료 · 메모 기록이 모두 함께 삭제되며 되돌릴 수 없습니다.<br>' +
               '기록을 남기려면 대신 등록 여부를 <b>퇴원생</b>으로 바꿔 주세요.</span>',
               function () {
                 Store.deleteStudent(s.id);
@@ -2257,13 +2401,16 @@ Views.students = (function () {
     var recent = Store.attendanceRange(s.id, U.daysAgo(30), U.ymd()).slice(-10).reverse();
     var memos = Store.memos(s.id).slice(0, 5);
     var pay = Store.paymentHistory(s.id);
+    var sc = Store.scheduleOf(s);
 
     var body =
       '<div class="grid g-2" style="gap:18px">' +
         '<div><dl class="kv">' +
           '<dt>학년</dt><dd>' + U.esc(s.grade || '-') + '</dd>' +
-          '<dt>좌석</dt><dd>' + (s.seat ? U.esc(s.seat) + '번' : '미배정') + '</dd>' +
-          '<dt>수업</dt><dd>' + U.esc((s.days || []).join('·') || '-') + (s.time ? ' / ' + U.esc(s.time) : '') + '</dd>' +
+          '<dt>반</dt><dd>' + (sc.className
+              ? '<span class="klass-dot" style="background:' + U.esc(sc.color) + '"></span>' + U.esc(sc.className)
+              : '미배정') + '</dd>' +
+          '<dt>수업</dt><dd>' + U.esc(sc.days.join('·') || '-') + (sc.time ? ' / ' + U.esc(sc.time) : '') + '</dd>' +
           '<dt>등록 여부</dt><dd>' + UI.statusTag(s.status) + '</dd>' +
           '<dt>학생 연락처</dt><dd>' + U.esc(U.phone(s.phone) || '-') + '</dd>' +
           '<dt>학부모</dt><dd>' + U.esc(U.phone(s.parentPhone) || '-') + '</dd>' +
@@ -2278,7 +2425,7 @@ Views.students = (function () {
             '<div class="report-stat"><div class="v">' + sum.rate + '%</div><div class="l">출석률</div></div>' +
             '<div class="report-stat"><div class="v">' + sum.present + '/' + sum.total + '</div><div class="l">출석 / 수업</div></div>' +
             '<div class="report-stat"><div class="v">' + sum.homework + '</div><div class="l">숙제 완료</div></div>' +
-            '<div class="report-stat"><div class="v">' + sum.patrolIssues + '</div><div class="l">순회 체크</div></div>' +
+            '<div class="report-stat"><div class="v">' + sum.attitudeIssues + '</div><div class="l">태도 주의</div></div>' +
           '</div>' +
           '<div class="hint" style="margin-top:8px">지각 ' + sum.flags['지각'] + ' · 외출 ' + sum.flags['외출'] + ' · 조퇴 ' + sum.flags['조퇴'] + '</div>' +
         '</div>' +
@@ -2286,9 +2433,13 @@ Views.students = (function () {
 
       '<div class="section-title">최근 출결 (30일)</div>' +
       (recent.length ? '<div class="table-wrap"><table class="tbl" style="min-width:auto">' +
-        '<thead><tr><th>날짜</th><th>출결</th><th>플래너</th><th>계획실천</th><th>숙제</th><th>비고</th></tr></thead><tbody>' +
+        '<thead><tr><th>날짜</th><th>출결</th><th>수업 태도</th><th>플래너</th><th>계획실천</th><th>숙제</th><th>비고</th></tr></thead><tbody>' +
         recent.map(function (r) {
+          var att = r.attitude || [];
           return '<tr><td>' + U.shortDate(r.date) + '</td><td>' + UI.attTag(r) + '</td>' +
+            '<td>' + (att.length
+              ? '<span class="tag ' + (att.some(Store.isIssue) ? 'warn' : 'ok') + '">' + U.esc(att.join(' ')) + '</span>'
+              : '–') + '</td>' +
             '<td>' + (r.planner ? '✅' : '–') + '</td><td>' + (r.planDone ? '✅' : '–') + '</td>' +
             '<td>' + (r.homework ? '✅' : '–') + '</td><td>' + U.esc(r.note || '') + '</td></tr>';
         }).join('') + '</tbody></table></div>'
@@ -2368,11 +2519,14 @@ Views.students = (function () {
             '<input type="search" id="q" placeholder="이름 · 연락처 · 특이사항 검색" value="' + U.esc(filter.q) + '" style="flex:1;min-width:180px">' +
             '<select id="f-st" style="width:120px">' + UI.options(Store.STATUS, filter.status, '전체 상태') + '</select>' +
             '<select id="f-gr" style="width:120px">' + UI.options(Store.GRADES, filter.grade, '전체 학년') + '</select>' +
+            '<select id="f-cl" style="width:140px">' +
+              UI.options(Store.classes().map(function (c) { return { value: c.id, label: c.name }; })
+                .concat([{ value: '__none__', label: '반 미배정' }]), filter.classId, '전체 반') + '</select>' +
             '<select id="f-dy" style="width:110px">' + UI.options(Store.WEEKDAYS, filter.day, '전체 요일') + '</select>' +
           '</div>' +
         '</div>' +
         '<div class="table-wrap"><table class="tbl">' +
-          '<thead><tr><th>이름</th><th>학년</th><th>좌석</th><th>수업</th><th>등록</th><th>오늘 출결</th><th>이달 출석률</th><th>학부모 연락처</th></tr></thead>' +
+          '<thead><tr><th>이름</th><th>학년</th><th>반</th><th>수업</th><th>등록</th><th>오늘 출결</th><th>이달 출석률</th><th>학부모 연락처</th></tr></thead>' +
           '<tbody id="rows">' + rows() + '</tbody>' +
         '</table></div>' +
       '</div>';
@@ -2384,13 +2538,15 @@ Views.students = (function () {
     el.querySelector('#q').addEventListener('input', function (e) { filter.q = e.target.value; refresh(); });
     el.querySelector('#f-st').addEventListener('change', function (e) { filter.status = e.target.value; refresh(); });
     el.querySelector('#f-gr').addEventListener('change', function (e) { filter.grade = e.target.value; refresh(); });
+    el.querySelector('#f-cl').addEventListener('change', function (e) { filter.classId = e.target.value; refresh(); });
     el.querySelector('#f-dy').addEventListener('change', function (e) { filter.day = e.target.value; refresh(); });
 
     el.querySelector('#csv').addEventListener('click', function () {
-      var head = ['이름', '학년', '좌석', '요일', '시간', '등록여부', '학생연락처', '학부모연락처',
+      var head = ['이름', '학년', '반', '요일', '시간', '등록여부', '학생연락처', '학부모연락처',
                   '학부모이메일', '월수강료', '납부일', '특이사항'];
       var body = Store.students().filter(matches).map(function (s) {
-        return [s.name, s.grade, s.seat, (s.days || []).join('·'), s.time, s.status,
+        var sc = Store.scheduleOf(s);
+        return [s.name, s.grade, sc.className, sc.days.join('·'), sc.time, s.status,
                 s.phone, s.parentPhone, s.parentEmail,
                 Store.feeOf(s), s.billingDay || Store.get().academy.billingDay, s.note];
       });
@@ -2411,8 +2567,8 @@ Views.attendance = (function () {
   var date = U.ymd();
   var scope = 'day';   // day = 해당 요일 수업생만, all = 전체 등록생
 
-  function title() { return '출결 체크 · 일일학습 관리'; }
-  function sub() { return U.human(date); }
+  function title() { return '출결 · 일일학습 관리'; }
+  function sub() { return U.human(date) + ' · 출결과 수업 태도를 한 줄에서 기록합니다'; }
 
   function targets() {
     return scope === 'day' ? Store.studentsOnDay(U.dayOf(date)) : Store.students({ active: true });
@@ -2421,11 +2577,14 @@ Views.attendance = (function () {
   function row(s) {
     var r = Store.attendanceFor(s.id, date) || {};
     var flags = r.flags || [];
+    var attitude = r.attitude || [];
+    var sc = Store.scheduleOf(s);
     return '<div class="att-row" data-sid="' + s.id + '">' +
       '<div class="att-who">' +
-        '<span class="seat">' + (s.seat ? U.esc(s.seat) : '–') + '</span>' +
+        '<span class="klass-dot" style="background:' + U.esc(sc.color || '#cbd5e0') + '"></span>' +
         '<span><span class="nm">' + U.esc(s.name) + '</span><br>' +
-        '<span class="gr">' + U.esc(s.grade || '') + (s.time ? ' · ' + U.esc(s.time) : '') + '</span></span>' +
+        '<span class="gr">' + U.esc(sc.className || s.grade || '') +
+          (sc.time ? ' · ' + U.esc(sc.time) : '') + '</span></span>' +
       '</div>' +
 
       '<div class="att-checks">' +
@@ -2445,6 +2604,14 @@ Views.attendance = (function () {
           '<label class="check' + (r.planDone ? ' on' : '') + '"><input type="checkbox" data-chk="planDone"' + (r.planDone ? ' checked' : '') + '>계획 실천</label>' +
           '<label class="check' + (r.homework ? ' on' : '') + '"><input type="checkbox" data-chk="homework"' + (r.homework ? ' checked' : '') + '>숙제</label>' +
         '</div>' +
+        '<div class="att-checks att-attitude">' +
+          '<span class="att-label">수업 태도</span>' +
+          Store.ATTITUDES.map(function (a) {
+            var on = attitude.indexOf(a) >= 0;
+            var cls = Store.isIssue(a) ? 'warn' : 'mint';
+            return '<button class="chip' + (on ? ' on ' + cls : '') + '" data-attitude="' + U.esc(a) + '">' + U.esc(a) + '</button>';
+          }).join('') +
+        '</div>' +
         '<input type="text" class="mini-note" data-note placeholder="비고 (오늘 학습 내용, 전달 사항)" value="' + U.esc(r.note || '') + '">' +
       '</div>' +
     '</div>';
@@ -2460,6 +2627,13 @@ Views.attendance = (function () {
     return list.map(row).join('');
   }
 
+  /** 오늘 주의 태도가 찍힌 학생 수 */
+  function attitudeIssues() {
+    return Store.attendanceOn(date).filter(function (r) {
+      return (r.attitude || []).some(Store.isIssue);
+    }).length;
+  }
+
   function statBar() {
     var o = Store.dayOverview(date);
     var n = scope === 'day' ? o.expected.length : Store.students({ active: true }).length;
@@ -2468,7 +2642,8 @@ Views.attendance = (function () {
         '<div class="sub">' + U.human(date) + '</div></div>' +
       '<div class="stat"><div class="lbl">출석</div><div class="val">' + o.present + '<small>명</small></div></div>' +
       '<div class="stat"><div class="lbl">결석</div><div class="val">' + o.absent + '<small>명</small></div></div>' +
-      '<div class="stat"><div class="lbl">미체크</div><div class="val">' + o.unmarked + '<small>/' + n + '</small></div></div>' +
+      '<div class="stat"><div class="lbl">태도 주의</div><div class="val">' + attitudeIssues() + '<small>명</small></div>' +
+        '<div class="sub">미체크 ' + o.unmarked + '/' + n + '</div></div>' +
     '</div>';
   }
 
@@ -2546,6 +2721,11 @@ Views.attendance = (function () {
       Store.toggleFlag(sid, date, btn.getAttribute('data-flag'));
       refresh();
     });
+    UI.on(el, '[data-attitude]', 'click', function (e, btn) {
+      var sid = btn.closest('[data-sid]').getAttribute('data-sid');
+      Store.toggleAttitude(sid, date, btn.getAttribute('data-attitude'));
+      refresh();
+    });
     UI.on(el, '[data-chk]', 'change', function (e, cb) {
       var sid = cb.closest('[data-sid]').getAttribute('data-sid');
       var patch = {};
@@ -2565,357 +2745,298 @@ Views.attendance = (function () {
 
 </script>
 <script>
-/* ===== 순회 점검 기록 ===== */
-window.Views = window.Views || {};
-Views.patrol = (function () {
-
-  var date = U.ymd();
-
-  function title() { return '순회 점검'; }
-  function sub() { return U.human(date) + ' · 수업 중 학생 상태를 순회하며 기록합니다'; }
-
-  /* ---------- 빠른 순회 ---------- */
-  function quickCards() {
-    var list = Store.studentsOnDay(U.dayOf(date));
-    if (!list.length) list = Store.students({ active: true });
-    if (!list.length) return UI.emptyBox('등록생이 없습니다.', '🧒');
-
-    return '<div class="grid g-3">' + list.map(function (s) {
-      var last = Store.patrols({ studentId: s.id, date: date })[0];
-      return '<div class="card" style="box-shadow:none" data-sid="' + s.id + '">' +
-        '<div class="card-b" style="padding:13px 14px">' +
-          '<div class="row" style="margin-bottom:9px">' +
-            '<span class="seat" style="width:26px;height:26px;border-radius:8px;background:var(--blue-soft);color:#14588f;display:grid;place-items:center;font-size:11.5px;font-weight:700">' +
-              (s.seat ? U.esc(s.seat) : '–') + '</span>' +
-            '<b style="font-size:14px">' + U.esc(s.name) + '</b>' +
-            '<div class="sp"></div>' +
-            (last ? '<span class="tag gray">' + U.hhmm(last.at) + ' 기록</span>' : '') +
-          '</div>' +
-          '<div class="chips" data-states>' +
-            Store.PATROL_STATES.map(function (st) {
-              var cls = Store.isIssue(st) ? 'warn' : 'mint';
-              return '<button class="chip" data-state="' + U.esc(st) + '" data-cls="' + cls + '">' + U.esc(st) + '</button>';
-            }).join('') +
-          '</div>' +
-          '<input type="text" class="mini-note" data-action placeholder="조치사항 (예: 자리 정돈 안내)" style="margin-top:8px">' +
-          '<button class="btn sm primary block" data-save style="margin-top:8px">이 학생 점검 기록</button>' +
-        '</div></div>';
-    }).join('') + '</div>';
-  }
-
-  /* ---------- 기록 로그 ---------- */
-  function log() {
-    var list = Store.patrols({ date: date });
-    if (!list.length) return UI.emptyBox('이 날짜의 순회 점검 기록이 없습니다.', '🔍');
-    return '<div class="table-wrap"><table class="tbl">' +
-      '<thead><tr><th>시간</th><th>학생</th><th>좌석</th><th>학생 상태</th><th>조치사항</th><th>비고</th><th></th></tr></thead><tbody>' +
-      list.map(function (p) {
-        var s = Store.student(p.studentId);
-        var issue = (p.states || []).some(Store.isIssue);
-        return '<tr>' +
-          '<td>' + U.hhmm(p.at) + '</td>' +
-          '<td class="nm">' + U.esc(s ? s.name : '(삭제됨)') + '</td>' +
-          '<td>' + (s && s.seat ? U.esc(s.seat) + '번' : '-') + '</td>' +
-          '<td><span class="tag ' + (issue ? 'warn' : 'ok') + '">' + U.esc((p.states || []).join(' ')) + '</span></td>' +
-          '<td>' + U.esc(p.action || '') + '</td>' +
-          '<td>' + U.esc(p.note || '') + '</td>' +
-          '<td><button class="x-btn" data-del="' + p.id + '" title="삭제">&times;</button></td>' +
-        '</tr>';
-      }).join('') + '</tbody></table></div>';
-  }
-
-  function render(el) {
-    var todays = Store.patrols({ date: date });
-    var issues = todays.filter(function (p) { return (p.states || []).some(Store.isIssue); }).length;
-
-    el.innerHTML =
-      '<div class="grid g-3" style="margin-bottom:16px">' +
-        '<div class="stat accent"><div class="lbl">점검 횟수</div><div class="val">' + todays.length + '<small>건</small></div>' +
-          '<div class="sub">' + U.human(date) + '</div></div>' +
-        '<div class="stat"><div class="lbl">주의 기록</div><div class="val">' + issues + '<small>건</small></div>' +
-          '<div class="sub">졸음 · 이탈 · 휴대폰 · 잡담</div></div>' +
-        '<div class="stat"><div class="lbl">학습중</div><div class="val">' + (todays.length - issues) + '<small>건</small></div></div>' +
-      '</div>' +
-
-      '<div class="card" style="margin-bottom:16px">' +
-        '<div class="card-h"><h2>빠른 순회 기록</h2><div class="sp"></div>' +
-          '<input type="date" id="date" value="' + date + '" style="width:150px">' +
-          '<button class="btn sm" id="today">오늘</button></div>' +
-        '<div class="card-b">' + quickCards() + '</div>' +
-      '</div>' +
-
-      '<div class="card">' +
-        '<div class="card-h"><h2>점검 기록</h2><div class="sp"></div>' +
-          '<button class="btn sm" id="manual">+ 직접 입력</button></div>' +
-        '<div class="card-b tight">' + log() + '</div>' +
-      '</div>';
-
-    el.querySelector('#date').addEventListener('change', function (e) {
-      date = e.target.value; App.setSub(sub()); render(el);
-    });
-    el.querySelector('#today').addEventListener('click', function () {
-      date = U.ymd(); App.setSub(sub()); render(el);
-    });
-
-    /* 상태 칩 토글 */
-    UI.on(el, '[data-state]', 'click', function (e, btn) {
-      btn.classList.toggle('on');
-      btn.classList.toggle(btn.getAttribute('data-cls'));
-    });
-
-    /* 카드에서 저장 */
-    UI.on(el, '[data-save]', 'click', function (e, btn) {
-      var card = btn.closest('[data-sid]');
-      var states = Array.prototype.slice.call(card.querySelectorAll('[data-state].on'))
-        .map(function (b) { return b.getAttribute('data-state'); });
-      if (!states.length) { UI.toast('학생 상태를 하나 이상 선택해 주세요.', true); return; }
-      var at = (date === U.ymd()) ? new Date().toISOString() : U.parseYmd(date).toISOString();
-      Store.savePatrol({
-        studentId: card.getAttribute('data-sid'),
-        at: at,
-        states: states,
-        action: card.querySelector('[data-action]').value.trim(),
-        note: ''
-      });
-      UI.toast('점검 기록을 저장했습니다.');
-      render(el);
-    });
-
-    UI.on(el, '[data-del]', 'click', function (e, btn) {
-      Store.deletePatrol(btn.getAttribute('data-del'));
-      UI.toast('삭제했습니다.');
-      render(el);
-    });
-
-    el.querySelector('#manual').addEventListener('click', openManual);
-  }
-
-  function openManual() {
-    var list = Store.students({ active: true });
-    UI.modal({
-      title: '순회 점검 직접 입력',
-      body:
-        '<div class="form-grid">' +
-          '<label class="fld">학생<select id="m-stu">' +
-            UI.options(list.map(function (s) { return { value: s.id, label: s.name + (s.seat ? ' (' + s.seat + '번)' : '') }; }), '', '학생 선택') +
-          '</select></label>' +
-          '<label class="fld">점검 시간<input type="datetime-local" id="m-at" value="' + U.nowLocalInput() + '"></label>' +
-          '<label class="fld full">학생 상태<div class="chips" id="m-states">' +
-            Store.PATROL_STATES.map(function (st) {
-              var cls = Store.isIssue(st) ? 'warn' : 'mint';
-              return '<button type="button" class="chip" data-state="' + U.esc(st) + '" data-cls="' + cls + '">' + U.esc(st) + '</button>';
-            }).join('') + '</div></label>' +
-          '<label class="fld full">조치사항<input type="text" id="m-action" placeholder="예: 휴대폰 보관함에 보관 안내"></label>' +
-          '<label class="fld full">비고<textarea id="m-note"></textarea></label>' +
-        '</div>',
-      footer: '<button class="btn" data-close>취소</button><button class="btn primary" id="m-save">저장</button>',
-      onMount: function (w) {
-        UI.on(w, '[data-state]', 'click', function (e, btn) {
-          btn.classList.toggle('on');
-          btn.classList.toggle(btn.getAttribute('data-cls'));
-        });
-        w.querySelector('#m-save').addEventListener('click', function () {
-          var sid = w.querySelector('#m-stu').value;
-          if (!sid) { UI.toast('학생을 선택해 주세요.', true); return; }
-          var states = Array.prototype.slice.call(w.querySelectorAll('[data-state].on'))
-            .map(function (b) { return b.getAttribute('data-state'); });
-          if (!states.length) { UI.toast('학생 상태를 선택해 주세요.', true); return; }
-          Store.savePatrol({
-            studentId: sid,
-            at: new Date(w.querySelector('#m-at').value).toISOString(),
-            states: states,
-            action: w.querySelector('#m-action').value.trim(),
-            note: w.querySelector('#m-note').value.trim()
-          });
-          UI.close();
-          UI.toast('저장했습니다.');
-          App.rerender();
-        });
-      }
-    });
-  }
-
-  return { title: title, sub: sub, render: render };
-})();
-
-</script>
-<script>
-/* ===== 좌석 배치도 ===== */
-window.Views = window.Views || {};
-Views.seats = (function () {
-
-  function title() { return '좌석 배치'; }
-  function sub() { return '오늘 출결 상태가 좌석 색상으로 표시됩니다'; }
-
-  function cellClass(s) {
-    if (!s) return 'empty-seat';
-    var r = Store.attendanceFor(s.id, U.ymd());
-    if (!r || !r.status) return '';
-    if (r.status === '결석') return 'att-absent';
-    if ((r.flags || []).length) return 'att-late';
-    return 'att-present';
-  }
-
-  function grid() {
-    var ac = Store.get().academy;
-    var map = Store.seatMap();
-    var out = '';
-    for (var i = 1; i <= ac.seatCount; i++) {
-      var s = map[String(i)];
-      out += '<div class="seat-cell ' + cellClass(s) + '" data-seat="' + i + '">' +
-        '<span class="no">' + i + '</span>' +
-        '<div class="who">' + (s ? U.esc(s.name) : '빈 좌석') + '</div>' +
-        '<div class="meta">' + (s ? U.esc(s.grade || '') + (s.time ? ' · ' + U.esc(s.time) : '') : '클릭해서 배정') + '</div>' +
-      '</div>';
-    }
-    return out;
-  }
-
-  function assign(seatNo) {
-    var map = Store.seatMap();
-    var cur = map[String(seatNo)];
-    var free = Store.students({ active: true }).filter(function (s) { return !s.seat; });
-
-    UI.modal({
-      title: seatNo + '번 좌석',
-      body:
-        (cur ? '<p style="margin:0 0 14px">현재 <b>' + U.esc(cur.name) + '</b> 학생이 사용 중입니다.</p>' : '') +
-        '<label class="fld">배정할 학생' +
-          '<select id="s-stu">' +
-            '<option value="">— 비우기 —</option>' +
-            (cur ? '<option value="' + cur.id + '" selected>' + U.esc(cur.name) + ' (현재)</option>' : '') +
-            free.map(function (s) {
-              return '<option value="' + s.id + '">' + U.esc(s.name) + ' · ' + U.esc(s.grade || '') + '</option>';
-            }).join('') +
-          '</select></label>' +
-        (free.length ? '' : '<p class="hint" style="margin-top:10px">좌석이 없는 등록생이 없습니다. 다른 학생을 옮기려면 그 학생의 좌석을 먼저 비워 주세요.</p>'),
-      footer: '<button class="btn" data-close>취소</button><button class="btn primary" id="s-save">저장</button>',
-      onMount: function (w) {
-        w.querySelector('#s-save').addEventListener('click', function () {
-          var pick = w.querySelector('#s-stu').value;
-          if (cur && cur.id !== pick) Store.saveStudent({ id: cur.id, seat: '' });
-          if (pick) Store.saveStudent({ id: pick, seat: String(seatNo) });
-          UI.close();
-          UI.toast('좌석을 저장했습니다.');
-          App.rerender();
-        });
-      }
-    });
-  }
-
-  function render(el) {
-    var ac = Store.get().academy;
-    var active = Store.students({ active: true });
-    var noSeat = active.filter(function (s) { return !s.seat; });
-
-    el.innerHTML =
-      '<div class="grid g-21">' +
-        '<div class="card"><div class="card-h"><h2>좌석 배치도</h2><div class="sp"></div>' +
-          '<span class="hint">🟩 출석 · 🟨 지각/외출 · 🟥 결석</span></div>' +
-          '<div class="card-b"><div class="seat-grid">' + grid() + '</div></div></div>' +
-
-        '<div class="stack">' +
-          '<div class="card"><div class="card-h"><h2>좌석 미배정</h2></div>' +
-            '<div class="card-b">' +
-              (noSeat.length ? noSeat.map(function (s) {
-                return '<div class="memo-item"><div class="txt"><b>' + U.esc(s.name) + '</b> ' +
-                  '<span class="gr" style="font-size:12px;color:#63778a">' + U.esc(s.grade || '') + '</span></div></div>';
-              }).join('') : '<div class="hint">모든 등록생에게 좌석이 배정되어 있습니다.</div>') +
-            '</div></div>' +
-
-          '<div class="card"><div class="card-h"><h2>좌석 수 설정</h2></div>' +
-            '<div class="card-b">' +
-              '<div class="row"><input type="number" id="seat-n" min="1" max="60" value="' + ac.seatCount + '" style="width:100px">' +
-              '<button class="btn" id="seat-save">적용</button></div>' +
-              '<p class="hint" style="margin:10px 0 0">좌석 수를 줄이면 범위를 벗어난 학생의 좌석 배정이 해제됩니다.</p>' +
-            '</div></div>' +
-        '</div>' +
-      '</div>';
-
-    UI.on(el, '[data-seat]', 'click', function (e, cell) {
-      assign(+cell.getAttribute('data-seat'));
-    });
-
-    el.querySelector('#seat-save').addEventListener('click', function () {
-      var n = parseInt(el.querySelector('#seat-n').value, 10);
-      if (!n || n < 1 || n > 60) { UI.toast('1~60 사이로 입력해 주세요.', true); return; }
-      Store.students({ includeArchived: true }).forEach(function (s) {
-        if (s.seat && +s.seat > n) Store.saveStudent({ id: s.id, seat: '' });
-      });
-      Store.saveAcademy({ seatCount: n });
-      UI.toast('좌석 수를 ' + n + '석으로 변경했습니다.');
-      render(el);
-    });
-  }
-
-  return { title: title, sub: sub, render: render };
-})();
-
-</script>
-<script>
-/* ===== 수업 시간표 (요일 × 시간 반편성 보드) ===== */
+/* ===== 반(클래스) 관리 · 수업 시간표 ===== */
 window.Views = window.Views || {};
 Views.classes = (function () {
 
-  function title() { return '수업 시간표'; }
-  function sub() { return '요일 · 시간대별 소수정예 반편성 현황'; }
+  function title() { return '반 · 시간표'; }
+  function sub() {
+    var cs = Store.classes();
+    var assigned = Store.students({ active: true }).filter(function (s) { return s.classId; }).length;
+    return '반 ' + cs.length + '개 · 배정된 학생 ' + assigned + '명';
+  }
 
+  /* ---------- 반 카드 ---------- */
+  function classCard(c) {
+    var members = Store.studentsInClass(c.id);
+    var full = c.capacity && members.length >= c.capacity;
+    return '<div class="class-card" style="--klass:' + U.esc(c.color || '#1a7fd4') + '">' +
+      '<div class="class-top">' +
+        '<div>' +
+          '<div class="class-name">' + U.esc(c.name) + '</div>' +
+          '<div class="class-meta">' +
+            (c.days && c.days.length ? U.esc(c.days.join('·')) : '요일 미정') +
+            (c.time ? ' · ' + U.esc(c.time) : '') +
+            (c.teacher ? ' · ' + U.esc(c.teacher) : '') +
+          '</div>' +
+        '</div>' +
+        '<span class="tag ' + (full ? 'warn' : 'gray') + '">' + members.length +
+          (c.capacity ? '/' + c.capacity : '') + '명</span>' +
+      '</div>' +
+      (c.note ? '<div class="class-note">' + U.esc(c.note) + '</div>' : '') +
+      '<div class="class-members">' +
+        (members.length
+          ? members.map(function (s) {
+              return '<span class="pill" data-open="' + s.id + '">' + U.esc(s.name) +
+                (s.grade ? ' · ' + U.esc(s.grade.replace('학년', '')) : '') + '</span>';
+            }).join('')
+          : '<span class="hint">배정된 학생이 없습니다.</span>') +
+      '</div>' +
+      '<div class="class-actions">' +
+        '<button class="btn sm" data-members="' + c.id + '">학생 배정</button>' +
+        '<button class="btn sm ghost" data-edit="' + c.id + '">반 수정</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  /* ---------- 주간 시간표 ---------- */
   function board() {
     var ac = Store.get().academy;
-    var active = Store.students({ active: true });
-    var out = '<div class="tt"><div class="hd"></div>' +
-      Store.WEEKDAYS.slice(0, 5).map(function (d) { return '<div class="hd">' + d + '요일</div>'; }).join('');
+    var cs = Store.classes();
+    var days = Store.WEEKDAYS.slice(0, 6);
+
+    var out = '<div class="tt" style="grid-template-columns:74px repeat(' + days.length + ',1fr)">' +
+      '<div class="hd"></div>' +
+      days.map(function (d) { return '<div class="hd">' + d + '</div>'; }).join('');
 
     ac.times.forEach(function (t) {
       out += '<div class="tm">' + U.esc(t) + '</div>';
-      Store.WEEKDAYS.slice(0, 5).forEach(function (d) {
-        var members = active.filter(function (s) {
-          return s.time === t && (s.days || []).indexOf(d) >= 0;
+      days.forEach(function (d) {
+        var here = cs.filter(function (c) {
+          return c.time === t && (c.days || []).indexOf(d) >= 0;
         });
-        out += '<div class="cell">' + members.map(function (s) {
-          return '<span class="pill" data-open="' + s.id + '" style="cursor:pointer">' +
-            U.esc(s.name) + (s.grade ? ' · ' + U.esc(s.grade.replace('학년', '')) : '') + '</span>';
+        out += '<div class="cell">' + here.map(function (c) {
+          var n = Store.studentsInClass(c.id).length;
+          return '<button class="tt-block" data-edit="' + c.id + '" ' +
+            'style="--klass:' + U.esc(c.color || '#1a7fd4') + '">' +
+            '<b>' + U.esc(c.name) + '</b><span>' + n + '명' +
+            (c.teacher ? ' · ' + U.esc(c.teacher) : '') + '</span></button>';
         }).join('') + '</div>';
       });
     });
     return out + '</div>';
   }
 
-  function byGrade() {
-    var active = Store.students({ active: true });
-    var groups = {};
-    active.forEach(function (s) {
-      var g = s.grade || '미지정';
-      (groups[g] = groups[g] || []).push(s);
+  /* ---------- 반 만들기 / 수정 ---------- */
+  function openClassForm(id) {
+    var c = id ? Store.klass(id) : null;
+    var ac = Store.get().academy;
+    var colors = Store.CLASS_COLORS;
+    var cur = (c && c.color) || colors[Store.classes().length % colors.length];
+
+    UI.modal({
+      title: c ? U.esc(c.name) + ' 반 수정' : '반 만들기',
+      body:
+        '<div class="form-grid">' +
+          '<label class="fld">반 이름 *<input type="text" id="k-name" value="' + U.esc(c ? c.name : '') + '" placeholder="예: 파닉스 A반"></label>' +
+          '<label class="fld">수업 시간<select id="k-time">' + UI.options(ac.times, c ? c.time : '', '선택 안 함') + '</select></label>' +
+          '<label class="fld full">수업 요일' +
+            '<div class="chips" id="k-days">' + Store.WEEKDAYS.map(function (d) {
+              var on = c && (c.days || []).indexOf(d) >= 0;
+              return '<button type="button" class="chip' + (on ? ' on blue' : '') + '" data-day="' + d + '">' + d + '</button>';
+            }).join('') + '</div></label>' +
+          '<label class="fld">담당 선생님<input type="text" id="k-teacher" value="' + U.esc(c && c.teacher ? c.teacher : '') + '" placeholder="예: 김선생"></label>' +
+          '<label class="fld">정원 <span style="font-weight:400">(비우면 제한 없음)</span>' +
+            '<input type="number" id="k-cap" min="1" max="40" value="' + (c && c.capacity ? c.capacity : '') + '" placeholder="예: 6"></label>' +
+          '<label class="fld full">반 색상' +
+            '<div class="chips" id="k-colors">' + colors.map(function (col) {
+              return '<button type="button" class="swatch' + (col === cur ? ' on' : '') + '" data-color="' + col + '" ' +
+                'style="background:' + col + '" aria-label="' + col + '"></button>';
+            }).join('') + '</div></label>' +
+          '<label class="fld full">메모<input type="text" id="k-note" value="' + U.esc(c && c.note ? c.note : '') + '" placeholder="교재, 진도 등"></label>' +
+        '</div>',
+      footer: (c ? '<button class="btn danger" id="k-del">반 삭제</button><div class="sp"></div>' : '') +
+        '<button class="btn" data-close>취소</button><button class="btn primary" id="k-save">저장</button>',
+      onMount: function (w) {
+        var days = (c && c.days ? c.days.slice() : []);
+        var color = cur;
+        UI.on(w, '[data-day]', 'click', function (e, btn) {
+          var d = btn.getAttribute('data-day');
+          var i = days.indexOf(d);
+          if (i >= 0) { days.splice(i, 1); btn.classList.remove('on', 'blue'); }
+          else { days.push(d); btn.classList.add('on', 'blue'); }
+        });
+        UI.on(w, '[data-color]', 'click', function (e, btn) {
+          color = btn.getAttribute('data-color');
+          w.querySelectorAll('.swatch').forEach(function (b) { b.classList.remove('on'); });
+          btn.classList.add('on');
+        });
+        w.querySelector('#k-save').addEventListener('click', function () {
+          var name = w.querySelector('#k-name').value.trim();
+          if (!name) { UI.toast('반 이름을 입력해 주세요.', true); return; }
+          var cap = w.querySelector('#k-cap').value;
+          Store.saveClass({
+            id: c ? c.id : null,
+            name: name,
+            days: days,
+            time: w.querySelector('#k-time').value,
+            teacher: w.querySelector('#k-teacher').value.trim(),
+            capacity: cap === '' ? '' : Number(cap),
+            color: color,
+            note: w.querySelector('#k-note').value.trim()
+          });
+          UI.close();
+          UI.toast(c ? '반 정보를 수정했습니다.' : name + ' 반을 만들었습니다.');
+          App.rerender();
+        });
+        if (c) {
+          w.querySelector('#k-del').addEventListener('click', function () {
+            var n = Store.studentsInClass(c.id).length;
+            UI.close();
+            UI.confirm('<b>' + U.esc(c.name) + '</b> 반을 삭제할까요?<br>' +
+              '<span style="font-size:13px;color:#63778a">' +
+              (n ? '소속 학생 ' + n + '명은 반 미배정 상태가 되고, 출결·수강료 기록은 그대로 남습니다.'
+                 : '소속 학생이 없어 다른 기록에는 영향이 없습니다.') + '</span>',
+              function () {
+                Store.deleteClass(c.id);
+                UI.toast('반을 삭제했습니다.');
+                App.rerender();
+              }, { danger: true, yes: '삭제' });
+          });
+        }
+      }
     });
-    var keys = Store.GRADES.concat(['미지정']).filter(function (g) { return groups[g]; });
-    if (!keys.length) return UI.emptyBox('등록생이 없습니다.', '🧒');
-    return '<div class="grid g-3">' + keys.map(function (g) {
-      return '<div><div class="section-title" style="margin-top:0">' + U.esc(g) + ' · ' + groups[g].length + '명</div>' +
-        groups[g].map(function (s) {
-          return '<div class="memo-item"><div class="txt clickable" data-open="' + s.id + '"><b>' + U.esc(s.name) + '</b> ' +
-            '<span style="font-size:12px;color:#63778a">' + U.esc((s.days || []).join('·')) +
-            (s.time ? ' / ' + U.esc(s.time) : '') + '</span></div></div>';
-        }).join('') + '</div>';
-    }).join('') + '</div>';
   }
 
+  /* ---------- 학생 배정 ---------- */
+  function openMembers(id) {
+    var c = Store.klass(id);
+    if (!c) return;
+    var all = Store.students({ active: true });
+
+    UI.modal({
+      title: U.esc(c.name) + ' 학생 배정',
+      wide: true,
+      body:
+        '<p class="hint" style="margin-top:0">이 반에 넣을 학생을 고르세요. 다른 반에 있던 학생을 고르면 이 반으로 옮겨집니다.</p>' +
+        '<div class="member-list">' +
+          (all.length ? all.map(function (s) {
+            var other = s.classId && s.classId !== c.id ? Store.klass(s.classId) : null;
+            return '<label class="member-row">' +
+              '<input type="checkbox" class="cbx" data-stu="' + s.id + '"' + (s.classId === c.id ? ' checked' : '') + '>' +
+              '<span class="member-name">' + U.esc(s.name) + '</span>' +
+              '<span class="hint">' + U.esc(s.grade || '') + '</span>' +
+              (other ? '<span class="tag gray">' + U.esc(other.name) + '</span>' : '') +
+            '</label>';
+          }).join('') : UI.emptyBox('등록생이 없습니다.', '🧒')) +
+        '</div>',
+      footer: '<span class="hint" id="m-count"></span><div class="sp"></div>' +
+              '<button class="btn" data-close>취소</button><button class="btn primary" id="m-save">저장</button>',
+      onMount: function (w) {
+        function refreshCount() {
+          var n = w.querySelectorAll('[data-stu]:checked').length;
+          w.querySelector('#m-count').textContent = n + '명 선택' +
+            (c.capacity ? ' · 정원 ' + c.capacity + '명' : '');
+        }
+        refreshCount();
+        UI.on(w, '[data-stu]', 'change', refreshCount);
+        w.querySelector('#m-save').addEventListener('click', function () {
+          all.forEach(function (s) {
+            var box = w.querySelector('[data-stu="' + s.id + '"]');
+            if (!box) return;
+            if (box.checked && s.classId !== c.id) Store.saveStudent({ id: s.id, classId: c.id });
+            else if (!box.checked && s.classId === c.id) Store.saveStudent({ id: s.id, classId: '' });
+          });
+          UI.close();
+          UI.toast('학생 배정을 저장했습니다.');
+          App.rerender();
+        });
+      }
+    });
+  }
+
+  /* ---------- 기존 시간표로 반 자동 만들기 ---------- */
+  function autoCreate() {
+    var groups = {};
+    Store.students({ active: true }).forEach(function (s) {
+      if (s.classId) return;
+      var days = (s.days || []).slice().sort(function (a, b) {
+        return Store.WEEKDAYS.indexOf(a) - Store.WEEKDAYS.indexOf(b);
+      });
+      if (!days.length && !s.time) return;
+      var key = days.join('·') + '|' + (s.time || '');
+      (groups[key] = groups[key] || { days: days, time: s.time || '', members: [] }).members.push(s);
+    });
+    var keys = Object.keys(groups);
+    if (!keys.length) {
+      UI.toast('반으로 묶을 학생이 없습니다. 학생에게 요일·시간이 있어야 합니다.', true);
+      return;
+    }
+    UI.confirm(
+      '지금 학생들의 요일·시간을 묶어 반 ' + keys.length + '개를 만들까요?<br>' +
+      '<span style="font-size:13px;color:#63778a">' +
+      keys.map(function (k) {
+        var g = groups[k];
+        return '· ' + (g.days.join('·') || '요일없음') + ' ' + (g.time || '') + ' — ' + g.members.length + '명';
+      }).join('<br>') +
+      '<br><br>만든 뒤 반 이름은 자유롭게 바꾸실 수 있습니다.</span>',
+      function () {
+        keys.forEach(function (k) {
+          var g = groups[k];
+          var name = (g.days.join('') || '요일미정') + ' ' + (g.time || '');
+          var cid = Store.saveClass({ name: name.trim(), days: g.days, time: g.time });
+          g.members.forEach(function (s) { Store.saveStudent({ id: s.id, classId: cid }); });
+        });
+        UI.toast(keys.length + '개 반을 만들었습니다.');
+        App.rerender();
+      }, { yes: '만들기' });
+  }
+
+  /* ---------- 렌더 ---------- */
   function render(el) {
+    var cs = Store.classes();
+    var unassigned = Store.students({ active: true }).filter(function (s) { return !s.classId; });
+
     el.innerHTML =
       '<div class="stack">' +
-        '<div class="card"><div class="card-h"><h2>요일 · 시간별 출석부</h2><div class="sp"></div>' +
-          '<span class="hint">학생 이름을 누르면 상세 정보가 열립니다</span></div>' +
-          '<div class="card-b" style="overflow-x:auto">' + board() + '</div></div>' +
-        '<div class="card"><div class="card-h"><h2>학년별 출석부</h2></div>' +
-          '<div class="card-b">' + byGrade() + '</div></div>' +
+
+        '<div class="card">' +
+          '<div class="card-h"><h2>반 목록</h2><div class="sp"></div>' +
+            (cs.length ? '' : '<button class="btn" id="auto">기존 시간표로 반 만들기</button>') +
+            '<button class="btn primary" id="add">+ 반 만들기</button></div>' +
+          '<div class="card-b">' +
+            (cs.length
+              ? '<div class="class-grid">' + cs.map(classCard).join('') + '</div>'
+              : UI.emptyBox('아직 만든 반이 없습니다. [+ 반 만들기]로 시작하세요.', '🗓️')) +
+          '</div>' +
+        '</div>' +
+
+        (cs.length ?
+        '<div class="card"><div class="card-h"><h2>주간 시간표</h2><div class="sp"></div>' +
+          '<span class="hint">반을 누르면 수정할 수 있습니다</span></div>' +
+          '<div class="card-b" style="overflow-x:auto">' + board() + '</div></div>' : '') +
+
+        (unassigned.length ?
+        '<div class="card"><div class="card-h"><h2>반 미배정 학생</h2><div class="sp"></div>' +
+          '<span class="tag warn">' + unassigned.length + '명</span></div>' +
+          '<div class="card-b">' +
+            '<p class="hint" style="margin-top:0">반에 넣지 않아도 학생 개인의 요일·시간으로 출결이 잡힙니다. ' +
+            '반에 넣으면 반 시간표를 따릅니다.</p>' +
+            '<div class="chips" style="margin-top:12px">' +
+              unassigned.map(function (s) {
+                var sc = Store.scheduleOf(s);
+                return '<span class="pill" data-open="' + s.id + '">' + U.esc(s.name) +
+                  (sc.days.length ? ' · ' + U.esc(sc.days.join('')) : '') +
+                  (sc.time ? ' ' + U.esc(sc.time) : '') + '</span>';
+              }).join('') +
+            '</div>' +
+          '</div></div>' : '') +
+
       '</div>';
 
-    UI.on(el, '[data-open]', 'click', function (e, node) {
-      Views.students.openDetail(node.getAttribute('data-open'));
+    var add = el.querySelector('#add');
+    if (add) add.addEventListener('click', function () { openClassForm(null); });
+    var auto = el.querySelector('#auto');
+    if (auto) auto.addEventListener('click', autoCreate);
+
+    UI.on(el, '[data-edit]', 'click', function (e, b) { openClassForm(b.getAttribute('data-edit')); });
+    UI.on(el, '[data-members]', 'click', function (e, b) { openMembers(b.getAttribute('data-members')); });
+    UI.on(el, '[data-open]', 'click', function (e, b) {
+      Views.students.openDetail(b.getAttribute('data-open'));
     });
   }
 
-  return { title: title, sub: sub, render: render };
+  return { title: title, sub: sub, render: render, openClassForm: openClassForm };
 })();
 
 </script>
@@ -3298,7 +3419,7 @@ Views.stats = (function () {
       t.present += d.sum.present; t.absent += d.sum.absent; t.marked += d.sum.total;
       t.planner += d.sum.planner; t.homework += d.sum.homework;
       t.late += d.sum.flags['지각']; t.out += d.sum.flags['외출']; t.early += d.sum.flags['조퇴'];
-      t.issues += d.sum.patrolIssues;
+      t.issues += d.sum.attitudeIssues;
     });
     return t;
   }
@@ -3338,8 +3459,8 @@ Views.stats = (function () {
           '<div class="sub">지각 ' + t.late + ' · 외출 ' + t.out + ' · 조퇴 ' + t.early + '</div></div>' +
         '<div class="stat"><div class="lbl">숙제 이행</div><div class="val">' + U.pct(t.homework, t.marked) + '<small>%</small></div>' +
           '<div class="sub">' + t.homework + '회 완료</div></div>' +
-        '<div class="stat"><div class="lbl">순회 주의</div><div class="val">' + t.issues + '<small>건</small></div>' +
-          '<div class="sub">졸음 · 이탈 · 휴대폰 등</div></div>' +
+        '<div class="stat"><div class="lbl">태도 주의</div><div class="val">' + t.issues + '<small>일</small></div>' +
+          '<div class="sub">졸음 · 이탈 · 휴대폰 · 잡담</div></div>' +
       '</div>' +
 
       '<div class="grid g-21" style="margin-bottom:16px">' +
@@ -3353,7 +3474,7 @@ Views.stats = (function () {
           (lowest.length ? lowest.map(function (d) {
             return '<div class="memo-item"><div class="txt"><b>' + U.esc(d.s.name) + '</b>' +
               '<br><span style="font-size:12px;color:#63778a">출석률 ' + d.sum.rate + '% · 결석 ' + d.sum.absent +
-              '회 · 지각 ' + d.sum.flags['지각'] + '회 · 순회 주의 ' + d.sum.patrolIssues + '건</span></div></div>';
+              '회 · 지각 ' + d.sum.flags['지각'] + '회 · 태도 주의 ' + d.sum.attitudeIssues + '일</span></div></div>';
           }).join('') : '<div class="hint">집계할 출결 기록이 없습니다.</div>') +
         '</div></div>' +
       '</div>' +
@@ -3363,17 +3484,17 @@ Views.stats = (function () {
 
       '<div class="card"><div class="card-h"><h2>학생별 상세 집계</h2></div>' +
         '<div class="table-wrap"><table class="tbl">' +
-          '<thead><tr><th>학생</th><th>학년</th><th class="num">수업</th><th class="num">출석</th><th class="num">결석</th>' +
+          '<thead><tr><th>학생</th><th>반</th><th class="num">수업</th><th class="num">출석</th><th class="num">결석</th>' +
           '<th class="num">출석률</th><th class="num">지각</th><th class="num">외출</th><th class="num">조퇴</th>' +
-          '<th class="num">플래너</th><th class="num">숙제</th><th class="num">순회주의</th></tr></thead><tbody>' +
+          '<th class="num">플래너</th><th class="num">숙제</th><th class="num">태도주의</th></tr></thead><tbody>' +
           (data.length ? data.map(function (d) {
             return '<tr class="clickable" data-open="' + d.s.id + '">' +
-              '<td class="nm">' + U.esc(d.s.name) + '</td><td>' + U.esc(d.s.grade || '-') + '</td>' +
+              '<td class="nm">' + U.esc(d.s.name) + '</td><td>' + U.esc(Store.scheduleOf(d.s).className || '-') + '</td>' +
               '<td class="num">' + d.sum.total + '</td><td class="num">' + d.sum.present + '</td>' +
               '<td class="num">' + d.sum.absent + '</td><td class="num">' + (d.sum.total ? d.sum.rate + '%' : '-') + '</td>' +
               '<td class="num">' + d.sum.flags['지각'] + '</td><td class="num">' + d.sum.flags['외출'] + '</td>' +
               '<td class="num">' + d.sum.flags['조퇴'] + '</td><td class="num">' + d.sum.planner + '</td>' +
-              '<td class="num">' + d.sum.homework + '</td><td class="num">' + d.sum.patrolIssues + '</td></tr>';
+              '<td class="num">' + d.sum.homework + '</td><td class="num">' + d.sum.attitudeIssues + '</td></tr>';
           }).join('') : '<tr><td colspan="12">' + UI.emptyBox('등록생이 없습니다.', '🧒') + '</td></tr>') +
         '</tbody></table></div></div>';
 
@@ -3388,11 +3509,11 @@ Views.stats = (function () {
     });
 
     el.querySelector('#csv').addEventListener('click', function () {
-      var head = ['학생', '학년', '수업일수', '출석', '결석', '출석률(%)', '지각', '외출', '조퇴', '플래너작성', '숙제완료', '순회주의'];
+      var head = ['학생', '반', '수업일수', '출석', '결석', '출석률(%)', '지각', '외출', '조퇴', '플래너작성', '숙제완료', '태도주의'];
       var body = rowsData().map(function (d) {
-        return [d.s.name, d.s.grade, d.sum.total, d.sum.present, d.sum.absent, d.sum.rate,
+        return [d.s.name, Store.scheduleOf(d.s).className, d.sum.total, d.sum.present, d.sum.absent, d.sum.rate,
                 d.sum.flags['지각'], d.sum.flags['외출'], d.sum.flags['조퇴'],
-                d.sum.planner, d.sum.homework, d.sum.patrolIssues];
+                d.sum.planner, d.sum.homework, d.sum.attitudeIssues];
       });
       U.download('고래영어_월간통계_' + month + '.csv', U.toCsv([head].concat(body)), 'text/csv');
       UI.toast('CSV 파일을 내려받았습니다.');
@@ -3426,12 +3547,12 @@ Views.share = (function () {
     return {
       v: 1,
       academy: { name: ac.name, campus: ac.campus, phone: ac.phone, address: ac.address },
-      student: { name: s.name, grade: s.grade || '', seat: s.seat || '' },
+      student: { name: s.name, grade: s.grade || '', className: Store.scheduleOf(s).className },
       period: { from: from, to: to },
       stats: {
         total: sum.total, present: sum.present, absent: sum.absent, rate: sum.rate,
         planner: sum.planner, planDone: sum.planDone, homework: sum.homework,
-        homeworkRate: sum.homeworkRate, flags: sum.flags, patrolIssues: sum.patrolIssues
+        homeworkRate: sum.homeworkRate, flags: sum.flags, attitudeIssues: sum.attitudeIssues
       },
       records: sum.records.map(function (r) {
         return { d: r.date, s: r.status, f: r.flags || [], p: !!r.planner, c: !!r.planDone, h: !!r.homework, n: r.note || '' };
@@ -3461,7 +3582,8 @@ Views.share = (function () {
       '<div class="report-hd">' +
         '<div style="font-size:12.5px;color:#c9e3f8">🐋 ' + U.esc(rep.academy.name) + ' ' + U.esc(rep.academy.campus) + ' 학습 리포트</div>' +
         '<div class="who" style="margin-top:6px">' + U.esc(rep.student.name) +
-          (rep.student.grade ? ' <span style="font-size:14px;font-weight:500">· ' + U.esc(rep.student.grade) + '</span>' : '') + '</div>' +
+          (rep.student.grade ? ' <span style="font-size:14px;font-weight:500">· ' + U.esc(rep.student.grade) + '</span>' : '') +
+          (rep.student.className ? ' <span style="font-size:13px;font-weight:500;opacity:.85">· ' + U.esc(rep.student.className) + '</span>' : '') + '</div>' +
         '<div class="sub">' + U.human(rep.period.from) + ' ~ ' + U.human(rep.period.to) + '</div>' +
       '</div>' +
       '<div class="report-bd">' +
@@ -3642,7 +3764,7 @@ Views.settings = (function () {
     return {
       students: d.students.length,
       attendance: d.attendance.length,
-      patrols: d.patrols.length,
+      classes: d.classes.length,
       memos: d.memos.length,
       tasks: d.tasks.length,
       payments: d.payments.length
@@ -3651,16 +3773,24 @@ Views.settings = (function () {
 
   /** 처음 사용해 보는 원장님을 위한 예시 데이터 */
   function seedSample() {
+    // 반 3개 — 학생은 반의 시간표를 따릅니다.
+    var classDefs = [
+      { name: '파닉스 A반', days: ['월', '수', '금'], time: '3시', teacher: '원장', capacity: 6 },
+      { name: '초등 리딩반', days: ['화', '목'], time: '5시', teacher: '원장', capacity: 6 },
+      { name: '중등 패턴반', days: ['월', '수', '금'], time: '6시', teacher: '원장', capacity: 5 }
+    ];
+    var classIds = classDefs.map(function (c) { return Store.saveClass(c); });
+
     var names = ['김서준', '이하은', '박도윤', '최지우', '정시우', '강예린', '윤하준', '임채원'];
     var grades = ['3학년', '4학년', '4학년', '5학년', '5학년', '6학년', '중1', '중2'];
-    var dayset = [['월', '수', '금'], ['화', '목'], ['월', '수', '금'], ['화', '목'],
-                  ['월', '수', '금'], ['화', '목'], ['월', '수', '금'], ['화', '목']];
-    var times = ['3시', '4시', '3시', '5시', '4시', '5시', '6시', '6시'];
+    var belongs = [0, 1, 0, 1, 0, 1, 2, 2];   // 각 학생이 속한 반
+    var dayset = belongs.map(function (b) { return classDefs[b].days; });
 
     var ids = names.map(function (n, i) {
       return Store.saveStudent({
-        name: n, grade: grades[i], status: '등록생', seat: String(i + 1),
-        days: dayset[i], time: times[i],
+        name: n, grade: grades[i], status: '등록생',
+        classId: classIds[belongs[i]],
+        days: [], time: '',
         phone: '', parentPhone: '010-0000-000' + i, parentEmail: '',
         fee: i >= 6 ? 280000 : '', billingDay: '',
         note: ''
@@ -3676,8 +3806,16 @@ Views.settings = (function () {
         var roll = Math.random();
         var status = roll > 0.12 ? '출석' : '결석';
         var flags = (status === '출석' && Math.random() > 0.85) ? ['지각'] : [];
+        // 수업 태도 — 대부분 집중, 가끔 주의 항목
+        var attitude = [];
+        if (status === '출석') {
+          var r = Math.random();
+          if (r > 0.88) attitude = [Store.ATTITUDES[1 + Math.floor(Math.random() * 4)]];
+          else if (r > 0.35) attitude = [Store.ATTITUDES[0]];
+        }
         Store.setAttendance(id, date, {
-          status: status, flags: flags,
+          status: status, flags: flags, attitude: attitude,
+          attitudeNote: (attitude.length && Store.isIssue(attitude[0])) ? '자리 정돈 후 재집중 안내' : '',
           planner: status === '출석' && Math.random() > 0.25,
           planDone: status === '출석' && Math.random() > 0.35,
           homework: status === '출석' && Math.random() > 0.3,
@@ -3685,17 +3823,6 @@ Views.settings = (function () {
         });
       });
     }
-
-    // 오늘 순회 점검 몇 건
-    ids.slice(0, 4).forEach(function (id, i) {
-      Store.savePatrol({
-        studentId: id,
-        at: new Date(Date.now() - i * 25 * 60000).toISOString(),
-        states: [i === 1 ? Store.PATROL_STATES[1] : Store.PATROL_STATES[0]],
-        action: i === 1 ? '잠깐 스트레칭 후 재집중 안내' : '',
-        note: ''
-      });
-    });
 
     // 이번 달 · 지난 달 수강료 청구서와 납부 기록
     [U.ym(U.parseYmd(U.daysAgo(35))), U.ym(new Date())].forEach(function (m, mi) {
@@ -3863,7 +3990,7 @@ Views.settings = (function () {
             '<div class="row" style="gap:6px">' +
               '<span class="tag blue">학생 ' + c.students + '</span>' +
               '<span class="tag blue">출결 ' + c.attendance + '</span>' +
-              '<span class="tag blue">순회 ' + c.patrols + '</span>' +
+              '<span class="tag blue">반 ' + c.classes + '</span>' +
               '<span class="tag blue">메모 ' + c.memos + '</span>' +
               '<span class="tag blue">업무 ' + c.tasks + '</span>' +
               '<span class="tag blue">수강료 ' + c.payments + '</span>' +

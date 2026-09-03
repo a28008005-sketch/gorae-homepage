@@ -5,8 +5,8 @@ Views.attendance = (function () {
   var date = U.ymd();
   var scope = 'day';   // day = 해당 요일 수업생만, all = 전체 등록생
 
-  function title() { return '출결 체크 · 일일학습 관리'; }
-  function sub() { return U.human(date); }
+  function title() { return '출결 · 일일학습 관리'; }
+  function sub() { return U.human(date) + ' · 출결과 수업 태도를 한 줄에서 기록합니다'; }
 
   function targets() {
     return scope === 'day' ? Store.studentsOnDay(U.dayOf(date)) : Store.students({ active: true });
@@ -15,11 +15,14 @@ Views.attendance = (function () {
   function row(s) {
     var r = Store.attendanceFor(s.id, date) || {};
     var flags = r.flags || [];
+    var attitude = r.attitude || [];
+    var sc = Store.scheduleOf(s);
     return '<div class="att-row" data-sid="' + s.id + '">' +
       '<div class="att-who">' +
-        '<span class="seat">' + (s.seat ? U.esc(s.seat) : '–') + '</span>' +
+        '<span class="klass-dot" style="background:' + U.esc(sc.color || '#cbd5e0') + '"></span>' +
         '<span><span class="nm">' + U.esc(s.name) + '</span><br>' +
-        '<span class="gr">' + U.esc(s.grade || '') + (s.time ? ' · ' + U.esc(s.time) : '') + '</span></span>' +
+        '<span class="gr">' + U.esc(sc.className || s.grade || '') +
+          (sc.time ? ' · ' + U.esc(sc.time) : '') + '</span></span>' +
       '</div>' +
 
       '<div class="att-checks">' +
@@ -39,6 +42,14 @@ Views.attendance = (function () {
           '<label class="check' + (r.planDone ? ' on' : '') + '"><input type="checkbox" data-chk="planDone"' + (r.planDone ? ' checked' : '') + '>계획 실천</label>' +
           '<label class="check' + (r.homework ? ' on' : '') + '"><input type="checkbox" data-chk="homework"' + (r.homework ? ' checked' : '') + '>숙제</label>' +
         '</div>' +
+        '<div class="att-checks att-attitude">' +
+          '<span class="att-label">수업 태도</span>' +
+          Store.ATTITUDES.map(function (a) {
+            var on = attitude.indexOf(a) >= 0;
+            var cls = Store.isIssue(a) ? 'warn' : 'mint';
+            return '<button class="chip' + (on ? ' on ' + cls : '') + '" data-attitude="' + U.esc(a) + '">' + U.esc(a) + '</button>';
+          }).join('') +
+        '</div>' +
         '<input type="text" class="mini-note" data-note placeholder="비고 (오늘 학습 내용, 전달 사항)" value="' + U.esc(r.note || '') + '">' +
       '</div>' +
     '</div>';
@@ -54,6 +65,13 @@ Views.attendance = (function () {
     return list.map(row).join('');
   }
 
+  /** 오늘 주의 태도가 찍힌 학생 수 */
+  function attitudeIssues() {
+    return Store.attendanceOn(date).filter(function (r) {
+      return (r.attitude || []).some(Store.isIssue);
+    }).length;
+  }
+
   function statBar() {
     var o = Store.dayOverview(date);
     var n = scope === 'day' ? o.expected.length : Store.students({ active: true }).length;
@@ -62,7 +80,8 @@ Views.attendance = (function () {
         '<div class="sub">' + U.human(date) + '</div></div>' +
       '<div class="stat"><div class="lbl">출석</div><div class="val">' + o.present + '<small>명</small></div></div>' +
       '<div class="stat"><div class="lbl">결석</div><div class="val">' + o.absent + '<small>명</small></div></div>' +
-      '<div class="stat"><div class="lbl">미체크</div><div class="val">' + o.unmarked + '<small>/' + n + '</small></div></div>' +
+      '<div class="stat"><div class="lbl">태도 주의</div><div class="val">' + attitudeIssues() + '<small>명</small></div>' +
+        '<div class="sub">미체크 ' + o.unmarked + '/' + n + '</div></div>' +
     '</div>';
   }
 
@@ -138,6 +157,11 @@ Views.attendance = (function () {
     UI.on(el, '[data-flag]', 'click', function (e, btn) {
       var sid = btn.closest('[data-sid]').getAttribute('data-sid');
       Store.toggleFlag(sid, date, btn.getAttribute('data-flag'));
+      refresh();
+    });
+    UI.on(el, '[data-attitude]', 'click', function (e, btn) {
+      var sid = btn.closest('[data-sid]').getAttribute('data-sid');
+      Store.toggleAttitude(sid, date, btn.getAttribute('data-attitude'));
       refresh();
     });
     UI.on(el, '[data-chk]', 'change', function (e, cb) {

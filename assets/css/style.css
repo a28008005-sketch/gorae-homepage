@@ -201,10 +201,11 @@ table.tbl .nm{font-weight:700}
 }
 .att-row:last-child{border-bottom:0}
 .att-who{display:flex;align-items:center;gap:9px;min-width:0}
-.att-who .seat{
-  width:26px;height:26px;border-radius:8px;background:var(--blue-soft);color:#14588f;
-  display:grid;place-items:center;font-size:11.5px;font-weight:700;flex:0 0 auto;
+.klass-dot{
+  width:9px;height:9px;border-radius:50%;flex:0 0 auto;display:inline-block;
+  margin-right:5px;vertical-align:middle;
 }
+.att-who .klass-dot{margin-right:0}
 .att-who .nm{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .att-who .gr{font-size:11.5px;color:var(--muted)}
 .att-checks{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
@@ -216,22 +217,6 @@ table.tbl .nm{font-weight:700}
 }
 .check.on{background:var(--mint-soft);border-color:#a9e5dd;color:#0d8375}
 .check input{display:none}
-
-/* ---------- Seats ---------- */
-.seat-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
-.seat-cell{
-  border:1px solid var(--line);border-radius:12px;padding:11px 10px;min-height:76px;
-  background:#fff;cursor:pointer;position:relative;transition:border-color .12s,box-shadow .12s;
-}
-.seat-cell:hover{border-color:var(--blue);box-shadow:0 3px 12px rgba(26,127,212,.13)}
-.seat-cell .no{position:absolute;top:7px;right:9px;font-size:11px;color:#9fb0be;font-weight:700}
-.seat-cell .who{font-weight:700;font-size:13.5px;margin-top:14px}
-.seat-cell .meta{font-size:11.5px;color:var(--muted);margin-top:2px}
-.seat-cell.empty-seat{background:#fafcfd;border-style:dashed}
-.seat-cell.empty-seat .who{color:#b3c1cd;font-weight:600}
-.seat-cell.att-present{border-color:#9fdcbd;background:var(--ok-soft)}
-.seat-cell.att-absent{border-color:#f0c4c2;background:var(--bad-soft)}
-.seat-cell.att-late{border-color:#f2d5a6;background:var(--warn-soft)}
 
 /* ---------- Timetable ---------- */
 .tt{display:grid;grid-template-columns:70px repeat(5,1fr);gap:8px}
@@ -311,7 +296,6 @@ body.share-mode .content{padding:0}
   .g-4{grid-template-columns:repeat(2,1fr)}
   .g-3{grid-template-columns:repeat(2,1fr)}
   .g-21,.g-12{grid-template-columns:1fr}
-  .seat-grid{grid-template-columns:repeat(4,1fr)}
 }
 @media(max-width:760px){
   .only-mobile{display:grid;place-items:center}
@@ -320,7 +304,6 @@ body.share-mode .content{padding:0}
   .content{padding:16px 14px 32px}
   .topbar{padding:12px 14px}
   .g-4,.g-3,.g-2,.form-grid{grid-template-columns:1fr}
-  .seat-grid{grid-template-columns:repeat(3,1fr)}
   .att-row{grid-template-columns:1fr;gap:8px}
   .report-stats{grid-template-columns:repeat(2,1fr)}
   .tt{grid-template-columns:56px repeat(5,1fr);gap:5px;font-size:11px}
@@ -375,4 +358,61 @@ body.share-mode .content{padding:0}
 @media(max-width:760px){
   .today-chip{display:none}
   .gate-card{padding:26px 22px}
+}
+
+/* ---------- 반(클래스) ---------- */
+.class-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.class-card{
+  border:1px solid var(--line);border-radius:13px;padding:14px 15px;background:#fff;
+  border-left:4px solid var(--klass);display:flex;flex-direction:column;gap:10px;
+}
+.class-top{display:flex;align-items:flex-start;gap:10px}
+.class-top>div{flex:1;min-width:0}
+.class-name{font-weight:700;font-size:14.5px;letter-spacing:-.2px}
+.class-meta{font-size:12px;color:var(--muted);margin-top:3px}
+.class-note{font-size:12px;color:var(--muted);background:#f6f9fc;border-radius:8px;padding:7px 10px}
+.class-members{display:flex;flex-wrap:wrap;gap:5px;min-height:24px}
+.class-actions{display:flex;gap:7px;margin-top:auto;padding-top:2px}
+
+.pill{
+  background:var(--blue-soft);color:#14588f;border-radius:7px;padding:3px 8px;
+  font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;border:0;
+}
+.pill:hover{background:#d5e8f9}
+
+.swatch{
+  width:26px;height:26px;border-radius:8px;border:2px solid transparent;cursor:pointer;padding:0;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.08);
+}
+.swatch.on{border-color:var(--ink);box-shadow:inset 0 0 0 2px #fff}
+
+/* 시간표 블록 */
+.tt-block{
+  display:block;width:100%;text-align:left;border:0;cursor:pointer;
+  background:color-mix(in srgb, var(--klass) 12%, #fff);
+  border-left:3px solid var(--klass);border-radius:8px;
+  padding:6px 8px;margin-bottom:5px;font-family:inherit;
+}
+.tt-block:hover{background:color-mix(in srgb, var(--klass) 20%, #fff)}
+.tt-block b{display:block;font-size:12px;color:var(--ink);letter-spacing:-.2px}
+.tt-block span{display:block;font-size:11px;color:var(--muted);margin-top:1px}
+
+/* 학생 배정 목록 */
+.member-list{max-height:52vh;overflow-y:auto;border:1px solid var(--line);border-radius:11px}
+.member-row{
+  display:flex;align-items:center;gap:10px;padding:9px 13px;
+  border-bottom:1px solid #eef2f6;cursor:pointer;font-size:13.5px;
+}
+.member-row:last-child{border-bottom:0}
+.member-row:hover{background:#f8fbfd}
+.member-name{font-weight:700}
+
+/* 출결 행의 수업 태도 줄 */
+.att-attitude{margin-bottom:6px;align-items:center}
+.att-label{
+  font-size:11.5px;font-weight:700;color:var(--muted);
+  margin-right:2px;white-space:nowrap;
+}
+@media(max-width:760px){
+  .class-grid{grid-template-columns:1fr}
 }
