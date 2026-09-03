@@ -1,0 +1,21 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "node tools/blog/build.mjs",
+  "outputDirectory": "site",
+  "installCommand": "echo '설치할 것 없음'",
+  "framework": null,
+  "build": {
+    "env": {
+      "BLOG_REQUIRE_NOTION": "1"
+    }
+  },
+  "cleanUrls": true,
+  "headers": [
+    {
+      "source": "/img/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    }
+  ]
+}

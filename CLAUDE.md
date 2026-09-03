@@ -12,8 +12,13 @@
 | 하는 일 | 지시 없이 해도 되나 |
 |---|---|
 | 파일 수정 | 예 |
-| git commit / push | 예 |
+| `gorae-homepage`(비공개)에 commit / push | 예 |
+| **`gorae-site`(공개)에 push** | **아니오 — 이게 곧 배포다** |
 | 홈페이지 실제 반영 (배포) | **아니오 — "발행" 지시 필요** |
+
+`gorae-site`는 Vercel과 연결되어 있어 **push하는 순간 홈페이지가 바뀐다.**
+그래서 평소 작업은 `gorae-homepage`에만 올리고, "발행" 지시가 있을 때
+`gorae-site`로 옮겨 담는다. Vercel 설정을 따로 만질 필요가 없다.
 
 ## 저장소 두 개
 
