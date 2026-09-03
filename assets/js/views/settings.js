@@ -13,7 +13,11 @@ Views.settings = (function () {
       classes: d.classes.length,
       memos: d.memos.length,
       tasks: d.tasks.length,
-      payments: d.payments.length
+      payments: d.payments.length,
+      homeworks: d.homeworks.length,
+      vocab: d.vocabLogs.length,
+      books: d.books.length,
+      loans: d.loans.length
     };
   }
 
@@ -85,6 +89,59 @@ Views.settings = (function () {
         });
       });
     });
+
+    // 숙제 2건 — 반 단위로 냅니다.
+    Store.saveHomework({ title: 'Unit 3 단어 20개 외우기', type: '단어',
+      classId: classIds[0], assignedDate: U.daysAgo(2), dueDate: U.daysAgo(-2),
+      note: '단어학습앱으로 3회 이상 연습' });
+    Store.saveHomework({ title: 'Frog and Toad 1~3장 읽고 북리포트', type: '원서 읽기',
+      classId: classIds[1], assignedDate: U.daysAgo(4), dueDate: U.daysAgo(-1), note: '' });
+    // 일부는 제출 처리
+    Store.homeworks().forEach(function (h, hi) {
+      Store.submissions({ homeworkId: h.id }).forEach(function (x, i) {
+        if ((i + hi) % 3 !== 0) Store.setSubmission(h.id, x.studentId, { status: '제출', submittedAt: U.ymd() });
+      });
+    });
+
+    // 학생 코드와 단어학습 기록 (앱에서 넘어온 것처럼)
+    var sets = ['Unit 1 단어', 'Unit 2 단어', 'Unit 3 단어', '파닉스 복습'];
+    ids.forEach(function (id, i) {
+      Store.ensureCode(id);
+      for (var back = 12; back >= 0; back -= 2) {
+        if ((i + back) % 3 === 0) continue;
+        var total = 20;
+        var correct = Math.max(8, Math.round(total * (0.6 + Math.random() * 0.4)));
+        Store.saveVocabLog({
+          studentId: id, date: U.daysAgo(back),
+          setName: sets[(i + back) % sets.length],
+          total: total, correct: correct,
+          durationSec: 180 + Math.floor(Math.random() * 240),
+          sessionId: 'seed-' + id + '-' + back, source: 'app'
+        });
+      }
+    });
+
+    // 도서와 대여 기록
+    var bookDefs = [
+      ['RD-0412', 'Frog and Toad Are Friends', 'Arnold Lobel', 'AR 2.5', '리더스', 'Frog and Toad'],
+      ['RD-0413', 'Frog and Toad Together', 'Arnold Lobel', 'AR 2.9', '리더스', 'Frog and Toad'],
+      ['CB-0117', 'Magic Tree House #1', 'Mary Pope Osborne', 'AR 3.4', '챕터북', 'Magic Tree House'],
+      ['CB-0118', 'Magic Tree House #2', 'Mary Pope Osborne', 'AR 3.3', '챕터북', 'Magic Tree House'],
+      ['NB-0021', 'Charlotte\'s Web', 'E. B. White', 'AR 4.4', '노블', ''],
+      ['PB-0075', 'The Very Hungry Caterpillar', 'Eric Carle', 'AR 2.9', '그림책', ''],
+      ['NF-0033', 'National Geographic Kids: Sharks', '', 'AR 4.1', '논픽션', ''],
+      ['CB-0119', 'Nate the Great', 'Marjorie Sharmat', 'AR 2.0', '챕터북', 'Nate the Great']
+    ];
+    var bookIds = bookDefs.map(function (b) {
+      return Store.saveBook({ code: b[0], title: b[1], author: b[2], level: b[3], category: b[4], series: b[5] });
+    });
+    // 3권은 대출 중, 그중 1권은 연체
+    Store.lendBook(bookIds[0], ids[0], U.daysAgo(-4));
+    Store.lendBook(bookIds[2], ids[3], U.daysAgo(-6));
+    Store.lendBook(bookIds[4], ids[5], U.daysAgo(3));   // 반납 예정일이 지난 상태
+    // 반납 완료된 지난 기록
+    var past = Store.lendBook(bookIds[1], ids[1], U.daysAgo(-1));
+    Store.returnBook(past, U.daysAgo(2));
 
     Store.addTask('9월 레벨테스트 예약 학부모 안내', 'today');
     Store.addTask('원서 신간 라이브러리 등록', 'week');
@@ -240,6 +297,10 @@ Views.settings = (function () {
               '<span class="tag blue">메모 ' + c.memos + '</span>' +
               '<span class="tag blue">업무 ' + c.tasks + '</span>' +
               '<span class="tag blue">수강료 ' + c.payments + '</span>' +
+              '<span class="tag blue">숙제 ' + c.homeworks + '</span>' +
+              '<span class="tag blue">단어 ' + c.vocab + '</span>' +
+              '<span class="tag blue">도서 ' + c.books + '</span>' +
+              '<span class="tag blue">대여 ' + c.loans + '</span>' +
             '</div>' +
           '</div></div>' +
 

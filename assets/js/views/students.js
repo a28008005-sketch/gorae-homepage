@@ -35,6 +35,11 @@ Views.students = (function () {
       var rec = Store.attendanceFor(s.id, today);
       var sum = Store.summarize(s.id, U.ym(new Date()) + '-01', today);
       var sc = Store.scheduleOf(s);
+    var voc = Store.vocabSummary(s.id, U.daysAgo(29), U.ymd());
+    var subs = Store.submissions({ studentId: s.id });
+    var subDone = subs.filter(function (x) { return x.status !== '미제출'; }).length;
+    var myLoans = Store.loans({ studentId: s.id });
+    var myOpen = myLoans.filter(function (l) { return !l.returnDate; });
       return '<tr class="clickable" data-open="' + s.id + '">' +
         '<td class="nm">' + U.esc(s.name) + '</td>' +
         '<td>' + U.esc(s.grade || '-') + '</td>' +
@@ -149,6 +154,11 @@ Views.students = (function () {
     var memos = Store.memos(s.id).slice(0, 5);
     var pay = Store.paymentHistory(s.id);
     var sc = Store.scheduleOf(s);
+    var voc = Store.vocabSummary(s.id, U.daysAgo(29), U.ymd());
+    var subs = Store.submissions({ studentId: s.id });
+    var subDone = subs.filter(function (x) { return x.status !== '미제출'; }).length;
+    var myLoans = Store.loans({ studentId: s.id });
+    var myOpen = myLoans.filter(function (l) { return !l.returnDate; });
 
     var body =
       '<div class="grid g-2" style="gap:18px">' +
@@ -173,6 +183,8 @@ Views.students = (function () {
             '<div class="report-stat"><div class="v">' + sum.present + '/' + sum.total + '</div><div class="l">출석 / 수업</div></div>' +
             '<div class="report-stat"><div class="v">' + sum.homework + '</div><div class="l">숙제 완료</div></div>' +
             '<div class="report-stat"><div class="v">' + sum.attitudeIssues + '</div><div class="l">태도 주의</div></div>' +
+            '<div class="report-stat"><div class="v">' + (voc.total ? voc.accuracy + '%' : '-') + '</div><div class="l">단어 정답률</div></div>' +
+            '<div class="report-stat"><div class="v">' + subDone + '/' + subs.length + '</div><div class="l">숙제 제출</div></div>' +
           '</div>' +
           '<div class="hint" style="margin-top:8px">지각 ' + sum.flags['지각'] + ' · 외출 ' + sum.flags['외출'] + ' · 조퇴 ' + sum.flags['조퇴'] + '</div>' +
         '</div>' +
@@ -191,6 +203,31 @@ Views.students = (function () {
             '<td>' + (r.homework ? '✅' : '–') + '</td><td>' + U.esc(r.note || '') + '</td></tr>';
         }).join('') + '</tbody></table></div>'
         : '<div class="hint">기록이 없습니다.</div>') +
+
+      '<div class="section-title">단어 학습 · 숙제 · 도서</div>' +
+      '<div class="grid g-3" style="gap:12px">' +
+        '<div><div class="hint" style="margin-bottom:6px">최근 30일 단어 학습</div>' +
+          (voc.sessions
+            ? '<b style="font-size:15px">' + voc.accuracy + '%</b> <span class="hint">' +
+              voc.sessions + '회 · ' + U.num(voc.total) + '단어 · ' + voc.minutes + '분</span>'
+            : '<span class="hint">기록 없음</span>') + '</div>' +
+        '<div><div class="hint" style="margin-bottom:6px">숙제</div>' +
+          (subs.length
+            ? '<b style="font-size:15px">' + U.pct(subDone, subs.length) + '%</b> <span class="hint">' +
+              subDone + '/' + subs.length + '건 제출</span>'
+            : '<span class="hint">받은 숙제 없음</span>') + '</div>' +
+        '<div><div class="hint" style="margin-bottom:6px">도서</div>' +
+          '<b style="font-size:15px">' + myLoans.length + '권</b> <span class="hint">누적 대출' +
+          (myOpen.length ? ' · 대출 중 ' + myOpen.length + '권' : '') + '</span></div>' +
+      '</div>' +
+      (myOpen.length
+        ? '<div class="chips" style="margin-top:10px">' + myOpen.map(function (l) {
+            var b = Store.book(l.bookId);
+            var late = l.dueDate && l.dueDate < U.ymd();
+            return '<span class="chip static' + (late ? ' on bad' : '') + '">' +
+              U.esc(b ? b.title : '(삭제된 책)') + ' · ~' + U.esc(l.dueDate || '') + '</span>';
+          }).join('') + '</div>'
+        : '') +
 
       '<div class="section-title">수강료 납부 이력</div>' +
       (pay.list.length
@@ -293,6 +330,11 @@ Views.students = (function () {
                   '학부모이메일', '월수강료', '납부일', '특이사항'];
       var body = Store.students().filter(matches).map(function (s) {
         var sc = Store.scheduleOf(s);
+    var voc = Store.vocabSummary(s.id, U.daysAgo(29), U.ymd());
+    var subs = Store.submissions({ studentId: s.id });
+    var subDone = subs.filter(function (x) { return x.status !== '미제출'; }).length;
+    var myLoans = Store.loans({ studentId: s.id });
+    var myOpen = myLoans.filter(function (l) { return !l.returnDate; });
         return [s.name, s.grade, sc.className, sc.days.join('·'), sc.time, s.status,
                 s.phone, s.parentPhone, s.parentEmail,
                 Store.feeOf(s), s.billingDay || Store.get().academy.billingDay, s.note];

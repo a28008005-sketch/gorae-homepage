@@ -66,6 +66,15 @@ var App = (function () {
       Views.tuition.renderReceipt(viewEl, p.query.d || '');
       return;
     }
+    // 단어학습앱이 링크로 기록을 보내는 경로
+    if (current === 'import') {
+      highlight('vocab');
+      setTitle('단어 학습 기록 받기');
+      setSub('단어학습앱에서 보낸 기록입니다');
+      Views.vocab.renderImportRoute(viewEl, p.query.d || '');
+      closeSidebar();
+      return;
+    }
     document.body.classList.remove('share-mode');
 
     var view = Views[current] || Views.dashboard;

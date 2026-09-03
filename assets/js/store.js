@@ -14,6 +14,10 @@ var Store = (function () {
   var FLAGS = ['지각', '외출', '조퇴'];
   // 수업 태도 (예전 '순회 점검 기록'을 일일학습 안으로 합쳤습니다)
   var ATTITUDES = ['🟢 집중', '💤 졸음', '🏃 이탈/부재', '📱 휴대폰 사용', '💬 잡담/소란'];
+  var HOMEWORK_TYPES = ['단어', '원서 읽기', '워크북', '녹음', '기타'];
+  var SUBMIT_STATUS = ['미제출', '제출', '확인'];
+  var BOOK_CATEGORIES = ['리더스', '챕터북', '노블', '논픽션', '그림책', '워크북'];
+  var LOAN_DAYS = 7;
   var CLASS_COLORS = ['#1a7fd4', '#17b7a6', '#d98218', '#8a6ad4', '#d5453f', '#12a05c', '#c2557f', '#4a7a99'];
   var WEEKDAYS = ['월', '화', '수', '목', '금', '토'];
   var PAY_METHODS = ['계좌이체', '현금', '카드', '기타'];
@@ -41,7 +45,12 @@ var Store = (function () {
     patrols: [],   // 예전 순회 점검 기록 — 일일학습으로 옮긴 뒤 사용하지 않습니다
     memos: [],
     tasks: [],
-    payments: []
+    payments: [],
+    homeworks: [],    // 숙제 (반/학생에게 낸 과제)
+    submissions: [],  // 숙제별 학생 제출 상태
+    vocabLogs: [],    // 단어학습앱에서 넘어온 학습 기록
+    books: [],        // 도서 목록
+    loans: []         // 도서 대여 기록
   };
 
   var data = null;
@@ -51,7 +60,9 @@ var Store = (function () {
   /** 컬렉션 이름 <-> 동기화 종류(kind) 매핑 */
   var KINDS = {
     klass: 'classes', student: 'students', attendance: 'attendance',
-    memo: 'memos', task: 'tasks', payment: 'payments'
+    memo: 'memos', task: 'tasks', payment: 'payments',
+    homework: 'homeworks', submission: 'submissions',
+    vocab: 'vocabLogs', book: 'books', loan: 'loans'
   };
 
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
@@ -245,6 +256,9 @@ var Store = (function () {
     kill(d.attendance, 'attendance', function (a) { return a.studentId === id; });
     kill(d.memos, 'memo', function (m) { return m.studentId === id; });
     kill(d.payments, 'payment', function (p) { return p.studentId === id; });
+    kill(d.submissions, 'submission', function (x) { return x.studentId === id; });
+    kill(d.vocabLogs, 'vocab', function (v) { return v.studentId === id; });
+    kill(d.loans, 'loan', function (l) { return l.studentId === id; });
     save(changed);
   }
   /** 특정 요일에 수업이 있는 등록생 */
@@ -252,6 +266,36 @@ var Store = (function () {
     return students({ active: true }).filter(function (s) {
       return scheduleOf(s).days.indexOf(dayKo) >= 0;
     });
+  }
+
+  /** 학생 코드 — 단어학습앱 등 외부에서 학생을 지목할 때 쓰는 4자리 코드 */
+  function ensureCode(id) {
+    var s = student(id);
+    if (!s) return '';
+    if (s.code) return s.code;
+    var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';   // 헷갈리는 글자 제외
+    var code;
+    do {
+      code = '';
+      for (var i = 0; i < 4; i++) code += chars[Math.floor(Math.random() * chars.length)];
+    } while (studentByCode(code));
+    saveStudent({ id: id, code: code });
+    return code;
+  }
+  function studentByCode(code) {
+    if (!code) return null;
+    var up = String(code).trim().toUpperCase();
+    return students({ includeArchived: true }).filter(function (s) {
+      return String(s.code || '').toUpperCase() === up;
+    })[0] || null;
+  }
+  /** 이름 또는 코드로 학생 찾기 (외부 데이터를 받을 때 사용) */
+  function findStudent(ref) {
+    if (!ref) return null;
+    return studentByCode(ref) ||
+      students({ includeArchived: true }).filter(function (s) {
+        return s.name === String(ref).trim();
+      })[0] || null;
   }
 
   /* ---------- 출결 · 일일학습 ---------- */
@@ -522,6 +566,236 @@ var Store = (function () {
     return { list: list, billed: billed, collected: collected, outstanding: billed - collected, unpaidMonths: unpaidMonths };
   }
 
+  /* ---------- 숙제 ---------- */
+  function homeworks(opts) {
+    opts = opts || {};
+    var list = alive(get().homeworks).slice();
+    if (opts.classId) list = list.filter(function (h) { return h.classId === opts.classId; });
+    if (opts.open) list = list.filter(function (h) { return !h.dueDate || h.dueDate >= U.ymd(); });
+    return list.sort(function (a, b) {
+      return String(b.assignedDate || '').localeCompare(String(a.assignedDate || ''));
+    });
+  }
+  function homework(id) {
+    return alive(get().homeworks).filter(function (h) { return h.id === id; })[0] || null;
+  }
+  function submissions(opts) {
+    opts = opts || {};
+    var list = alive(get().submissions).slice();
+    if (opts.homeworkId) list = list.filter(function (x) { return x.homeworkId === opts.homeworkId; });
+    if (opts.studentId) list = list.filter(function (x) { return x.studentId === opts.studentId; });
+    return list;
+  }
+  function submissionFor(homeworkId, studentId) {
+    return alive(get().submissions).filter(function (x) {
+      return x.homeworkId === homeworkId && x.studentId === studentId;
+    })[0] || null;
+  }
+
+  /**
+   * 숙제 저장. 대상 학생(반 또는 지정 학생)에게 제출 칸을 함께 만듭니다.
+   * @param {Array} studentIds 대상 학생. 없으면 반 소속 학생 전체.
+   */
+  function saveHomework(h, studentIds) {
+    var d = get(), rec = null, changed = [];
+    if (h.id) {
+      for (var i = 0; i < d.homeworks.length; i++) {
+        if (d.homeworks[i].id === h.id) { rec = Object.assign(d.homeworks[i], h); break; }
+      }
+    }
+    if (!rec) {
+      h.id = h.id || U.uid('hw');
+      h.assignedDate = h.assignedDate || U.ymd();
+      rec = h;
+      d.homeworks.push(rec);
+    }
+    stamp(rec);
+    changed.push({ kind: 'homework', id: rec.id });
+
+    var targets = studentIds || (rec.classId ? studentsInClass(rec.classId).map(function (s) { return s.id; }) : []);
+    targets.forEach(function (sid) {
+      if (submissionFor(rec.id, sid)) return;
+      var sub = stamp({
+        id: U.uid('sub'), homeworkId: rec.id, studentId: sid,
+        status: '미제출', score: '', submittedAt: '', note: ''
+      });
+      d.submissions.push(sub);
+      changed.push({ kind: 'submission', id: sub.id });
+    });
+    save(changed);
+    return rec.id;
+  }
+  function setSubmission(homeworkId, studentId, patch) {
+    var d = get();
+    var rec = submissionFor(homeworkId, studentId);
+    if (!rec) {
+      rec = { id: U.uid('sub'), homeworkId: homeworkId, studentId: studentId,
+              status: '미제출', score: '', submittedAt: '', note: '' };
+      d.submissions.push(rec);
+    }
+    Object.keys(patch).forEach(function (k) { rec[k] = patch[k]; });
+    stamp(rec);
+    save({ kind: 'submission', id: rec.id });
+    return rec;
+  }
+  function deleteHomework(id) {
+    var d = get(), changed = [];
+    d.homeworks.forEach(function (h) {
+      if (h.id === id && !h.deleted) { h.deleted = true; stamp(h); changed.push({ kind: 'homework', id: h.id }); }
+    });
+    d.submissions.forEach(function (x) {
+      if (x.homeworkId === id && !x.deleted) { x.deleted = true; stamp(x); changed.push({ kind: 'submission', id: x.id }); }
+    });
+    save(changed);
+  }
+  /** 한 숙제의 제출 현황 */
+  function homeworkProgress(id) {
+    var subs = submissions({ homeworkId: id });
+    var done = subs.filter(function (x) { return x.status !== '미제출'; }).length;
+    return { total: subs.length, done: done, rate: U.pct(done, subs.length), list: subs };
+  }
+
+  /* ---------- 단어 학습 ---------- */
+  function vocabLogs(opts) {
+    opts = opts || {};
+    var list = alive(get().vocabLogs).slice();
+    if (opts.studentId) list = list.filter(function (v) { return v.studentId === opts.studentId; });
+    if (opts.from) list = list.filter(function (v) { return v.date >= opts.from; });
+    if (opts.to) list = list.filter(function (v) { return v.date <= opts.to; });
+    return list.sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+  }
+  function saveVocabLog(v) {
+    var d = get(), rec = null;
+    // 앱이 보낸 세션 아이디가 같으면 같은 기록으로 봅니다 (두 번 들어와도 안 쌓임)
+    if (v.sessionId) {
+      rec = d.vocabLogs.filter(function (x) { return x.sessionId === v.sessionId; })[0] || null;
+    }
+    if (!rec && v.id) {
+      rec = d.vocabLogs.filter(function (x) { return x.id === v.id; })[0] || null;
+    }
+    if (rec) Object.assign(rec, v, { id: rec.id });
+    else {
+      v.id = v.id || U.uid('voc');
+      rec = v;
+      d.vocabLogs.push(rec);
+    }
+    stamp(rec);
+    save({ kind: 'vocab', id: rec.id });
+    return rec.id;
+  }
+  function deleteVocabLog(id) { return softDelete('vocabLogs', 'vocab', id); }
+
+  /** 한 학생의 단어 학습 요약 */
+  function vocabSummary(studentId, from, to) {
+    var list = vocabLogs({ studentId: studentId, from: from, to: to });
+    var total = 0, correct = 0, seconds = 0;
+    list.forEach(function (v) {
+      total += Number(v.total) || 0;
+      correct += Number(v.correct) || 0;
+      seconds += Number(v.durationSec) || 0;
+    });
+    return {
+      list: list, sessions: list.length, total: total, correct: correct,
+      accuracy: U.pct(correct, total), minutes: Math.round(seconds / 60),
+      lastDate: list.length ? list[0].date : ''
+    };
+  }
+
+  /* ---------- 도서 대여 ---------- */
+  function books(opts) {
+    opts = opts || {};
+    var list = alive(get().books).slice();
+    if (opts.q) {
+      var q = String(opts.q).toLowerCase();
+      list = list.filter(function (b) {
+        return [b.code, b.title, b.author, b.series, b.level].join(' ').toLowerCase().indexOf(q) >= 0;
+      });
+    }
+    if (opts.category) list = list.filter(function (b) { return b.category === opts.category; });
+    return list.sort(function (a, b) {
+      return String(a.title || '').localeCompare(String(b.title || ''), 'ko');
+    });
+  }
+  function book(id) {
+    return alive(get().books).filter(function (b) { return b.id === id; })[0] || null;
+  }
+  function bookByCode(code) {
+    if (!code) return null;
+    var up = String(code).trim().toLowerCase();
+    return alive(get().books).filter(function (b) {
+      return String(b.code || '').trim().toLowerCase() === up;
+    })[0] || null;
+  }
+  function saveBook(b) {
+    var d = get(), rec = null;
+    if (b.id) {
+      for (var i = 0; i < d.books.length; i++) {
+        if (d.books[i].id === b.id) { rec = Object.assign(d.books[i], b); break; }
+      }
+    }
+    if (!rec) { b.id = b.id || U.uid('bk'); rec = b; d.books.push(rec); }
+    stamp(rec);
+    save({ kind: 'book', id: rec.id });
+    return rec.id;
+  }
+  function deleteBook(id) { return softDelete('books', 'book', id); }
+
+  function loans(opts) {
+    opts = opts || {};
+    var list = alive(get().loans).slice();
+    if (opts.bookId) list = list.filter(function (l) { return l.bookId === opts.bookId; });
+    if (opts.studentId) list = list.filter(function (l) { return l.studentId === opts.studentId; });
+    if (opts.open) list = list.filter(function (l) { return !l.returnDate; });
+    return list.sort(function (a, b) { return a.outDate < b.outDate ? 1 : -1; });
+  }
+  /** 이 책이 지금 대출 중이면 그 기록 */
+  function openLoanOf(bookId) {
+    return alive(get().loans).filter(function (l) {
+      return l.bookId === bookId && !l.returnDate;
+    })[0] || null;
+  }
+  /** 책 상태 — 대출가능 / 대출중 / 연체 */
+  function bookStatus(b) {
+    var l = openLoanOf(b.id);
+    if (!l) return { key: 'in', label: '대출 가능', tag: 'ok', loan: null, overdue: 0 };
+    var over = l.dueDate && U.ymd() > l.dueDate ? U.dayDiff(l.dueDate, U.ymd()) : 0;
+    return over
+      ? { key: 'overdue', label: '연체 ' + over + '일', tag: 'bad', loan: l, overdue: over }
+      : { key: 'out', label: '대출 중', tag: 'blue', loan: l, overdue: 0 };
+  }
+  function lendBook(bookId, studentId, dueDate) {
+    if (openLoanOf(bookId)) throw new Error('이미 대출 중인 책입니다.');
+    var out = U.ymd();
+    var rec = stamp({
+      id: U.uid('ln'), bookId: bookId, studentId: studentId,
+      outDate: out, dueDate: dueDate || U.daysAgo(-LOAN_DAYS), returnDate: '', note: ''
+    });
+    get().loans.push(rec);
+    save({ kind: 'loan', id: rec.id });
+    return rec.id;
+  }
+  function returnBook(loanId, date) {
+    var d = get();
+    for (var i = 0; i < d.loans.length; i++) {
+      if (d.loans[i].id === loanId) {
+        d.loans[i].returnDate = date || U.ymd();
+        stamp(d.loans[i]);
+        save({ kind: 'loan', id: loanId });
+        return true;
+      }
+    }
+    return false;
+  }
+  function deleteLoan(id) { return softDelete('loans', 'loan', id); }
+
+  /** 지금 연체된 대출 목록 */
+  function overdueLoans() {
+    var today = U.ymd();
+    return loans({ open: true }).filter(function (l) {
+      return l.dueDate && today > l.dueDate;
+    });
+  }
+
   /* ---------- 집계 ---------- */
   /** 한 학생의 기간 통계 (노션의 출석률 / 체크사항 수식과 동일한 의미) */
   function summarize(studentId, from, to) {
@@ -689,6 +963,8 @@ var Store = (function () {
   return {
     STATUS: STATUS, GRADES: GRADES, FLAGS: FLAGS,
     ATTITUDES: ATTITUDES, WEEKDAYS: WEEKDAYS, PAY_METHODS: PAY_METHODS,
+    HOMEWORK_TYPES: HOMEWORK_TYPES, SUBMIT_STATUS: SUBMIT_STATUS,
+    BOOK_CATEGORIES: BOOK_CATEGORIES, LOAN_DAYS: LOAN_DAYS,
     CLASS_COLORS: CLASS_COLORS,
     get: get, save: save, onChange: onChange, onRecordChange: onRecordChange,
     allRecords: allRecords, findRecord: findRecord, applyRemote: applyRemote, stampAll: stampAll,
@@ -705,6 +981,15 @@ var Store = (function () {
     payments: payments, paymentFor: paymentFor, feeOf: feeOf, dueDateFor: dueDateFor,
     paymentStatus: paymentStatus, savePayment: savePayment, deletePayment: deletePayment,
     generateBills: generateBills, paymentSummary: paymentSummary, paymentHistory: paymentHistory,
+    homeworks: homeworks, homework: homework, submissions: submissions,
+    submissionFor: submissionFor, saveHomework: saveHomework, setSubmission: setSubmission,
+    deleteHomework: deleteHomework, homeworkProgress: homeworkProgress,
+    vocabLogs: vocabLogs, saveVocabLog: saveVocabLog, deleteVocabLog: deleteVocabLog,
+    vocabSummary: vocabSummary,
+    books: books, book: book, bookByCode: bookByCode, saveBook: saveBook, deleteBook: deleteBook,
+    loans: loans, openLoanOf: openLoanOf, bookStatus: bookStatus,
+    lendBook: lendBook, returnBook: returnBook, deleteLoan: deleteLoan, overdueLoans: overdueLoans,
+    ensureCode: ensureCode, studentByCode: studentByCode, findStudent: findStudent,
     summarize: summarize, dayOverview: dayOverview,
     exportJson: exportJson, importJson: importJson, resetAll: resetAll, saveAcademy: saveAcademy,
     migratePatrols: migratePatrols

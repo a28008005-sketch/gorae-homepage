@@ -92,6 +92,40 @@ Views.dashboard = (function () {
     }).join('') + (list.length > 6 ? '<div class="hint" style="margin-top:8px">외 ' + (list.length - 6) + '명</div>' : '');
   }
 
+  /** 진행 중 숙제의 제출 현황 */
+  function homeworkBox() {
+    var open = Store.homeworks({ open: true });
+    if (!open.length) return '<div class="hint">진행 중인 숙제가 없습니다. <a href="#/homework" style="color:#1a7fd4;font-weight:600">숙제 내기</a></div>';
+    return open.slice(0, 5).map(function (h) {
+      var pr = Store.homeworkProgress(h.id);
+      return '<div class="memo-item"><div class="txt"><b>' + U.esc(h.title) + '</b> ' +
+        '<span class="tag ' + (pr.rate === 100 ? 'ok' : pr.rate >= 60 ? 'warn' : 'bad') + '">' + pr.rate + '%</span>' +
+        '<br><span style="font-size:12px;color:#63778a">제출 ' + pr.done + '/' + pr.total + '명' +
+        (h.dueDate ? ' · 마감 ' + U.esc(h.dueDate) : '') + '</span></div></div>';
+    }).join('') + (open.length > 5 ? '<div class="hint" style="margin-top:8px">외 ' + (open.length - 5) + '건</div>' : '');
+  }
+
+  /** 오늘 이후 반납 예정과 연체 */
+  function libraryBox() {
+    var over = Store.overdueLoans();
+    var open = Store.loans({ open: true });
+    if (!Store.books().length) {
+      return '<div class="hint">등록된 도서가 없습니다. <a href="#/library" style="color:#1a7fd4;font-weight:600">도서 등록</a></div>';
+    }
+    if (!open.length) return '<div class="empty" style="padding:26px 12px"><span class="big">📖</span>대출 중인 책이 없습니다.</div>';
+    var soon = open.slice().sort(function (a, b) {
+      return String(a.dueDate || '').localeCompare(String(b.dueDate || ''));
+    });
+    return soon.slice(0, 5).map(function (l) {
+      var b = Store.book(l.bookId), st = Store.student(l.studentId);
+      var late = l.dueDate && l.dueDate < U.ymd();
+      return '<div class="memo-item"><div class="txt"><b>' + U.esc(st ? st.name : '') + '</b> ' +
+        '<span class="tag ' + (late ? 'bad' : 'blue') + '">' +
+          (late ? U.dayDiff(l.dueDate, U.ymd()) + '일 연체' : '~' + U.esc(l.dueDate || '')) + '</span>' +
+        '<br><span style="font-size:12px;color:#63778a">' + U.esc(b ? b.title : '(삭제된 책)') + '</span></div></div>';
+    }).join('') + (over.length ? '<div class="hint" style="margin-top:8px">연체 ' + over.length + '권</div>' : '');
+  }
+
   function render(el) {
     var o = Store.dayOverview(U.ymd());
     var all = Store.students();
@@ -147,6 +181,15 @@ Views.dashboard = (function () {
         '<div class="card"><div class="card-h"><h2>수강료 미납</h2><div class="sp"></div>' +
           '<a class="btn sm" href="#/tuition">납부 관리 →</a></div>' +
           '<div class="card-b">' + unpaidList(pay) + '</div></div>' +
+      '</div>' +
+
+      '<div class="grid g-2">' +
+        '<div class="card"><div class="card-h"><h2>숙제 현황</h2><div class="sp"></div>' +
+          '<a class="btn sm" href="#/homework">숙제 관리 →</a></div>' +
+          '<div class="card-b">' + homeworkBox() + '</div></div>' +
+        '<div class="card"><div class="card-h"><h2>도서 반납</h2><div class="sp"></div>' +
+          '<a class="btn sm" href="#/library">도서 대여 →</a></div>' +
+          '<div class="card-b">' + libraryBox() + '</div></div>' +
       '</div>' +
 
       '</div>';

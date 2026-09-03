@@ -426,6 +426,34 @@ body.share-mode .content{padding:0}
   .class-grid{grid-template-columns:1fr}
 }
 
+/* ---------- 숙제 카드 ---------- */
+.hw-card{
+  border:1px solid var(--line);border-radius:13px;padding:14px 15px;background:#fff;
+  border-left:4px solid var(--klass);display:flex;flex-direction:column;gap:10px;
+}
+.hw-top{display:flex;align-items:flex-start;gap:12px}
+.hw-top>div:first-child{flex:1;min-width:0}
+.hw-title{font-weight:700;font-size:14.5px;letter-spacing:-.2px}
+.hw-meta{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.6}
+.hw-rate{text-align:right;flex:0 0 auto}
+.hw-rate b{display:block;font-size:18px;font-variant-numeric:tabular-nums;letter-spacing:-.4px}
+.hw-rate span{font-size:11.5px;color:var(--muted)}
+.hw-pending{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+
+.sub-row{
+  display:flex;align-items:center;gap:12px;padding:9px 4px;
+  border-bottom:1px solid #eef2f6;flex-wrap:wrap;
+}
+.sub-row:last-child{border-bottom:0}
+.sub-row .member-name{min-width:70px}
+
+/* ---------- 코드 칩 (학생 코드 · 청구기호) ---------- */
+.code-chip{
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  background:#eef2f6;color:#42566a;border-radius:6px;
+  padding:2px 7px;font-size:11.5px;font-weight:700;letter-spacing:.04em;
+}
+
 
 .demo-strip{
   display:flex;align-items:flex-start;gap:12px;
@@ -454,6 +482,9 @@ body.share-mode .content{padding:0}
       <a href="#/dashboard"  data-route="dashboard"><i>📊</i><span>대시보드</span></a>
       <a href="#/students"   data-route="students"><i>🧒</i><span>학생 명부</span></a>
       <a href="#/attendance" data-route="attendance"><i>✅</i><span>출결 · 일일학습</span></a>
+      <a href="#/homework"   data-route="homework"><i>📚</i><span>숙제 관리</span></a>
+      <a href="#/vocab"      data-route="vocab"><i>🔤</i><span>단어 학습</span></a>
+      <a href="#/library"    data-route="library"><i>📖</i><span>도서 대여</span></a>
       <a href="#/classes"    data-route="classes"><i>🗓️</i><span>반 · 시간표</span></a>
       <a href="#/tuition"    data-route="tuition"><i>💳</i><span>수강료 납부</span></a>
       <a href="#/stats"      data-route="stats"><i>📈</i><span>통계</span></a>
@@ -678,6 +709,10 @@ var Store = (function () {
   var FLAGS = ['지각', '외출', '조퇴'];
   // 수업 태도 (예전 '순회 점검 기록'을 일일학습 안으로 합쳤습니다)
   var ATTITUDES = ['🟢 집중', '💤 졸음', '🏃 이탈/부재', '📱 휴대폰 사용', '💬 잡담/소란'];
+  var HOMEWORK_TYPES = ['단어', '원서 읽기', '워크북', '녹음', '기타'];
+  var SUBMIT_STATUS = ['미제출', '제출', '확인'];
+  var BOOK_CATEGORIES = ['리더스', '챕터북', '노블', '논픽션', '그림책', '워크북'];
+  var LOAN_DAYS = 7;
   var CLASS_COLORS = ['#1a7fd4', '#17b7a6', '#d98218', '#8a6ad4', '#d5453f', '#12a05c', '#c2557f', '#4a7a99'];
   var WEEKDAYS = ['월', '화', '수', '목', '금', '토'];
   var PAY_METHODS = ['계좌이체', '현금', '카드', '기타'];
@@ -705,7 +740,12 @@ var Store = (function () {
     patrols: [],   // 예전 순회 점검 기록 — 일일학습으로 옮긴 뒤 사용하지 않습니다
     memos: [],
     tasks: [],
-    payments: []
+    payments: [],
+    homeworks: [],    // 숙제 (반/학생에게 낸 과제)
+    submissions: [],  // 숙제별 학생 제출 상태
+    vocabLogs: [],    // 단어학습앱에서 넘어온 학습 기록
+    books: [],        // 도서 목록
+    loans: []         // 도서 대여 기록
   };
 
   var data = null;
@@ -715,7 +755,9 @@ var Store = (function () {
   /** 컬렉션 이름 <-> 동기화 종류(kind) 매핑 */
   var KINDS = {
     klass: 'classes', student: 'students', attendance: 'attendance',
-    memo: 'memos', task: 'tasks', payment: 'payments'
+    memo: 'memos', task: 'tasks', payment: 'payments',
+    homework: 'homeworks', submission: 'submissions',
+    vocab: 'vocabLogs', book: 'books', loan: 'loans'
   };
 
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
@@ -909,6 +951,9 @@ var Store = (function () {
     kill(d.attendance, 'attendance', function (a) { return a.studentId === id; });
     kill(d.memos, 'memo', function (m) { return m.studentId === id; });
     kill(d.payments, 'payment', function (p) { return p.studentId === id; });
+    kill(d.submissions, 'submission', function (x) { return x.studentId === id; });
+    kill(d.vocabLogs, 'vocab', function (v) { return v.studentId === id; });
+    kill(d.loans, 'loan', function (l) { return l.studentId === id; });
     save(changed);
   }
   /** 특정 요일에 수업이 있는 등록생 */
@@ -916,6 +961,36 @@ var Store = (function () {
     return students({ active: true }).filter(function (s) {
       return scheduleOf(s).days.indexOf(dayKo) >= 0;
     });
+  }
+
+  /** 학생 코드 — 단어학습앱 등 외부에서 학생을 지목할 때 쓰는 4자리 코드 */
+  function ensureCode(id) {
+    var s = student(id);
+    if (!s) return '';
+    if (s.code) return s.code;
+    var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';   // 헷갈리는 글자 제외
+    var code;
+    do {
+      code = '';
+      for (var i = 0; i < 4; i++) code += chars[Math.floor(Math.random() * chars.length)];
+    } while (studentByCode(code));
+    saveStudent({ id: id, code: code });
+    return code;
+  }
+  function studentByCode(code) {
+    if (!code) return null;
+    var up = String(code).trim().toUpperCase();
+    return students({ includeArchived: true }).filter(function (s) {
+      return String(s.code || '').toUpperCase() === up;
+    })[0] || null;
+  }
+  /** 이름 또는 코드로 학생 찾기 (외부 데이터를 받을 때 사용) */
+  function findStudent(ref) {
+    if (!ref) return null;
+    return studentByCode(ref) ||
+      students({ includeArchived: true }).filter(function (s) {
+        return s.name === String(ref).trim();
+      })[0] || null;
   }
 
   /* ---------- 출결 · 일일학습 ---------- */
@@ -1186,6 +1261,236 @@ var Store = (function () {
     return { list: list, billed: billed, collected: collected, outstanding: billed - collected, unpaidMonths: unpaidMonths };
   }
 
+  /* ---------- 숙제 ---------- */
+  function homeworks(opts) {
+    opts = opts || {};
+    var list = alive(get().homeworks).slice();
+    if (opts.classId) list = list.filter(function (h) { return h.classId === opts.classId; });
+    if (opts.open) list = list.filter(function (h) { return !h.dueDate || h.dueDate >= U.ymd(); });
+    return list.sort(function (a, b) {
+      return String(b.assignedDate || '').localeCompare(String(a.assignedDate || ''));
+    });
+  }
+  function homework(id) {
+    return alive(get().homeworks).filter(function (h) { return h.id === id; })[0] || null;
+  }
+  function submissions(opts) {
+    opts = opts || {};
+    var list = alive(get().submissions).slice();
+    if (opts.homeworkId) list = list.filter(function (x) { return x.homeworkId === opts.homeworkId; });
+    if (opts.studentId) list = list.filter(function (x) { return x.studentId === opts.studentId; });
+    return list;
+  }
+  function submissionFor(homeworkId, studentId) {
+    return alive(get().submissions).filter(function (x) {
+      return x.homeworkId === homeworkId && x.studentId === studentId;
+    })[0] || null;
+  }
+
+  /**
+   * 숙제 저장. 대상 학생(반 또는 지정 학생)에게 제출 칸을 함께 만듭니다.
+   * @param {Array} studentIds 대상 학생. 없으면 반 소속 학생 전체.
+   */
+  function saveHomework(h, studentIds) {
+    var d = get(), rec = null, changed = [];
+    if (h.id) {
+      for (var i = 0; i < d.homeworks.length; i++) {
+        if (d.homeworks[i].id === h.id) { rec = Object.assign(d.homeworks[i], h); break; }
+      }
+    }
+    if (!rec) {
+      h.id = h.id || U.uid('hw');
+      h.assignedDate = h.assignedDate || U.ymd();
+      rec = h;
+      d.homeworks.push(rec);
+    }
+    stamp(rec);
+    changed.push({ kind: 'homework', id: rec.id });
+
+    var targets = studentIds || (rec.classId ? studentsInClass(rec.classId).map(function (s) { return s.id; }) : []);
+    targets.forEach(function (sid) {
+      if (submissionFor(rec.id, sid)) return;
+      var sub = stamp({
+        id: U.uid('sub'), homeworkId: rec.id, studentId: sid,
+        status: '미제출', score: '', submittedAt: '', note: ''
+      });
+      d.submissions.push(sub);
+      changed.push({ kind: 'submission', id: sub.id });
+    });
+    save(changed);
+    return rec.id;
+  }
+  function setSubmission(homeworkId, studentId, patch) {
+    var d = get();
+    var rec = submissionFor(homeworkId, studentId);
+    if (!rec) {
+      rec = { id: U.uid('sub'), homeworkId: homeworkId, studentId: studentId,
+              status: '미제출', score: '', submittedAt: '', note: '' };
+      d.submissions.push(rec);
+    }
+    Object.keys(patch).forEach(function (k) { rec[k] = patch[k]; });
+    stamp(rec);
+    save({ kind: 'submission', id: rec.id });
+    return rec;
+  }
+  function deleteHomework(id) {
+    var d = get(), changed = [];
+    d.homeworks.forEach(function (h) {
+      if (h.id === id && !h.deleted) { h.deleted = true; stamp(h); changed.push({ kind: 'homework', id: h.id }); }
+    });
+    d.submissions.forEach(function (x) {
+      if (x.homeworkId === id && !x.deleted) { x.deleted = true; stamp(x); changed.push({ kind: 'submission', id: x.id }); }
+    });
+    save(changed);
+  }
+  /** 한 숙제의 제출 현황 */
+  function homeworkProgress(id) {
+    var subs = submissions({ homeworkId: id });
+    var done = subs.filter(function (x) { return x.status !== '미제출'; }).length;
+    return { total: subs.length, done: done, rate: U.pct(done, subs.length), list: subs };
+  }
+
+  /* ---------- 단어 학습 ---------- */
+  function vocabLogs(opts) {
+    opts = opts || {};
+    var list = alive(get().vocabLogs).slice();
+    if (opts.studentId) list = list.filter(function (v) { return v.studentId === opts.studentId; });
+    if (opts.from) list = list.filter(function (v) { return v.date >= opts.from; });
+    if (opts.to) list = list.filter(function (v) { return v.date <= opts.to; });
+    return list.sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+  }
+  function saveVocabLog(v) {
+    var d = get(), rec = null;
+    // 앱이 보낸 세션 아이디가 같으면 같은 기록으로 봅니다 (두 번 들어와도 안 쌓임)
+    if (v.sessionId) {
+      rec = d.vocabLogs.filter(function (x) { return x.sessionId === v.sessionId; })[0] || null;
+    }
+    if (!rec && v.id) {
+      rec = d.vocabLogs.filter(function (x) { return x.id === v.id; })[0] || null;
+    }
+    if (rec) Object.assign(rec, v, { id: rec.id });
+    else {
+      v.id = v.id || U.uid('voc');
+      rec = v;
+      d.vocabLogs.push(rec);
+    }
+    stamp(rec);
+    save({ kind: 'vocab', id: rec.id });
+    return rec.id;
+  }
+  function deleteVocabLog(id) { return softDelete('vocabLogs', 'vocab', id); }
+
+  /** 한 학생의 단어 학습 요약 */
+  function vocabSummary(studentId, from, to) {
+    var list = vocabLogs({ studentId: studentId, from: from, to: to });
+    var total = 0, correct = 0, seconds = 0;
+    list.forEach(function (v) {
+      total += Number(v.total) || 0;
+      correct += Number(v.correct) || 0;
+      seconds += Number(v.durationSec) || 0;
+    });
+    return {
+      list: list, sessions: list.length, total: total, correct: correct,
+      accuracy: U.pct(correct, total), minutes: Math.round(seconds / 60),
+      lastDate: list.length ? list[0].date : ''
+    };
+  }
+
+  /* ---------- 도서 대여 ---------- */
+  function books(opts) {
+    opts = opts || {};
+    var list = alive(get().books).slice();
+    if (opts.q) {
+      var q = String(opts.q).toLowerCase();
+      list = list.filter(function (b) {
+        return [b.code, b.title, b.author, b.series, b.level].join(' ').toLowerCase().indexOf(q) >= 0;
+      });
+    }
+    if (opts.category) list = list.filter(function (b) { return b.category === opts.category; });
+    return list.sort(function (a, b) {
+      return String(a.title || '').localeCompare(String(b.title || ''), 'ko');
+    });
+  }
+  function book(id) {
+    return alive(get().books).filter(function (b) { return b.id === id; })[0] || null;
+  }
+  function bookByCode(code) {
+    if (!code) return null;
+    var up = String(code).trim().toLowerCase();
+    return alive(get().books).filter(function (b) {
+      return String(b.code || '').trim().toLowerCase() === up;
+    })[0] || null;
+  }
+  function saveBook(b) {
+    var d = get(), rec = null;
+    if (b.id) {
+      for (var i = 0; i < d.books.length; i++) {
+        if (d.books[i].id === b.id) { rec = Object.assign(d.books[i], b); break; }
+      }
+    }
+    if (!rec) { b.id = b.id || U.uid('bk'); rec = b; d.books.push(rec); }
+    stamp(rec);
+    save({ kind: 'book', id: rec.id });
+    return rec.id;
+  }
+  function deleteBook(id) { return softDelete('books', 'book', id); }
+
+  function loans(opts) {
+    opts = opts || {};
+    var list = alive(get().loans).slice();
+    if (opts.bookId) list = list.filter(function (l) { return l.bookId === opts.bookId; });
+    if (opts.studentId) list = list.filter(function (l) { return l.studentId === opts.studentId; });
+    if (opts.open) list = list.filter(function (l) { return !l.returnDate; });
+    return list.sort(function (a, b) { return a.outDate < b.outDate ? 1 : -1; });
+  }
+  /** 이 책이 지금 대출 중이면 그 기록 */
+  function openLoanOf(bookId) {
+    return alive(get().loans).filter(function (l) {
+      return l.bookId === bookId && !l.returnDate;
+    })[0] || null;
+  }
+  /** 책 상태 — 대출가능 / 대출중 / 연체 */
+  function bookStatus(b) {
+    var l = openLoanOf(b.id);
+    if (!l) return { key: 'in', label: '대출 가능', tag: 'ok', loan: null, overdue: 0 };
+    var over = l.dueDate && U.ymd() > l.dueDate ? U.dayDiff(l.dueDate, U.ymd()) : 0;
+    return over
+      ? { key: 'overdue', label: '연체 ' + over + '일', tag: 'bad', loan: l, overdue: over }
+      : { key: 'out', label: '대출 중', tag: 'blue', loan: l, overdue: 0 };
+  }
+  function lendBook(bookId, studentId, dueDate) {
+    if (openLoanOf(bookId)) throw new Error('이미 대출 중인 책입니다.');
+    var out = U.ymd();
+    var rec = stamp({
+      id: U.uid('ln'), bookId: bookId, studentId: studentId,
+      outDate: out, dueDate: dueDate || U.daysAgo(-LOAN_DAYS), returnDate: '', note: ''
+    });
+    get().loans.push(rec);
+    save({ kind: 'loan', id: rec.id });
+    return rec.id;
+  }
+  function returnBook(loanId, date) {
+    var d = get();
+    for (var i = 0; i < d.loans.length; i++) {
+      if (d.loans[i].id === loanId) {
+        d.loans[i].returnDate = date || U.ymd();
+        stamp(d.loans[i]);
+        save({ kind: 'loan', id: loanId });
+        return true;
+      }
+    }
+    return false;
+  }
+  function deleteLoan(id) { return softDelete('loans', 'loan', id); }
+
+  /** 지금 연체된 대출 목록 */
+  function overdueLoans() {
+    var today = U.ymd();
+    return loans({ open: true }).filter(function (l) {
+      return l.dueDate && today > l.dueDate;
+    });
+  }
+
   /* ---------- 집계 ---------- */
   /** 한 학생의 기간 통계 (노션의 출석률 / 체크사항 수식과 동일한 의미) */
   function summarize(studentId, from, to) {
@@ -1353,6 +1658,8 @@ var Store = (function () {
   return {
     STATUS: STATUS, GRADES: GRADES, FLAGS: FLAGS,
     ATTITUDES: ATTITUDES, WEEKDAYS: WEEKDAYS, PAY_METHODS: PAY_METHODS,
+    HOMEWORK_TYPES: HOMEWORK_TYPES, SUBMIT_STATUS: SUBMIT_STATUS,
+    BOOK_CATEGORIES: BOOK_CATEGORIES, LOAN_DAYS: LOAN_DAYS,
     CLASS_COLORS: CLASS_COLORS,
     get: get, save: save, onChange: onChange, onRecordChange: onRecordChange,
     allRecords: allRecords, findRecord: findRecord, applyRemote: applyRemote, stampAll: stampAll,
@@ -1369,6 +1676,15 @@ var Store = (function () {
     payments: payments, paymentFor: paymentFor, feeOf: feeOf, dueDateFor: dueDateFor,
     paymentStatus: paymentStatus, savePayment: savePayment, deletePayment: deletePayment,
     generateBills: generateBills, paymentSummary: paymentSummary, paymentHistory: paymentHistory,
+    homeworks: homeworks, homework: homework, submissions: submissions,
+    submissionFor: submissionFor, saveHomework: saveHomework, setSubmission: setSubmission,
+    deleteHomework: deleteHomework, homeworkProgress: homeworkProgress,
+    vocabLogs: vocabLogs, saveVocabLog: saveVocabLog, deleteVocabLog: deleteVocabLog,
+    vocabSummary: vocabSummary,
+    books: books, book: book, bookByCode: bookByCode, saveBook: saveBook, deleteBook: deleteBook,
+    loans: loans, openLoanOf: openLoanOf, bookStatus: bookStatus,
+    lendBook: lendBook, returnBook: returnBook, deleteLoan: deleteLoan, overdueLoans: overdueLoans,
+    ensureCode: ensureCode, studentByCode: studentByCode, findStudent: findStudent,
     summarize: summarize, dayOverview: dayOverview,
     exportJson: exportJson, importJson: importJson, resetAll: resetAll, saveAcademy: saveAcademy,
     migratePatrols: migratePatrols
@@ -2059,6 +2375,140 @@ var AuthUI = (function () {
 
 </script>
 <script>
+/* ===== 단어학습앱 데이터 받기 =====
+ * 앱이 어떤 방식으로 만들어졌든 아래 형식만 맞추면 기록이 쌓입니다.
+ *  1) JSON 파일 · 붙여넣기
+ *  2) CSV 파일 · 붙여넣기
+ *  3) 링크 열기  #/import?d=<base64 JSON>
+ */
+var VocabImport = (function () {
+
+  /** CSV 열 이름 → 내부 이름 (한글·영문 모두 받습니다) */
+  var COLS = {
+    '학생코드': 'studentCode', 'code': 'studentCode', 'studentcode': 'studentCode',
+    '학생이름': 'studentName', '이름': 'studentName', 'name': 'studentName', 'student': 'studentName',
+    '날짜': 'date', 'date': 'date',
+    '단어장': 'setName', '범위': 'setName', 'set': 'setName', 'setname': 'setName', 'unit': 'setName',
+    '총문항': 'total', '문항수': 'total', 'total': 'total', 'count': 'total',
+    '정답': 'correct', '정답수': 'correct', 'correct': 'correct', 'score': 'correct',
+    '학습시간': 'durationSec', '시간': 'durationSec', 'duration': 'durationSec', 'durationsec': 'durationSec',
+    '세션id': 'sessionId', '세션': 'sessionId', 'sessionid': 'sessionId', 'id': 'sessionId'
+  };
+
+  function splitCsvLine(line) {
+    var out = [], cur = '', q = false;
+    for (var i = 0; i < line.length; i++) {
+      var ch = line[i];
+      if (q) {
+        if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+        else if (ch === '"') q = false;
+        else cur += ch;
+      } else if (ch === '"') q = true;
+      else if (ch === ',') { out.push(cur); cur = ''; }
+      else cur += ch;
+    }
+    out.push(cur);
+    return out.map(function (v) { return v.trim(); });
+  }
+
+  function parseCsv(text) {
+    var lines = text.split(/\r?\n/).filter(function (l) { return l.trim(); });
+    if (lines.length < 2) return [];
+    var head = splitCsvLine(lines[0]).map(function (h) {
+      return COLS[h.toLowerCase().replace(/\s|\(.*\)/g, '')] || COLS[h] || h;
+    });
+    return lines.slice(1).map(function (line) {
+      var cells = splitCsvLine(line), row = {};
+      head.forEach(function (h, i) { row[h] = cells[i]; });
+      return row;
+    });
+  }
+
+  /** 텍스트(JSON 또는 CSV)를 학습 기록 배열로 */
+  function parse(text) {
+    text = String(text || '').trim();
+    if (!text) return { sessions: [], error: '내용이 비어 있습니다.' };
+    if (text[0] === '{' || text[0] === '[') {
+      try {
+        var j = JSON.parse(text);
+        var arr = Array.isArray(j) ? j : (j.sessions || j.logs || j.data || []);
+        if (!Array.isArray(arr)) return { sessions: [], error: 'sessions 목록을 찾지 못했습니다.' };
+        return { sessions: arr };
+      } catch (e) {
+        return { sessions: [], error: 'JSON 형식이 올바르지 않습니다.' };
+      }
+    }
+    var rows = parseCsv(text);
+    if (!rows.length) return { sessions: [], error: 'CSV에서 읽을 줄이 없습니다. 첫 줄은 열 이름이어야 합니다.' };
+    return { sessions: rows };
+  }
+
+  /** 학생을 찾아 붙이고, 못 찾은 줄은 따로 모읍니다. */
+  function resolve(sessions) {
+    var ready = [], unknown = [];
+    (sessions || []).forEach(function (row, i) {
+      var ref = row.studentCode || row.studentName || row.student || '';
+      var stu = Store.findStudent(ref);
+      var total = Number(row.total);
+      var correct = Number(row.correct);
+      var log = {
+        studentId: stu ? stu.id : '',
+        date: String(row.date || U.ymd()).slice(0, 10),
+        setName: String(row.setName || '단어 학습'),
+        total: isNaN(total) ? 0 : total,
+        correct: isNaN(correct) ? 0 : correct,
+        durationSec: Number(row.durationSec) || 0,
+        sessionId: row.sessionId ? String(row.sessionId) : '',
+        source: 'app'
+      };
+      if (!stu) unknown.push({ row: i + 1, ref: String(ref || '(비어 있음)'), log: log });
+      else ready.push({ log: log, student: stu });
+    });
+    return { ready: ready, unknown: unknown };
+  }
+
+  /** 실제로 저장. 세션 아이디가 같은 기록은 덮어씁니다. */
+  function apply(ready) {
+    var added = 0;
+    ready.forEach(function (r) {
+      Store.saveVocabLog(r.log);
+      added++;
+    });
+    return added;
+  }
+
+  /** 미리보기 표 */
+  function previewHtml(res) {
+    var rows = res.ready.slice(0, 12).map(function (r) {
+      return '<tr><td class="nm">' + U.esc(r.student.name) + '</td>' +
+        '<td>' + U.esc(r.log.date) + '</td>' +
+        '<td>' + U.esc(r.log.setName) + '</td>' +
+        '<td class="num">' + r.log.correct + ' / ' + r.log.total + '</td>' +
+        '<td class="num">' + (r.log.total ? U.pct(r.log.correct, r.log.total) : 0) + '%</td></tr>';
+    }).join('');
+
+    return (res.ready.length
+        ? '<div class="table-wrap"><table class="tbl" style="min-width:auto">' +
+          '<thead><tr><th>학생</th><th>날짜</th><th>단어장</th><th class="num">정답</th><th class="num">정답률</th></tr></thead>' +
+          '<tbody>' + rows + '</tbody></table></div>' +
+          (res.ready.length > 12 ? '<div class="hint" style="margin-top:6px">외 ' + (res.ready.length - 12) + '건</div>' : '')
+        : UI.emptyBox('가져올 기록이 없습니다.', '📥')) +
+      (res.unknown.length
+        ? '<div class="section-title">학생을 찾지 못한 줄 (' + res.unknown.length + '건)</div>' +
+          '<p class="hint" style="margin-top:0">아래 값과 일치하는 학생 코드나 이름이 명부에 없습니다. ' +
+          '이 줄은 가져오지 않습니다. 학생 코드는 <b>단어 학습</b> 화면에서 확인하실 수 있습니다.</p>' +
+          '<div class="chips" style="margin-top:8px">' +
+            res.unknown.slice(0, 20).map(function (u) {
+              return '<span class="chip static">' + u.row + '행 · ' + U.esc(u.ref) + '</span>';
+            }).join('') + '</div>'
+        : '');
+  }
+
+  return { parse: parse, resolve: resolve, apply: apply, previewHtml: previewHtml };
+})();
+
+</script>
+<script>
 /* ===== 대시보드 ===== */
 window.Views = window.Views || {};
 Views.dashboard = (function () {
@@ -2153,6 +2603,40 @@ Views.dashboard = (function () {
     }).join('') + (list.length > 6 ? '<div class="hint" style="margin-top:8px">외 ' + (list.length - 6) + '명</div>' : '');
   }
 
+  /** 진행 중 숙제의 제출 현황 */
+  function homeworkBox() {
+    var open = Store.homeworks({ open: true });
+    if (!open.length) return '<div class="hint">진행 중인 숙제가 없습니다. <a href="#/homework" style="color:#1a7fd4;font-weight:600">숙제 내기</a></div>';
+    return open.slice(0, 5).map(function (h) {
+      var pr = Store.homeworkProgress(h.id);
+      return '<div class="memo-item"><div class="txt"><b>' + U.esc(h.title) + '</b> ' +
+        '<span class="tag ' + (pr.rate === 100 ? 'ok' : pr.rate >= 60 ? 'warn' : 'bad') + '">' + pr.rate + '%</span>' +
+        '<br><span style="font-size:12px;color:#63778a">제출 ' + pr.done + '/' + pr.total + '명' +
+        (h.dueDate ? ' · 마감 ' + U.esc(h.dueDate) : '') + '</span></div></div>';
+    }).join('') + (open.length > 5 ? '<div class="hint" style="margin-top:8px">외 ' + (open.length - 5) + '건</div>' : '');
+  }
+
+  /** 오늘 이후 반납 예정과 연체 */
+  function libraryBox() {
+    var over = Store.overdueLoans();
+    var open = Store.loans({ open: true });
+    if (!Store.books().length) {
+      return '<div class="hint">등록된 도서가 없습니다. <a href="#/library" style="color:#1a7fd4;font-weight:600">도서 등록</a></div>';
+    }
+    if (!open.length) return '<div class="empty" style="padding:26px 12px"><span class="big">📖</span>대출 중인 책이 없습니다.</div>';
+    var soon = open.slice().sort(function (a, b) {
+      return String(a.dueDate || '').localeCompare(String(b.dueDate || ''));
+    });
+    return soon.slice(0, 5).map(function (l) {
+      var b = Store.book(l.bookId), st = Store.student(l.studentId);
+      var late = l.dueDate && l.dueDate < U.ymd();
+      return '<div class="memo-item"><div class="txt"><b>' + U.esc(st ? st.name : '') + '</b> ' +
+        '<span class="tag ' + (late ? 'bad' : 'blue') + '">' +
+          (late ? U.dayDiff(l.dueDate, U.ymd()) + '일 연체' : '~' + U.esc(l.dueDate || '')) + '</span>' +
+        '<br><span style="font-size:12px;color:#63778a">' + U.esc(b ? b.title : '(삭제된 책)') + '</span></div></div>';
+    }).join('') + (over.length ? '<div class="hint" style="margin-top:8px">연체 ' + over.length + '권</div>' : '');
+  }
+
   function render(el) {
     var o = Store.dayOverview(U.ymd());
     var all = Store.students();
@@ -2208,6 +2692,15 @@ Views.dashboard = (function () {
         '<div class="card"><div class="card-h"><h2>수강료 미납</h2><div class="sp"></div>' +
           '<a class="btn sm" href="#/tuition">납부 관리 →</a></div>' +
           '<div class="card-b">' + unpaidList(pay) + '</div></div>' +
+      '</div>' +
+
+      '<div class="grid g-2">' +
+        '<div class="card"><div class="card-h"><h2>숙제 현황</h2><div class="sp"></div>' +
+          '<a class="btn sm" href="#/homework">숙제 관리 →</a></div>' +
+          '<div class="card-b">' + homeworkBox() + '</div></div>' +
+        '<div class="card"><div class="card-h"><h2>도서 반납</h2><div class="sp"></div>' +
+          '<a class="btn sm" href="#/library">도서 대여 →</a></div>' +
+          '<div class="card-b">' + libraryBox() + '</div></div>' +
       '</div>' +
 
       '</div>';
@@ -2288,6 +2781,11 @@ Views.students = (function () {
       var rec = Store.attendanceFor(s.id, today);
       var sum = Store.summarize(s.id, U.ym(new Date()) + '-01', today);
       var sc = Store.scheduleOf(s);
+    var voc = Store.vocabSummary(s.id, U.daysAgo(29), U.ymd());
+    var subs = Store.submissions({ studentId: s.id });
+    var subDone = subs.filter(function (x) { return x.status !== '미제출'; }).length;
+    var myLoans = Store.loans({ studentId: s.id });
+    var myOpen = myLoans.filter(function (l) { return !l.returnDate; });
       return '<tr class="clickable" data-open="' + s.id + '">' +
         '<td class="nm">' + U.esc(s.name) + '</td>' +
         '<td>' + U.esc(s.grade || '-') + '</td>' +
@@ -2402,6 +2900,11 @@ Views.students = (function () {
     var memos = Store.memos(s.id).slice(0, 5);
     var pay = Store.paymentHistory(s.id);
     var sc = Store.scheduleOf(s);
+    var voc = Store.vocabSummary(s.id, U.daysAgo(29), U.ymd());
+    var subs = Store.submissions({ studentId: s.id });
+    var subDone = subs.filter(function (x) { return x.status !== '미제출'; }).length;
+    var myLoans = Store.loans({ studentId: s.id });
+    var myOpen = myLoans.filter(function (l) { return !l.returnDate; });
 
     var body =
       '<div class="grid g-2" style="gap:18px">' +
@@ -2426,6 +2929,8 @@ Views.students = (function () {
             '<div class="report-stat"><div class="v">' + sum.present + '/' + sum.total + '</div><div class="l">출석 / 수업</div></div>' +
             '<div class="report-stat"><div class="v">' + sum.homework + '</div><div class="l">숙제 완료</div></div>' +
             '<div class="report-stat"><div class="v">' + sum.attitudeIssues + '</div><div class="l">태도 주의</div></div>' +
+            '<div class="report-stat"><div class="v">' + (voc.total ? voc.accuracy + '%' : '-') + '</div><div class="l">단어 정답률</div></div>' +
+            '<div class="report-stat"><div class="v">' + subDone + '/' + subs.length + '</div><div class="l">숙제 제출</div></div>' +
           '</div>' +
           '<div class="hint" style="margin-top:8px">지각 ' + sum.flags['지각'] + ' · 외출 ' + sum.flags['외출'] + ' · 조퇴 ' + sum.flags['조퇴'] + '</div>' +
         '</div>' +
@@ -2444,6 +2949,31 @@ Views.students = (function () {
             '<td>' + (r.homework ? '✅' : '–') + '</td><td>' + U.esc(r.note || '') + '</td></tr>';
         }).join('') + '</tbody></table></div>'
         : '<div class="hint">기록이 없습니다.</div>') +
+
+      '<div class="section-title">단어 학습 · 숙제 · 도서</div>' +
+      '<div class="grid g-3" style="gap:12px">' +
+        '<div><div class="hint" style="margin-bottom:6px">최근 30일 단어 학습</div>' +
+          (voc.sessions
+            ? '<b style="font-size:15px">' + voc.accuracy + '%</b> <span class="hint">' +
+              voc.sessions + '회 · ' + U.num(voc.total) + '단어 · ' + voc.minutes + '분</span>'
+            : '<span class="hint">기록 없음</span>') + '</div>' +
+        '<div><div class="hint" style="margin-bottom:6px">숙제</div>' +
+          (subs.length
+            ? '<b style="font-size:15px">' + U.pct(subDone, subs.length) + '%</b> <span class="hint">' +
+              subDone + '/' + subs.length + '건 제출</span>'
+            : '<span class="hint">받은 숙제 없음</span>') + '</div>' +
+        '<div><div class="hint" style="margin-bottom:6px">도서</div>' +
+          '<b style="font-size:15px">' + myLoans.length + '권</b> <span class="hint">누적 대출' +
+          (myOpen.length ? ' · 대출 중 ' + myOpen.length + '권' : '') + '</span></div>' +
+      '</div>' +
+      (myOpen.length
+        ? '<div class="chips" style="margin-top:10px">' + myOpen.map(function (l) {
+            var b = Store.book(l.bookId);
+            var late = l.dueDate && l.dueDate < U.ymd();
+            return '<span class="chip static' + (late ? ' on bad' : '') + '">' +
+              U.esc(b ? b.title : '(삭제된 책)') + ' · ~' + U.esc(l.dueDate || '') + '</span>';
+          }).join('') + '</div>'
+        : '') +
 
       '<div class="section-title">수강료 납부 이력</div>' +
       (pay.list.length
@@ -2546,6 +3076,11 @@ Views.students = (function () {
                   '학부모이메일', '월수강료', '납부일', '특이사항'];
       var body = Store.students().filter(matches).map(function (s) {
         var sc = Store.scheduleOf(s);
+    var voc = Store.vocabSummary(s.id, U.daysAgo(29), U.ymd());
+    var subs = Store.submissions({ studentId: s.id });
+    var subDone = subs.filter(function (x) { return x.status !== '미제출'; }).length;
+    var myLoans = Store.loans({ studentId: s.id });
+    var myOpen = myLoans.filter(function (l) { return !l.returnDate; });
         return [s.name, s.grade, sc.className, sc.days.join('·'), sc.time, s.status,
                 s.phone, s.parentPhone, s.parentEmail,
                 Store.feeOf(s), s.billingDay || Store.get().academy.billingDay, s.note];
@@ -2737,6 +3272,844 @@ Views.attendance = (function () {
       var sid = input.closest('[data-sid]').getAttribute('data-sid');
       Store.setAttendance(sid, date, { note: input.value });
       UI.toast('비고를 저장했습니다.');
+    });
+  }
+
+  return { title: title, sub: sub, render: render };
+})();
+
+</script>
+<script>
+/* ===== 숙제 관리 ===== */
+window.Views = window.Views || {};
+Views.homework = (function () {
+
+  var scope = 'open';   // open = 진행중, all = 전체
+
+  function title() { return '숙제 관리'; }
+  function sub() {
+    var open = Store.homeworks({ open: true }).length;
+    return '진행 중인 숙제 ' + open + '건';
+  }
+
+  function list() {
+    return scope === 'open' ? Store.homeworks({ open: true }) : Store.homeworks();
+  }
+
+  /* ---------- 숙제 카드 ---------- */
+  function card(h) {
+    var pr = Store.homeworkProgress(h.id);
+    var c = h.classId ? Store.klass(h.classId) : null;
+    var overdue = h.dueDate && h.dueDate < U.ymd();
+    var pending = pr.list.filter(function (x) { return x.status === '미제출'; })
+      .map(function (x) { return Store.student(x.studentId); })
+      .filter(Boolean);
+
+    return '<div class="hw-card" style="--klass:' + U.esc(c && c.color ? c.color : '#1a7fd4') + '">' +
+      '<div class="hw-top">' +
+        '<div>' +
+          '<div class="hw-title">' + U.esc(h.title) + '</div>' +
+          '<div class="hw-meta">' +
+            '<span class="tag gray">' + U.esc(h.type || '기타') + '</span> ' +
+            (c ? U.esc(c.name) : '개별 지정') +
+            ' · 낸 날 ' + U.esc(h.assignedDate || '-') +
+            (h.dueDate ? ' · 마감 ' + U.esc(h.dueDate) : '') +
+            (overdue ? ' <span class="tag bad">마감 지남</span>' : '') +
+          '</div>' +
+        '</div>' +
+        '<div class="hw-rate"><b>' + pr.rate + '%</b><span>' + pr.done + '/' + pr.total + '</span></div>' +
+      '</div>' +
+      '<div class="bar-track"><div class="bar-fill' + (pr.rate < 60 ? ' low' : '') + '" style="width:' + pr.rate + '%"></div></div>' +
+      (h.note ? '<div class="class-note">' + U.esc(h.note) + '</div>' : '') +
+      (pending.length
+        ? '<div class="hw-pending"><span class="att-label">미제출</span>' +
+            pending.slice(0, 8).map(function (s) {
+              return '<span class="pill" data-open="' + s.id + '">' + U.esc(s.name) + '</span>';
+            }).join('') +
+            (pending.length > 8 ? '<span class="hint">외 ' + (pending.length - 8) + '명</span>' : '') +
+          '</div>'
+        : '<div class="hw-pending"><span class="tag ok">모두 제출했습니다</span></div>') +
+      '<div class="class-actions">' +
+        '<button class="btn sm primary" data-check="' + h.id + '">제출 체크</button>' +
+        '<button class="btn sm ghost" data-edit="' + h.id + '">수정</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  /* ---------- 숙제 내기 ---------- */
+  function openForm(id) {
+    var h = id ? Store.homework(id) : null;
+    var cs = Store.classes();
+
+    UI.modal({
+      title: h ? '숙제 수정' : '숙제 내기',
+      body:
+        '<div class="form-grid">' +
+          '<label class="fld full">숙제 내용 *<input type="text" id="h-title" value="' + U.esc(h ? h.title : '') +
+            '" placeholder="예: Unit 3 단어 20개 외우기"></label>' +
+          '<label class="fld">종류<select id="h-type">' + UI.options(Store.HOMEWORK_TYPES, h ? h.type : '단어') + '</select></label>' +
+          '<label class="fld">대상 반<select id="h-class">' +
+            '<option value="">전체 등록생</option>' +
+            cs.map(function (c) {
+              return '<option value="' + c.id + '"' + (h && h.classId === c.id ? ' selected' : '') + '>' + U.esc(c.name) + '</option>';
+            }).join('') + '</select></label>' +
+          '<label class="fld">낸 날<input type="date" id="h-assigned" value="' + U.esc(h && h.assignedDate ? h.assignedDate : U.ymd()) + '"></label>' +
+          '<label class="fld">마감일<input type="date" id="h-due" value="' + U.esc(h && h.dueDate ? h.dueDate : U.daysAgo(-7)) + '"></label>' +
+          '<label class="fld full">메모<input type="text" id="h-note" value="' + U.esc(h && h.note ? h.note : '') + '" placeholder="교재 쪽수, 제출 방법 등"></label>' +
+        '</div>' +
+        (h ? '' : '<p class="hint" style="margin-top:12px">저장하면 대상 학생 전원에게 제출 칸이 만들어집니다.</p>'),
+      footer: (h ? '<button class="btn danger" id="h-del">삭제</button><div class="sp"></div>' : '') +
+        '<button class="btn" data-close>취소</button><button class="btn primary" id="h-save">저장</button>',
+      onMount: function (w) {
+        w.querySelector('#h-save').addEventListener('click', function () {
+          var t = w.querySelector('#h-title').value.trim();
+          if (!t) { UI.toast('숙제 내용을 입력해 주세요.', true); return; }
+          var classId = w.querySelector('#h-class').value;
+          var targets = classId ? null : Store.students({ active: true }).map(function (s) { return s.id; });
+          Store.saveHomework({
+            id: h ? h.id : null,
+            title: t,
+            type: w.querySelector('#h-type').value,
+            classId: classId,
+            assignedDate: w.querySelector('#h-assigned').value,
+            dueDate: w.querySelector('#h-due').value,
+            note: w.querySelector('#h-note').value.trim()
+          }, targets);
+          UI.close();
+          UI.toast(h ? '수정했습니다.' : '숙제를 냈습니다.');
+          App.rerender();
+        });
+        if (h) {
+          w.querySelector('#h-del').addEventListener('click', function () {
+            UI.close();
+            UI.confirm('이 숙제와 제출 기록을 삭제할까요?', function () {
+              Store.deleteHomework(h.id);
+              UI.toast('삭제했습니다.');
+              App.rerender();
+            }, { danger: true, yes: '삭제' });
+          });
+        }
+      }
+    });
+  }
+
+  /* ---------- 제출 체크 ---------- */
+  function openCheck(id) {
+    var h = Store.homework(id);
+    if (!h) return;
+
+    function rows() {
+      return Store.submissions({ homeworkId: id }).map(function (x) {
+        var s = Store.student(x.studentId);
+        if (!s) return '';
+        return '<div class="sub-row" data-sid="' + s.id + '">' +
+          '<span class="member-name">' + U.esc(s.name) + '</span>' +
+          '<div class="seg">' +
+            Store.SUBMIT_STATUS.map(function (st) {
+              return '<button data-status="' + st + '" class="' + (x.status === st ? 'on' : '') + '">' + st + '</button>';
+            }).join('') +
+          '</div>' +
+          '<input type="text" class="mini-note" data-note placeholder="점수 · 메모" value="' + U.esc(x.note || '') + '" style="max-width:220px">' +
+        '</div>';
+      }).join('');
+    }
+
+    UI.modal({
+      title: h.title, wide: true,
+      body: '<div id="sub-rows">' + (Store.submissions({ homeworkId: id }).length
+        ? rows() : UI.emptyBox('대상 학생이 없습니다.', '🧒')) + '</div>',
+      footer: '<button class="btn" id="sc-all">전원 제출 처리</button><div class="sp"></div>' +
+              '<button class="btn primary" data-close>닫기</button>',
+      onMount: function (w) {
+        function refresh() { w.querySelector('#sub-rows').innerHTML = rows(); }
+        UI.on(w, '[data-status]', 'click', function (e, btn) {
+          var sid = btn.closest('[data-sid]').getAttribute('data-sid');
+          var st = btn.getAttribute('data-status');
+          Store.setSubmission(id, sid, {
+            status: st,
+            submittedAt: st === '미제출' ? '' : U.ymd()
+          });
+          refresh();
+          App.rerender();
+        });
+        UI.on(w, '[data-note]', 'change', function (e, input) {
+          var sid = input.closest('[data-sid]').getAttribute('data-sid');
+          Store.setSubmission(id, sid, { note: input.value });
+          UI.toast('메모를 저장했습니다.');
+        });
+        w.querySelector('#sc-all').addEventListener('click', function () {
+          Store.submissions({ homeworkId: id }).forEach(function (x) {
+            if (x.status === '미제출') Store.setSubmission(id, x.studentId, { status: '제출', submittedAt: U.ymd() });
+          });
+          refresh();
+          App.rerender();
+          UI.toast('전원 제출 처리했습니다.');
+        });
+      }
+    });
+  }
+
+  /* ---------- 렌더 ---------- */
+  function render(el) {
+    var all = Store.homeworks();
+    var open = Store.homeworks({ open: true });
+    var totalPending = 0, totalTargets = 0;
+    open.forEach(function (h) {
+      var pr = Store.homeworkProgress(h.id);
+      totalPending += (pr.total - pr.done);
+      totalTargets += pr.total;
+    });
+
+    el.innerHTML =
+      '<div class="grid g-3" style="margin-bottom:16px">' +
+        '<div class="stat accent"><div class="lbl">진행 중 숙제</div><div class="val">' + open.length + '<small>건</small></div>' +
+          '<div class="sub">전체 ' + all.length + '건</div></div>' +
+        '<div class="stat"><div class="lbl">제출률</div><div class="val">' + U.pct(totalTargets - totalPending, totalTargets) + '<small>%</small></div>' +
+          '<div class="sub">진행 중 숙제 기준</div></div>' +
+        '<div class="stat"><div class="lbl">미제출</div><div class="val" style="color:' + (totalPending ? '#d5453f' : 'inherit') + '">' +
+          totalPending + '<small>건</small></div><div class="sub">학생 × 숙제</div></div>' +
+      '</div>' +
+
+      '<div class="card">' +
+        '<div class="card-h"><h2>숙제 목록</h2><div class="sp"></div>' +
+          '<div class="seg">' +
+            '<button id="sc-open" class="' + (scope === 'open' ? 'on' : '') + '">진행 중</button>' +
+            '<button id="sc-allhw" class="' + (scope === 'all' ? 'on' : '') + '">전체</button>' +
+          '</div>' +
+          '<button class="btn primary" id="add">+ 숙제 내기</button></div>' +
+        '<div class="card-b">' +
+          (list().length
+            ? '<div class="class-grid">' + list().map(card).join('') + '</div>'
+            : UI.emptyBox(scope === 'open'
+                ? '진행 중인 숙제가 없습니다. [+ 숙제 내기]로 시작하세요.'
+                : '아직 낸 숙제가 없습니다.', '📚')) +
+        '</div>' +
+      '</div>';
+
+    el.querySelector('#add').addEventListener('click', function () { openForm(null); });
+    el.querySelector('#sc-open').addEventListener('click', function () { scope = 'open'; render(el); });
+    el.querySelector('#sc-allhw').addEventListener('click', function () { scope = 'all'; render(el); });
+    UI.on(el, '[data-edit]', 'click', function (e, b) { openForm(b.getAttribute('data-edit')); });
+    UI.on(el, '[data-check]', 'click', function (e, b) { openCheck(b.getAttribute('data-check')); });
+    UI.on(el, '[data-open]', 'click', function (e, b) { Views.students.openDetail(b.getAttribute('data-open')); });
+  }
+
+  return { title: title, sub: sub, render: render };
+})();
+
+</script>
+<script>
+/* ===== 단어 학습 (단어학습앱 연동) ===== */
+window.Views = window.Views || {};
+Views.vocab = (function () {
+
+  var period = 30;   // 최근 며칠
+
+  function title() { return '단어 학습'; }
+  function sub() { return '단어학습앱에서 넘어온 학습 기록입니다'; }
+
+  function range() { return { from: U.daysAgo(period - 1), to: U.ymd() }; }
+
+  function rowsData() {
+    var r = range();
+    return Store.students({ active: true }).map(function (s) {
+      return { s: s, sum: Store.vocabSummary(s.id, r.from, r.to) };
+    });
+  }
+
+  /* ---------- 가져오기 ---------- */
+  function openImport(prefill) {
+    UI.modal({
+      title: '단어 학습 기록 가져오기',
+      wide: true,
+      body:
+        '<p class="hint" style="margin-top:0">단어학습앱에서 내보낸 <b>JSON</b> 또는 <b>CSV</b>를 넣으세요. ' +
+        '학생은 <b>학생 코드</b> 또는 <b>이름</b>으로 찾습니다.</p>' +
+        '<div class="row" style="margin:12px 0">' +
+          '<button class="btn" id="v-file">파일 선택</button>' +
+          '<input type="file" id="v-fileinput" accept=".json,.csv,.txt,application/json,text/csv" style="display:none">' +
+          '<a class="btn" href="https://github.com/a28008005-sketch/gorae-homepage/blob/main/docs/단어학습앱-연동.md" target="_blank" rel="noopener">형식 안내</a>' +
+        '</div>' +
+        '<label class="fld">직접 붙여넣기' +
+          '<textarea id="v-text" style="min-height:150px;font-size:12px;font-family:ui-monospace,Menlo,monospace" ' +
+          'placeholder=\'{"type":"gorae-vocab","sessions":[{"studentCode":"A3F9","date":"2026-09-02","setName":"Unit 3","total":20,"correct":18}]}\'>' +
+          U.esc(prefill || '') + '</textarea></label>' +
+        '<div id="v-preview" style="margin-top:14px"></div>',
+      footer: '<button class="btn" data-close>취소</button>' +
+              '<button class="btn primary" id="v-apply" disabled>가져오기</button>',
+      onMount: function (w) {
+        var current = null;
+
+        function preview() {
+          var text = w.querySelector('#v-text').value;
+          var box = w.querySelector('#v-preview');
+          var applyBtn = w.querySelector('#v-apply');
+          if (!text.trim()) { box.innerHTML = ''; applyBtn.disabled = true; current = null; return; }
+          var parsed = VocabImport.parse(text);
+          if (parsed.error) {
+            box.innerHTML = '<div class="gate-err" style="margin:0">' + U.esc(parsed.error) + '</div>';
+            applyBtn.disabled = true; current = null;
+            return;
+          }
+          current = VocabImport.resolve(parsed.sessions);
+          box.innerHTML = VocabImport.previewHtml(current);
+          applyBtn.disabled = !current.ready.length;
+          applyBtn.textContent = current.ready.length ? current.ready.length + '건 가져오기' : '가져오기';
+        }
+
+        w.querySelector('#v-text').addEventListener('input', preview);
+        w.querySelector('#v-file').addEventListener('click', function () {
+          w.querySelector('#v-fileinput').click();
+        });
+        w.querySelector('#v-fileinput').addEventListener('change', function (e) {
+          var f = e.target.files[0];
+          if (!f) return;
+          var reader = new FileReader();
+          reader.onload = function () {
+            w.querySelector('#v-text').value = reader.result;
+            preview();
+          };
+          reader.readAsText(f);
+          e.target.value = '';
+        });
+        w.querySelector('#v-apply').addEventListener('click', function () {
+          if (!current) return;
+          var n = VocabImport.apply(current.ready);
+          UI.close();
+          UI.toast(n + '건을 가져왔습니다.');
+          App.rerender();
+        });
+        if (prefill) preview();
+      }
+    });
+  }
+
+  /* ---------- 학생 코드 ---------- */
+  function openCodes() {
+    var list = Store.students({ active: true });
+    UI.modal({
+      title: '학생 코드', wide: true,
+      body:
+        '<p class="hint" style="margin-top:0">단어학습앱에서 학생을 지목할 때 쓰는 코드입니다. ' +
+        '앱에 이 코드를 넣어두면 이름이 같거나 바뀌어도 정확히 연결됩니다.</p>' +
+        '<div class="row" style="margin:12px 0">' +
+          '<button class="btn" id="c-make">코드 없는 학생에게 코드 만들기</button>' +
+          '<button class="btn" id="c-csv">코드 목록 CSV</button>' +
+        '</div>' +
+        '<div id="c-list">' + codeTable(list) + '</div>',
+      onMount: function (w) {
+        w.querySelector('#c-make').addEventListener('click', function () {
+          var n = 0;
+          Store.students({ active: true }).forEach(function (s) {
+            if (!s.code) { Store.ensureCode(s.id); n++; }
+          });
+          w.querySelector('#c-list').innerHTML = codeTable(Store.students({ active: true }));
+          UI.toast(n ? n + '명에게 코드를 만들었습니다.' : '모든 학생에게 코드가 있습니다.');
+        });
+        w.querySelector('#c-csv').addEventListener('click', function () {
+          var head = ['학생코드', '이름', '학년', '반'];
+          var body = Store.students({ active: true }).map(function (s) {
+            return [s.code || '', s.name, s.grade || '', Store.scheduleOf(s).className];
+          });
+          U.download('고래영어_학생코드.csv', U.toCsv([head].concat(body)), 'text/csv');
+          UI.toast('CSV 파일을 내려받았습니다.');
+        });
+      }
+    });
+  }
+
+  function codeTable(list) {
+    if (!list.length) return UI.emptyBox('등록생이 없습니다.', '🧒');
+    return '<div class="table-wrap"><table class="tbl" style="min-width:auto">' +
+      '<thead><tr><th>학생</th><th>학년</th><th>반</th><th>코드</th></tr></thead><tbody>' +
+      list.map(function (s) {
+        return '<tr><td class="nm">' + U.esc(s.name) + '</td>' +
+          '<td>' + U.esc(s.grade || '-') + '</td>' +
+          '<td>' + U.esc(Store.scheduleOf(s).className || '-') + '</td>' +
+          '<td>' + (s.code
+            ? '<span class="code-chip">' + U.esc(s.code) + '</span>'
+            : '<span class="hint">없음</span>') + '</td></tr>';
+      }).join('') + '</tbody></table></div>';
+  }
+
+  /* ---------- 렌더 ---------- */
+  function render(el) {
+    var data = rowsData();
+    var totals = data.reduce(function (a, d) {
+      a.sessions += d.sum.sessions; a.total += d.sum.total;
+      a.correct += d.sum.correct; a.minutes += d.sum.minutes;
+      return a;
+    }, { sessions: 0, total: 0, correct: 0, minutes: 0 });
+    var studied = data.filter(function (d) { return d.sum.sessions > 0; });
+
+    el.innerHTML =
+      '<div class="card" style="margin-bottom:16px"><div class="card-b" style="padding:12px 16px">' +
+        '<div class="row">' +
+          '<b style="font-size:13.5px">기간</b>' +
+          '<div class="seg">' +
+            [7, 30, 90].map(function (d) {
+              return '<button data-period="' + d + '" class="' + (period === d ? 'on' : '') + '">최근 ' + d + '일</button>';
+            }).join('') +
+          '</div>' +
+          '<div class="sp"></div>' +
+          '<button class="btn" id="codes">학생 코드</button>' +
+          '<button class="btn primary" id="imp">기록 가져오기</button>' +
+        '</div>' +
+      '</div></div>' +
+
+      '<div class="grid g-4" style="margin-bottom:16px">' +
+        '<div class="stat accent"><div class="lbl">평균 정답률</div><div class="val">' + U.pct(totals.correct, totals.total) + '<small>%</small></div>' +
+          '<div class="sub">최근 ' + period + '일</div></div>' +
+        '<div class="stat"><div class="lbl">학습한 단어</div><div class="val">' + U.num(totals.total) + '<small>개</small></div>' +
+          '<div class="sub">맞힌 단어 ' + U.num(totals.correct) + '개</div></div>' +
+        '<div class="stat"><div class="lbl">학습 횟수</div><div class="val">' + totals.sessions + '<small>회</small></div>' +
+          '<div class="sub">총 ' + totals.minutes + '분</div></div>' +
+        '<div class="stat"><div class="lbl">참여 학생</div><div class="val">' + studied.length + '<small>/' + data.length + '</small></div>' +
+          '<div class="sub">기간 내 1회 이상</div></div>' +
+      '</div>' +
+
+      (Store.vocabLogs().length ? '' :
+        '<div class="card" style="margin-bottom:16px"><div class="card-b">' +
+          '<p class="hint" style="margin:0">📱 아직 들어온 기록이 없습니다. 단어학습앱에서 결과를 내보내 ' +
+          '<b>[기록 가져오기]</b>로 넣거나, 앱이 <code>#/import?d=...</code> 링크를 열도록 만들면 자동으로 쌓입니다. ' +
+          '형식은 <b>docs/단어학습앱-연동.md</b>에 정리해 두었습니다.</p>' +
+        '</div></div>') +
+
+      '<div class="grid g-21" style="margin-bottom:16px">' +
+        '<div class="card"><div class="card-h"><h2>학생별 정답률</h2></div><div class="card-b">' +
+          (studied.length
+            ? studied.slice().sort(function (a, b) { return b.sum.accuracy - a.sum.accuracy; })
+                .map(function (d) { return UI.bar(d.s.name, d.sum.accuracy, 100, '%'); }).join('')
+            : UI.emptyBox('기간 내 학습 기록이 없습니다.', '📱')) +
+        '</div></div>' +
+
+        '<div class="card"><div class="card-h"><h2>최근 학습</h2></div><div class="card-b">' +
+          (function () {
+            var r = range();
+            var logs = Store.vocabLogs({ from: r.from, to: r.to }).slice(0, 8);
+            if (!logs.length) return '<div class="hint">기록이 없습니다.</div>';
+            return logs.map(function (v) {
+              var s = Store.student(v.studentId);
+              var rate = U.pct(v.correct, v.total);
+              return '<div class="memo-item"><span class="dt">' + U.shortDate(v.date) + '</span>' +
+                '<div class="txt"><b>' + U.esc(s ? s.name : '(삭제됨)') + '</b> ' +
+                  '<span class="tag ' + (rate >= 80 ? 'ok' : rate >= 60 ? 'warn' : 'bad') + '">' + rate + '%</span>' +
+                  '<br><span style="font-size:12px;color:#63778a">' + U.esc(v.setName || '') +
+                  ' · ' + v.correct + '/' + v.total + '개</span></div></div>';
+            }).join('');
+          })() +
+        '</div></div>' +
+      '</div>' +
+
+      '<div class="card"><div class="card-h"><h2>학생별 상세</h2><div class="sp"></div>' +
+        '<button class="btn sm" id="csv">CSV 내보내기</button></div>' +
+        '<div class="table-wrap"><table class="tbl">' +
+          '<thead><tr><th>학생</th><th>반</th><th>코드</th><th class="num">학습 횟수</th>' +
+          '<th class="num">단어 수</th><th class="num">정답률</th><th class="num">학습 시간</th><th>마지막 학습</th></tr></thead><tbody>' +
+          (data.length ? data.map(function (d) {
+            return '<tr class="clickable" data-open="' + d.s.id + '">' +
+              '<td class="nm">' + U.esc(d.s.name) + '</td>' +
+              '<td>' + U.esc(Store.scheduleOf(d.s).className || '-') + '</td>' +
+              '<td>' + (d.s.code ? '<span class="code-chip">' + U.esc(d.s.code) + '</span>' : '-') + '</td>' +
+              '<td class="num">' + d.sum.sessions + '</td>' +
+              '<td class="num">' + U.num(d.sum.total) + '</td>' +
+              '<td class="num">' + (d.sum.total ? d.sum.accuracy + '%' : '-') + '</td>' +
+              '<td class="num">' + d.sum.minutes + '분</td>' +
+              '<td>' + (d.sum.lastDate ? U.shortDate(d.sum.lastDate) : '-') + '</td></tr>';
+          }).join('') : '<tr><td colspan="8">' + UI.emptyBox('등록생이 없습니다.', '🧒') + '</td></tr>') +
+        '</tbody></table></div></div>';
+
+    UI.on(el, '[data-period]', 'click', function (e, b) {
+      period = +b.getAttribute('data-period');
+      render(el);
+    });
+    el.querySelector('#imp').addEventListener('click', function () { openImport(''); });
+    el.querySelector('#codes').addEventListener('click', openCodes);
+    UI.on(el, '[data-open]', 'click', function (e, tr) {
+      Views.students.openDetail(tr.getAttribute('data-open'));
+    });
+    el.querySelector('#csv').addEventListener('click', function () {
+      var head = ['학생', '반', '학생코드', '학습횟수', '단어수', '정답수', '정답률(%)', '학습시간(분)', '마지막학습'];
+      var body = rowsData().map(function (d) {
+        return [d.s.name, Store.scheduleOf(d.s).className, d.s.code || '',
+                d.sum.sessions, d.sum.total, d.sum.correct, d.sum.accuracy, d.sum.minutes, d.sum.lastDate];
+      });
+      U.download('고래영어_단어학습_' + U.ymd() + '.csv', U.toCsv([head].concat(body)), 'text/csv');
+      UI.toast('CSV 파일을 내려받았습니다.');
+    });
+  }
+
+  /* ---------- 링크로 받기 (#/import?d=...) ---------- */
+  function renderImportRoute(el, encoded) {
+    var payload = U.decodeData(encoded);
+    var text = payload ? JSON.stringify(payload) : '';
+    el.innerHTML = '<div class="card"><div class="card-b">' +
+      (payload
+        ? '<p class="hint" style="margin-top:0">단어학습앱이 보낸 기록입니다. 확인 후 가져오기를 눌러 주세요.</p>'
+        : UI.emptyBox('링크에서 기록을 읽지 못했습니다. 링크가 잘리지 않았는지 확인해 주세요.', '⚠️')) +
+      '</div></div>';
+    if (payload) openImport(text);
+  }
+
+  return { title: title, sub: sub, render: render, renderImportRoute: renderImportRoute, openImport: openImport };
+})();
+
+</script>
+<script>
+/* ===== 도서 대여 ===== */
+window.Views = window.Views || {};
+Views.library = (function () {
+
+  var filter = { q: '', category: '', state: 'all' };  // state: all | out | overdue | in
+
+  function title() { return '도서 대여'; }
+  function sub() {
+    var out = Store.loans({ open: true }).length;
+    var over = Store.overdueLoans().length;
+    return '보유 ' + Store.books().length + '권 · 대출 중 ' + out + '권' + (over ? ' · 연체 ' + over + '권' : '');
+  }
+
+  function visible() {
+    return Store.books({ q: filter.q, category: filter.category }).filter(function (b) {
+      if (filter.state === 'all') return true;
+      var st = Store.bookStatus(b);
+      if (filter.state === 'in') return st.key === 'in';
+      if (filter.state === 'out') return st.key === 'out' || st.key === 'overdue';
+      if (filter.state === 'overdue') return st.key === 'overdue';
+      return true;
+    });
+  }
+
+  function rows() {
+    var list = visible();
+    if (!list.length) {
+      return '<tr><td colspan="7">' + UI.emptyBox(
+        Store.books().length ? '조건에 맞는 책이 없습니다.' : '등록된 도서가 없습니다. [+ 도서 등록] 또는 [CSV 일괄 등록]으로 시작하세요.',
+        '📚') + '</td></tr>';
+    }
+    return list.slice(0, 300).map(function (b) {
+      var st = Store.bookStatus(b);
+      var borrower = st.loan ? Store.student(st.loan.studentId) : null;
+      return '<tr data-bid="' + b.id + '">' +
+        '<td>' + (b.code ? '<span class="code-chip">' + U.esc(b.code) + '</span>' : '-') + '</td>' +
+        '<td class="nm">' + U.esc(b.title) +
+          (b.series ? '<br><span class="hint">' + U.esc(b.series) + '</span>' : '') + '</td>' +
+        '<td>' + U.esc(b.level || '-') + '</td>' +
+        '<td>' + U.esc(b.category || '-') + '</td>' +
+        '<td><span class="tag ' + st.tag + '">' + U.esc(st.label) + '</span></td>' +
+        '<td>' + (borrower
+            ? U.esc(borrower.name) + '<br><span class="hint">~' + U.esc(st.loan.dueDate || '') + '</span>'
+            : '-') + '</td>' +
+        '<td style="white-space:nowrap">' +
+          (st.key === 'in'
+            ? '<button class="btn sm primary" data-lend="' + b.id + '">대여</button> '
+            : '<button class="btn sm" data-return="' + st.loan.id + '">반납</button> ') +
+          '<button class="btn sm ghost" data-edit="' + b.id + '">수정</button>' +
+        '</td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  /* ---------- 도서 등록 / 수정 ---------- */
+  function openBookForm(id) {
+    var b = id ? Store.book(id) : null;
+    UI.modal({
+      title: b ? '도서 수정' : '도서 등록',
+      body:
+        '<div class="form-grid">' +
+          '<label class="fld full">제목 *<input type="text" id="b-title" value="' + U.esc(b ? b.title : '') + '" placeholder="Frog and Toad Are Friends"></label>' +
+          '<label class="fld">청구기호 · 바코드<input type="text" id="b-code" value="' + U.esc(b && b.code ? b.code : '') + '" placeholder="예: RD-0412"></label>' +
+          '<label class="fld">레벨<input type="text" id="b-level" value="' + U.esc(b && b.level ? b.level : '') + '" placeholder="예: AR 2.5 / Lexile 450L"></label>' +
+          '<label class="fld">분류<select id="b-cat">' + UI.options(Store.BOOK_CATEGORIES, b ? b.category : '', '선택 안 함') + '</select></label>' +
+          '<label class="fld">시리즈<input type="text" id="b-series" value="' + U.esc(b && b.series ? b.series : '') + '" placeholder="예: Frog and Toad"></label>' +
+          '<label class="fld full">지은이<input type="text" id="b-author" value="' + U.esc(b && b.author ? b.author : '') + '"></label>' +
+          '<label class="fld full">메모<input type="text" id="b-note" value="' + U.esc(b && b.note ? b.note : '') + '" placeholder="보관 위치, 상태 등"></label>' +
+        '</div>',
+      footer: (b ? '<button class="btn danger" id="b-del">삭제</button><div class="sp"></div>' : '') +
+        '<button class="btn" data-close>취소</button><button class="btn primary" id="b-save">저장</button>',
+      onMount: function (w) {
+        w.querySelector('#b-save').addEventListener('click', function () {
+          var t = w.querySelector('#b-title').value.trim();
+          if (!t) { UI.toast('제목을 입력해 주세요.', true); return; }
+          var code = w.querySelector('#b-code').value.trim();
+          var dup = code ? Store.bookByCode(code) : null;
+          if (dup && (!b || dup.id !== b.id)) {
+            UI.toast('같은 청구기호를 쓰는 책이 이미 있습니다: ' + dup.title, true);
+            return;
+          }
+          Store.saveBook({
+            id: b ? b.id : null, title: t, code: code,
+            level: w.querySelector('#b-level').value.trim(),
+            category: w.querySelector('#b-cat').value,
+            series: w.querySelector('#b-series').value.trim(),
+            author: w.querySelector('#b-author').value.trim(),
+            note: w.querySelector('#b-note').value.trim()
+          });
+          UI.close();
+          UI.toast(b ? '수정했습니다.' : '도서를 등록했습니다.');
+          App.rerender();
+        });
+        if (b) {
+          w.querySelector('#b-del').addEventListener('click', function () {
+            UI.close();
+            UI.confirm('<b>' + U.esc(b.title) + '</b> 를 목록에서 지울까요?<br>' +
+              '<span style="font-size:13px;color:#63778a">지난 대여 기록은 남습니다.</span>',
+              function () {
+                Store.deleteBook(b.id);
+                UI.toast('삭제했습니다.');
+                App.rerender();
+              }, { danger: true, yes: '삭제' });
+          });
+        }
+      }
+    });
+  }
+
+  /* ---------- 대여 ---------- */
+  function openLend(bookId) {
+    var b = Store.book(bookId);
+    if (!b) return;
+    var list = Store.students({ active: true });
+    UI.modal({
+      title: '도서 대여',
+      body:
+        '<p style="margin:0 0 14px"><b>' + U.esc(b.title) + '</b>' +
+          (b.level ? ' <span class="tag gray">' + U.esc(b.level) + '</span>' : '') + '</p>' +
+        '<div class="form-grid">' +
+          '<label class="fld">빌려가는 학생 *<select id="l-stu">' +
+            UI.options(list.map(function (s) {
+              return { value: s.id, label: s.name + (Store.scheduleOf(s).className ? ' · ' + Store.scheduleOf(s).className : '') };
+            }), '', '학생 선택') + '</select></label>' +
+          '<label class="fld">반납 예정일<input type="date" id="l-due" value="' + U.daysAgo(-Store.LOAN_DAYS) + '"></label>' +
+        '</div>',
+      footer: '<button class="btn" data-close>취소</button><button class="btn primary" id="l-save">대여 처리</button>',
+      onMount: function (w) {
+        w.querySelector('#l-save').addEventListener('click', function () {
+          var sid = w.querySelector('#l-stu').value;
+          if (!sid) { UI.toast('학생을 선택해 주세요.', true); return; }
+          try {
+            Store.lendBook(bookId, sid, w.querySelector('#l-due').value);
+            UI.close();
+            UI.toast('대여 처리했습니다.');
+            App.rerender();
+          } catch (e) {
+            UI.toast(e.message, true);
+          }
+        });
+      }
+    });
+  }
+
+  /* ---------- 청구기호로 빠른 대여·반납 ---------- */
+  function quickScan(code, el) {
+    var b = Store.bookByCode(code);
+    if (!b) { UI.toast('청구기호 "' + code + '" 인 책을 찾지 못했습니다.', true); return; }
+    var st = Store.bookStatus(b);
+    if (st.key === 'in') openLend(b.id);
+    else {
+      var s = Store.student(st.loan.studentId);
+      UI.confirm('<b>' + U.esc(b.title) + '</b><br>' +
+        U.esc(s ? s.name : '') + ' 학생이 빌려간 책입니다. 반납 처리할까요?',
+        function () {
+          Store.returnBook(st.loan.id);
+          UI.toast('반납했습니다.');
+          App.rerender();
+        }, { yes: '반납' });
+    }
+  }
+
+  /* ---------- CSV 일괄 등록 ---------- */
+  function openBulk() {
+    UI.modal({
+      title: '도서 CSV 일괄 등록',
+      wide: true,
+      body:
+        '<p class="hint" style="margin-top:0">첫 줄은 열 이름이어야 합니다. 쓸 수 있는 열 이름은 다음과 같고, 순서는 상관없습니다.</p>' +
+        '<p class="hint"><code>청구기호, 제목, 지은이, 레벨, 분류, 시리즈, 메모</code></p>' +
+        '<div class="row" style="margin:12px 0">' +
+          '<button class="btn" id="bk-file">CSV 파일 선택</button>' +
+          '<input type="file" id="bk-fileinput" accept=".csv,.txt,text/csv" style="display:none">' +
+          '<button class="btn ghost" id="bk-sample">예시 내려받기</button>' +
+        '</div>' +
+        '<label class="fld">붙여넣기<textarea id="bk-text" style="min-height:140px;font-size:12px;font-family:ui-monospace,Menlo,monospace" ' +
+          'placeholder="청구기호,제목,지은이,레벨,분류,시리즈&#10;RD-0412,Frog and Toad Are Friends,Arnold Lobel,AR 2.5,리더스,Frog and Toad"></textarea></label>' +
+        '<div id="bk-preview" style="margin-top:14px"></div>',
+      footer: '<button class="btn" data-close>취소</button><button class="btn primary" id="bk-apply" disabled>등록</button>',
+      onMount: function (w) {
+        var parsed = [];
+        var MAP = {
+          '청구기호': 'code', '바코드': 'code', 'code': 'code',
+          '제목': 'title', 'title': 'title',
+          '지은이': 'author', '저자': 'author', 'author': 'author',
+          '레벨': 'level', 'level': 'level', 'ar': 'level',
+          '분류': 'category', 'category': 'category',
+          '시리즈': 'series', 'series': 'series',
+          '메모': 'note', 'note': 'note'
+        };
+        function preview() {
+          var text = w.querySelector('#bk-text').value.trim();
+          var box = w.querySelector('#bk-preview'), btn = w.querySelector('#bk-apply');
+          parsed = [];
+          if (!text) { box.innerHTML = ''; btn.disabled = true; return; }
+          var lines = text.split(/\r?\n/).filter(function (l) { return l.trim(); });
+          if (lines.length < 2) {
+            box.innerHTML = '<div class="gate-err" style="margin:0">열 이름 줄과 자료 줄이 모두 필요합니다.</div>';
+            btn.disabled = true; return;
+          }
+          var head = lines[0].split(',').map(function (h) {
+            var k = h.trim().toLowerCase();
+            return MAP[h.trim()] || MAP[k] || k;
+          });
+          lines.slice(1).forEach(function (line) {
+            var cells = line.split(',');
+            var row = {};
+            head.forEach(function (h, i) { row[h] = (cells[i] || '').trim(); });
+            if (row.title) parsed.push(row);
+          });
+          if (!parsed.length) {
+            box.innerHTML = '<div class="gate-err" style="margin:0">제목 열을 찾지 못했습니다.</div>';
+            btn.disabled = true; return;
+          }
+          box.innerHTML = '<div class="table-wrap"><table class="tbl" style="min-width:auto">' +
+            '<thead><tr><th>청구기호</th><th>제목</th><th>레벨</th><th>분류</th></tr></thead><tbody>' +
+            parsed.slice(0, 10).map(function (r) {
+              return '<tr><td>' + U.esc(r.code || '-') + '</td><td class="nm">' + U.esc(r.title) + '</td>' +
+                '<td>' + U.esc(r.level || '-') + '</td><td>' + U.esc(r.category || '-') + '</td></tr>';
+            }).join('') + '</tbody></table></div>' +
+            '<div class="hint" style="margin-top:6px">모두 ' + parsed.length + '권</div>';
+          btn.disabled = false;
+          btn.textContent = parsed.length + '권 등록';
+        }
+        w.querySelector('#bk-text').addEventListener('input', preview);
+        w.querySelector('#bk-file').addEventListener('click', function () { w.querySelector('#bk-fileinput').click(); });
+        w.querySelector('#bk-fileinput').addEventListener('change', function (e) {
+          var f = e.target.files[0];
+          if (!f) return;
+          var r = new FileReader();
+          r.onload = function () { w.querySelector('#bk-text').value = r.result; preview(); };
+          r.readAsText(f);
+          e.target.value = '';
+        });
+        w.querySelector('#bk-sample').addEventListener('click', function () {
+          U.download('도서목록_양식.csv', U.toCsv([
+            ['청구기호', '제목', '지은이', '레벨', '분류', '시리즈'],
+            ['RD-0412', 'Frog and Toad Are Friends', 'Arnold Lobel', 'AR 2.5', '리더스', 'Frog and Toad'],
+            ['CB-0117', 'Magic Tree House #1', 'Mary Pope Osborne', 'AR 3.4', '챕터북', 'Magic Tree House']
+          ]), 'text/csv');
+        });
+        w.querySelector('#bk-apply').addEventListener('click', function () {
+          var added = 0, skipped = 0;
+          parsed.forEach(function (r) {
+            if (r.code && Store.bookByCode(r.code)) { skipped++; return; }
+            Store.saveBook({
+              title: r.title, code: r.code || '', author: r.author || '',
+              level: r.level || '', category: r.category || '', series: r.series || '', note: r.note || ''
+            });
+            added++;
+          });
+          UI.close();
+          UI.toast(added + '권 등록' + (skipped ? ' · 청구기호 중복 ' + skipped + '권 건너뜀' : ''));
+          App.rerender();
+        });
+      }
+    });
+  }
+
+  /* ---------- 렌더 ---------- */
+  function render(el) {
+    var all = Store.books();
+    var open = Store.loans({ open: true });
+    var over = Store.overdueLoans();
+
+    el.innerHTML =
+      '<div class="grid g-4" style="margin-bottom:16px">' +
+        '<div class="stat accent"><div class="lbl">보유 도서</div><div class="val">' + U.num(all.length) + '<small>권</small></div>' +
+          '<div class="sub">대출 가능 ' + (all.length - open.length) + '권</div></div>' +
+        '<div class="stat"><div class="lbl">대출 중</div><div class="val">' + open.length + '<small>권</small></div></div>' +
+        '<div class="stat"><div class="lbl">연체</div><div class="val" style="color:' + (over.length ? '#d5453f' : 'inherit') + '">' +
+          over.length + '<small>권</small></div>' +
+          '<div class="sub">' + (over.length ? '반납 안내가 필요합니다' : '연체 없음') + '</div></div>' +
+        '<div class="stat"><div class="lbl">이달 대출</div><div class="val">' +
+          Store.loans().filter(function (l) { return (l.outDate || '').slice(0, 7) === U.ym(new Date()); }).length +
+          '<small>건</small></div></div>' +
+      '</div>' +
+
+      (over.length ?
+        '<div class="card" style="margin-bottom:16px"><div class="card-h"><h2>연체 도서</h2><div class="sp"></div>' +
+          '<span class="tag bad">' + over.length + '권</span></div><div class="card-b tight">' +
+          over.map(function (l) {
+            var b = Store.book(l.bookId), s = Store.student(l.studentId);
+            return '<div class="memo-item"><div class="txt"><b>' + U.esc(s ? s.name : '') + '</b> · ' +
+              U.esc(b ? b.title : '(삭제된 책)') +
+              '<br><span style="font-size:12px;color:#63778a">반납 예정 ' + U.esc(l.dueDate) +
+              ' · ' + U.dayDiff(l.dueDate, U.ymd()) + '일 지남</span></div>' +
+              '<button class="btn sm" data-return="' + l.id + '">반납</button></div>';
+          }).join('') +
+        '</div></div>' : '') +
+
+      '<div class="card">' +
+        '<div class="card-h"><h2>도서 목록</h2><div class="sp"></div>' +
+          '<button class="btn" id="bulk">CSV 일괄 등록</button>' +
+          '<button class="btn" id="csv">목록 CSV</button>' +
+          '<button class="btn primary" id="add">+ 도서 등록</button></div>' +
+        '<div class="card-b" style="padding-bottom:8px">' +
+          '<div class="row">' +
+            '<input type="search" id="q" placeholder="제목 · 지은이 · 청구기호 · 레벨 검색" value="' + U.esc(filter.q) + '" style="flex:1;min-width:180px">' +
+            '<select id="f-cat" style="width:130px">' + UI.options(Store.BOOK_CATEGORIES, filter.category, '전체 분류') + '</select>' +
+            '<div class="seg">' +
+              '<button data-state="all" class="' + (filter.state === 'all' ? 'on' : '') + '">전체</button>' +
+              '<button data-state="in" class="' + (filter.state === 'in' ? 'on' : '') + '">대출 가능</button>' +
+              '<button data-state="out" class="' + (filter.state === 'out' ? 'on' : '') + '">대출 중</button>' +
+              '<button data-state="overdue" class="' + (filter.state === 'overdue' ? 'on' : '') + '">연체</button>' +
+            '</div>' +
+          '</div>' +
+          '<div class="row" style="margin-top:10px">' +
+            '<input type="text" id="scan" placeholder="청구기호를 입력하고 Enter — 빌려주기 · 반납이 바로 됩니다" style="flex:1;min-width:220px">' +
+          '</div>' +
+        '</div>' +
+        '<div class="table-wrap"><table class="tbl">' +
+          '<thead><tr><th>청구기호</th><th>제목</th><th>레벨</th><th>분류</th><th>상태</th><th>대출자</th><th></th></tr></thead>' +
+          '<tbody id="rows">' + rows() + '</tbody>' +
+        '</table></div>' +
+      '</div>';
+
+    function refresh() { render(el); }
+
+    el.querySelector('#add').addEventListener('click', function () { openBookForm(null); });
+    el.querySelector('#bulk').addEventListener('click', openBulk);
+    el.querySelector('#q').addEventListener('input', function (e) {
+      filter.q = e.target.value;
+      el.querySelector('#rows').innerHTML = rows();
+    });
+    el.querySelector('#f-cat').addEventListener('change', function (e) { filter.category = e.target.value; refresh(); });
+    UI.on(el, '[data-state]', 'click', function (e, b) { filter.state = b.getAttribute('data-state'); refresh(); });
+
+    el.querySelector('#scan').addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter') return;
+      var code = e.target.value.trim();
+      if (!code) return;
+      e.target.value = '';
+      quickScan(code, el);
+    });
+
+    UI.on(el, '[data-lend]', 'click', function (e, b) { openLend(b.getAttribute('data-lend')); });
+    UI.on(el, '[data-edit]', 'click', function (e, b) { openBookForm(b.getAttribute('data-edit')); });
+    UI.on(el, '[data-return]', 'click', function (e, b) {
+      Store.returnBook(b.getAttribute('data-return'));
+      UI.toast('반납했습니다.');
+      refresh();
+    });
+
+    el.querySelector('#csv').addEventListener('click', function () {
+      var head = ['청구기호', '제목', '지은이', '레벨', '분류', '시리즈', '상태', '대출자', '반납예정일'];
+      var body = visible().map(function (b) {
+        var st = Store.bookStatus(b);
+        var s = st.loan ? Store.student(st.loan.studentId) : null;
+        return [b.code, b.title, b.author, b.level, b.category, b.series,
+                st.label, s ? s.name : '', st.loan ? st.loan.dueDate : ''];
+      });
+      U.download('고래영어_도서목록_' + U.ymd() + '.csv', U.toCsv([head].concat(body)), 'text/csv');
+      UI.toast('CSV 파일을 내려받았습니다.');
     });
   }
 
@@ -3767,7 +5140,11 @@ Views.settings = (function () {
       classes: d.classes.length,
       memos: d.memos.length,
       tasks: d.tasks.length,
-      payments: d.payments.length
+      payments: d.payments.length,
+      homeworks: d.homeworks.length,
+      vocab: d.vocabLogs.length,
+      books: d.books.length,
+      loans: d.loans.length
     };
   }
 
@@ -3839,6 +5216,59 @@ Views.settings = (function () {
         });
       });
     });
+
+    // 숙제 2건 — 반 단위로 냅니다.
+    Store.saveHomework({ title: 'Unit 3 단어 20개 외우기', type: '단어',
+      classId: classIds[0], assignedDate: U.daysAgo(2), dueDate: U.daysAgo(-2),
+      note: '단어학습앱으로 3회 이상 연습' });
+    Store.saveHomework({ title: 'Frog and Toad 1~3장 읽고 북리포트', type: '원서 읽기',
+      classId: classIds[1], assignedDate: U.daysAgo(4), dueDate: U.daysAgo(-1), note: '' });
+    // 일부는 제출 처리
+    Store.homeworks().forEach(function (h, hi) {
+      Store.submissions({ homeworkId: h.id }).forEach(function (x, i) {
+        if ((i + hi) % 3 !== 0) Store.setSubmission(h.id, x.studentId, { status: '제출', submittedAt: U.ymd() });
+      });
+    });
+
+    // 학생 코드와 단어학습 기록 (앱에서 넘어온 것처럼)
+    var sets = ['Unit 1 단어', 'Unit 2 단어', 'Unit 3 단어', '파닉스 복습'];
+    ids.forEach(function (id, i) {
+      Store.ensureCode(id);
+      for (var back = 12; back >= 0; back -= 2) {
+        if ((i + back) % 3 === 0) continue;
+        var total = 20;
+        var correct = Math.max(8, Math.round(total * (0.6 + Math.random() * 0.4)));
+        Store.saveVocabLog({
+          studentId: id, date: U.daysAgo(back),
+          setName: sets[(i + back) % sets.length],
+          total: total, correct: correct,
+          durationSec: 180 + Math.floor(Math.random() * 240),
+          sessionId: 'seed-' + id + '-' + back, source: 'app'
+        });
+      }
+    });
+
+    // 도서와 대여 기록
+    var bookDefs = [
+      ['RD-0412', 'Frog and Toad Are Friends', 'Arnold Lobel', 'AR 2.5', '리더스', 'Frog and Toad'],
+      ['RD-0413', 'Frog and Toad Together', 'Arnold Lobel', 'AR 2.9', '리더스', 'Frog and Toad'],
+      ['CB-0117', 'Magic Tree House #1', 'Mary Pope Osborne', 'AR 3.4', '챕터북', 'Magic Tree House'],
+      ['CB-0118', 'Magic Tree House #2', 'Mary Pope Osborne', 'AR 3.3', '챕터북', 'Magic Tree House'],
+      ['NB-0021', 'Charlotte\'s Web', 'E. B. White', 'AR 4.4', '노블', ''],
+      ['PB-0075', 'The Very Hungry Caterpillar', 'Eric Carle', 'AR 2.9', '그림책', ''],
+      ['NF-0033', 'National Geographic Kids: Sharks', '', 'AR 4.1', '논픽션', ''],
+      ['CB-0119', 'Nate the Great', 'Marjorie Sharmat', 'AR 2.0', '챕터북', 'Nate the Great']
+    ];
+    var bookIds = bookDefs.map(function (b) {
+      return Store.saveBook({ code: b[0], title: b[1], author: b[2], level: b[3], category: b[4], series: b[5] });
+    });
+    // 3권은 대출 중, 그중 1권은 연체
+    Store.lendBook(bookIds[0], ids[0], U.daysAgo(-4));
+    Store.lendBook(bookIds[2], ids[3], U.daysAgo(-6));
+    Store.lendBook(bookIds[4], ids[5], U.daysAgo(3));   // 반납 예정일이 지난 상태
+    // 반납 완료된 지난 기록
+    var past = Store.lendBook(bookIds[1], ids[1], U.daysAgo(-1));
+    Store.returnBook(past, U.daysAgo(2));
 
     Store.addTask('9월 레벨테스트 예약 학부모 안내', 'today');
     Store.addTask('원서 신간 라이브러리 등록', 'week');
@@ -3994,6 +5424,10 @@ Views.settings = (function () {
               '<span class="tag blue">메모 ' + c.memos + '</span>' +
               '<span class="tag blue">업무 ' + c.tasks + '</span>' +
               '<span class="tag blue">수강료 ' + c.payments + '</span>' +
+              '<span class="tag blue">숙제 ' + c.homeworks + '</span>' +
+              '<span class="tag blue">단어 ' + c.vocab + '</span>' +
+              '<span class="tag blue">도서 ' + c.books + '</span>' +
+              '<span class="tag blue">대여 ' + c.loans + '</span>' +
             '</div>' +
           '</div></div>' +
 
@@ -4153,6 +5587,15 @@ var App = (function () {
     }
     if (current === 'receipt') {
       Views.tuition.renderReceipt(viewEl, p.query.d || '');
+      return;
+    }
+    // 단어학습앱이 링크로 기록을 보내는 경로
+    if (current === 'import') {
+      highlight('vocab');
+      setTitle('단어 학습 기록 받기');
+      setSub('단어학습앱에서 보낸 기록입니다');
+      Views.vocab.renderImportRoute(viewEl, p.query.d || '');
+      closeSidebar();
       return;
     }
     document.body.classList.remove('share-mode');
