@@ -37,7 +37,8 @@ Views.library = (function () {
         '<td class="nm">' + U.esc(b.title) +
           (b.series ? '<br><span class="hint">' + U.esc(b.series) + '</span>' : '') + '</td>' +
         '<td>' + U.esc(b.level || '-') + '</td>' +
-        '<td>' + U.esc(b.category || '-') + '</td>' +
+        '<td>' + U.esc(b.category || '-') + '<br>' +
+          '<span class="hint">' + (b.wsUrl ? '워크시트 링크' : b.wsHtml ? '워크시트 등록됨' : '자동 Lv' + Worksheet.levelOf(b)) + '</span></td>' +
         '<td><span class="tag ' + st.tag + '">' + U.esc(st.label) + '</span></td>' +
         '<td>' + (borrower
             ? U.esc(borrower.name) + '<br><span class="hint">~' + U.esc(st.loan.dueDate || '') + '</span>'
@@ -46,6 +47,7 @@ Views.library = (function () {
           (st.key === 'in'
             ? '<button class="btn sm primary" data-lend="' + b.id + '">대여</button> '
             : '<button class="btn sm" data-return="' + st.loan.id + '">반납</button> ') +
+          '<button class="btn sm ghost" data-ws="' + b.id + '">워크시트</button> ' +
           '<button class="btn sm ghost" data-edit="' + b.id + '">수정</button>' +
         '</td>' +
       '</tr>';
@@ -66,10 +68,75 @@ Views.library = (function () {
           '<label class="fld">시리즈<input type="text" id="b-series" value="' + U.esc(b && b.series ? b.series : '') + '" placeholder="예: Frog and Toad"></label>' +
           '<label class="fld full">지은이<input type="text" id="b-author" value="' + U.esc(b && b.author ? b.author : '') + '"></label>' +
           '<label class="fld full">메모<input type="text" id="b-note" value="' + U.esc(b && b.note ? b.note : '') + '" placeholder="보관 위치, 상태 등"></label>' +
+        '</div>' +
+
+        '<div class="section-title">워크시트</div>' +
+        '<p class="hint" style="margin-top:0">이 책을 빌려줄 때 나갈 독후활동지입니다. ' +
+        '<b>등록된 워크시트가 있으면 그것을</b>, 없으면 아래 자료로 <b>자동 생성한 A4 1장</b>을 뽑습니다.</p>' +
+        '<div class="form-grid" style="margin-top:12px">' +
+          '<label class="fld">워크시트 레벨' +
+            '<select id="b-wslv"><option value="">책 정보로 자동 판정</option>' +
+              [1, 2, 3, 4, 5].map(function (n) {
+                return '<option value="' + n + '"' + (b && +b.wsLevel === n ? ' selected' : '') + '>Level ' + n + ' · ' + Worksheet.LEVELS[n].name + '</option>';
+              }).join('') + '</select></label>' +
+          '<label class="fld">등록된 워크시트 링크' +
+            '<input type="url" id="b-wsurl" value="' + U.esc(b && b.wsUrl ? b.wsUrl : '') + '" placeholder="https://... (PDF · 구글드라이브 등)"></label>' +
+          '<label class="fld full">핵심 단어 <span style="font-weight:400">(쉼표로 구분 — 단어 활동에 들어갑니다)</span>' +
+            '<input type="text" id="b-wswords" value="' + U.esc(b && b.wsWords ? b.wsWords : '') + '" placeholder="nap, tap, cap, map"></label>' +
+          '<label class="fld full">등장인물 <span style="font-weight:400">(쉼표로 구분 — 인물 활동에 들어갑니다)</span>' +
+            '<input type="text" id="b-wschars" value="' + U.esc(b && b.wsCharacters ? b.wsCharacters : '') + '" placeholder="Frog, Toad"></label>' +
+        '</div>' +
+        '<div class="row" style="margin-top:12px">' +
+          '<button class="btn" id="b-wsfile">워크시트 파일 등록</button>' +
+          '<input type="file" id="b-wsfileinput" accept=".html,.htm,text/html" style="display:none">' +
+          '<button class="btn" id="b-wspreview">자동 워크시트 미리보기</button>' +
+          '<span class="hint" id="b-wsstate">' +
+            (b && b.wsHtml ? '등록된 파일 있음' : (b && b.wsUrl ? '등록된 링크 사용' : '자동 생성')) + '</span>' +
+          (b && b.wsHtml ? '<button class="btn danger sm" id="b-wsclear">등록 파일 지우기</button>' : '') +
         '</div>',
       footer: (b ? '<button class="btn danger" id="b-del">삭제</button><div class="sp"></div>' : '') +
         '<button class="btn" data-close>취소</button><button class="btn primary" id="b-save">저장</button>',
       onMount: function (w) {
+        var wsHtml = (b && b.wsHtml) || '';
+
+        w.querySelector('#b-wsfile').addEventListener('click', function () {
+          w.querySelector('#b-wsfileinput').click();
+        });
+        w.querySelector('#b-wsfileinput').addEventListener('change', function (ev) {
+          var f = ev.target.files[0];
+          ev.target.value = '';
+          if (!f) return;
+          if (f.size > 500 * 1024) {
+            UI.toast('파일이 너무 큽니다(500KB 초과). 링크로 등록해 주세요.', true);
+            return;
+          }
+          var r = new FileReader();
+          r.onload = function () {
+            wsHtml = String(r.result);
+            w.querySelector('#b-wsstate').textContent = '등록된 파일 있음 (' + Math.round(f.size / 1024) + 'KB) · 저장을 눌러 주세요';
+          };
+          r.readAsText(f);
+        });
+        var clearBtn = w.querySelector('#b-wsclear');
+        if (clearBtn) clearBtn.addEventListener('click', function () {
+          wsHtml = '';
+          w.querySelector('#b-wsstate').textContent = '자동 생성 · 저장을 눌러 주세요';
+          clearBtn.remove();
+        });
+        w.querySelector('#b-wspreview').addEventListener('click', function () {
+          var draft = {
+            title: w.querySelector('#b-title').value.trim() || '(제목 없음)',
+            author: w.querySelector('#b-author').value.trim(),
+            level: w.querySelector('#b-level').value.trim(),
+            category: w.querySelector('#b-cat').value,
+            series: w.querySelector('#b-series').value.trim(),
+            wsLevel: w.querySelector('#b-wslv').value,
+            wsWords: w.querySelector('#b-wswords').value.trim(),
+            wsCharacters: w.querySelector('#b-wschars').value.trim()
+          };
+          openSheet(Worksheet.build(draft, null, { date: '' }), draft, null);
+        });
+
         w.querySelector('#b-save').addEventListener('click', function () {
           var t = w.querySelector('#b-title').value.trim();
           if (!t) { UI.toast('제목을 입력해 주세요.', true); return; }
@@ -85,7 +152,12 @@ Views.library = (function () {
             category: w.querySelector('#b-cat').value,
             series: w.querySelector('#b-series').value.trim(),
             author: w.querySelector('#b-author').value.trim(),
-            note: w.querySelector('#b-note').value.trim()
+            note: w.querySelector('#b-note').value.trim(),
+            wsLevel: w.querySelector('#b-wslv').value,
+            wsUrl: w.querySelector('#b-wsurl').value.trim(),
+            wsWords: w.querySelector('#b-wswords').value.trim(),
+            wsCharacters: w.querySelector('#b-wschars').value.trim(),
+            wsHtml: wsHtml
           });
           UI.close();
           UI.toast(b ? '수정했습니다.' : '도서를 등록했습니다.');
@@ -107,6 +179,61 @@ Views.library = (function () {
     });
   }
 
+  /* ---------- 워크시트 ---------- */
+  /** 이 책에 등록된 워크시트가 있는지 */
+  function hasRegistered(b) { return !!(b && (b.wsUrl || b.wsHtml)); }
+
+  /**
+   * 워크시트를 화면에 띄웁니다.
+   * 등록된 링크가 있으면 그 링크를 새 창으로 열고,
+   * 등록된 파일이나 자동 생성본은 인쇄 창으로 보여줍니다.
+   */
+  function issueWorksheet(bookId, studentId, loanId) {
+    var b = Store.book(bookId);
+    if (!b) return;
+    var s = studentId ? Store.student(studentId) : null;
+
+    if (b.wsUrl) {
+      window.open(b.wsUrl, '_blank', 'noopener');
+      markIssued(loanId);
+      return;
+    }
+    var html = b.wsHtml || Worksheet.build(b, s, { date: U.ymd() });
+    openSheet(html, b, s, loanId);
+  }
+
+  function markIssued(loanId) {
+    if (!loanId) return;
+    var l = Store.loans({}).filter(function (x) { return x.id === loanId; })[0];
+    if (l && !l.wsIssued) Store.updateLoan(loanId, { wsIssued: U.ymd() });
+  }
+
+  /** 워크시트를 iframe 으로 띄우는 창 — 관리 화면 스타일과 섞이지 않습니다 */
+  function openSheet(html, b, s, loanId) {
+    UI.modal({
+      title: '워크시트 · ' + (b ? b.title : ''),
+      wide: true,
+      body: '<div class="ws-frame"><iframe id="ws-if" title="워크시트 미리보기"></iframe></div>' +
+            '<p class="hint" style="margin-top:10px">인쇄 창에서 <b>A4 · 세로 · 배율 100% · 여백 없음 · 배경 그래픽 인쇄 켜기</b>로 뽑으시면 됩니다.</p>',
+      footer: '<button class="btn" id="ws-dl">HTML로 저장</button><div class="sp"></div>' +
+              '<button class="btn" data-close>닫기</button>' +
+              '<button class="btn primary" id="ws-print">인쇄</button>',
+      onMount: function (w) {
+        var f = w.querySelector('#ws-if');
+        f.srcdoc = html;
+        w.querySelector('#ws-print').addEventListener('click', function () {
+          f.contentWindow.focus();
+          f.contentWindow.print();
+        });
+        w.querySelector('#ws-dl').addEventListener('click', function () {
+          U.download(Worksheet.filename(b || { title: 'book' }, s), html, 'text/html');
+          UI.toast('워크시트를 내려받았습니다.');
+        });
+        markIssued(loanId);
+      }
+    });
+  }
+
   /* ---------- 대여 ---------- */
   function openLend(bookId) {
     var b = Store.book(bookId);
@@ -123,17 +250,24 @@ Views.library = (function () {
               return { value: s.id, label: s.name + (Store.scheduleOf(s).className ? ' · ' + Store.scheduleOf(s).className : '') };
             }), '', '학생 선택') + '</select></label>' +
           '<label class="fld">반납 예정일<input type="date" id="l-due" value="' + U.daysAgo(-Store.LOAN_DAYS) + '"></label>' +
-        '</div>',
+        '</div>' +
+        '<label class="check on" style="margin-top:14px;display:inline-flex">' +
+          '<input type="checkbox" id="l-ws" checked>워크시트 같이 뽑기' +
+        '</label> <span class="hint">' +
+          (hasRegistered(b) ? '이 책에 등록된 워크시트를 씁니다.' : 'Level ' + Worksheet.levelOf(b) + ' 워크시트를 자동으로 만듭니다.') +
+        '</span>',
       footer: '<button class="btn" data-close>취소</button><button class="btn primary" id="l-save">대여 처리</button>',
       onMount: function (w) {
         w.querySelector('#l-save').addEventListener('click', function () {
           var sid = w.querySelector('#l-stu').value;
           if (!sid) { UI.toast('학생을 선택해 주세요.', true); return; }
+          var wantSheet = w.querySelector('#l-ws').checked;
           try {
-            Store.lendBook(bookId, sid, w.querySelector('#l-due').value);
+            var loanId = Store.lendBook(bookId, sid, w.querySelector('#l-due').value);
             UI.close();
             UI.toast('대여 처리했습니다.');
             App.rerender();
+            if (wantSheet) issueWorksheet(bookId, sid, loanId);
           } catch (e) {
             UI.toast(e.message, true);
           }
@@ -335,6 +469,11 @@ Views.library = (function () {
     });
 
     UI.on(el, '[data-lend]', 'click', function (e, b) { openLend(b.getAttribute('data-lend')); });
+    UI.on(el, '[data-ws]', 'click', function (e, b) {
+      var id = b.getAttribute('data-ws');
+      var st = Store.bookStatus(Store.book(id));
+      issueWorksheet(id, st.loan ? st.loan.studentId : '', st.loan ? st.loan.id : '');
+    });
     UI.on(el, '[data-edit]', 'click', function (e, b) { openBookForm(b.getAttribute('data-edit')); });
     UI.on(el, '[data-return]', 'click', function (e, b) {
       Store.returnBook(b.getAttribute('data-return'));

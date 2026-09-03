@@ -122,18 +122,26 @@ Views.settings = (function () {
     });
 
     // 도서와 대여 기록
+    // [청구기호, 제목, 지은이, 레벨, 분류, 시리즈, 핵심단어, 등장인물]
     var bookDefs = [
-      ['RD-0412', 'Frog and Toad Are Friends', 'Arnold Lobel', 'AR 2.5', '리더스', 'Frog and Toad'],
-      ['RD-0413', 'Frog and Toad Together', 'Arnold Lobel', 'AR 2.9', '리더스', 'Frog and Toad'],
-      ['CB-0117', 'Magic Tree House #1', 'Mary Pope Osborne', 'AR 3.4', '챕터북', 'Magic Tree House'],
-      ['CB-0118', 'Magic Tree House #2', 'Mary Pope Osborne', 'AR 3.3', '챕터북', 'Magic Tree House'],
-      ['NB-0021', 'Charlotte\'s Web', 'E. B. White', 'AR 4.4', '노블', ''],
-      ['PB-0075', 'The Very Hungry Caterpillar', 'Eric Carle', 'AR 2.9', '그림책', ''],
-      ['NF-0033', 'National Geographic Kids: Sharks', '', 'AR 4.1', '논픽션', ''],
-      ['CB-0119', 'Nate the Great', 'Marjorie Sharmat', 'AR 2.0', '챕터북', 'Nate the Great']
+      ['RD-0412', 'Frog and Toad Are Friends', 'Arnold Lobel', 'AR 2.5', '리더스', 'Frog and Toad',
+        'spring, letter, button, garden', 'Frog, Toad, Snail'],
+      ['RD-0413', 'Frog and Toad Together', 'Arnold Lobel', 'AR 2.9', '리더스', 'Frog and Toad',
+        'list, seeds, dragon, brave', 'Frog, Toad'],
+      ['CB-0117', 'Magic Tree House #1', 'Mary Pope Osborne', 'AR 3.4', '챕터북', 'Magic Tree House',
+        'dinosaur, medallion, valley', 'Jack, Annie'],
+      ['CB-0118', 'Magic Tree House #2', 'Mary Pope Osborne', 'AR 3.3', '챕터북', 'Magic Tree House', '', 'Jack, Annie'],
+      ['NB-0021', 'Charlotte\'s Web', 'E. B. White', 'AR 4.4', '노블', '', '', 'Wilbur, Charlotte, Fern, Templeton'],
+      ['PB-0075', 'The Very Hungry Caterpillar', 'Eric Carle', 'AR 2.9', '그림책', '',
+        'egg, leaf, cocoon, butterfly', ''],
+      ['NF-0033', 'National Geographic Kids: Sharks', '', 'AR 4.1', '논픽션', '', '', ''],
+      ['CB-0119', 'Nate the Great', 'Marjorie Sharmat', 'AR 2.0', '챕터북', 'Nate the Great', '', 'Nate, Sludge, Annie']
     ];
     var bookIds = bookDefs.map(function (b) {
-      return Store.saveBook({ code: b[0], title: b[1], author: b[2], level: b[3], category: b[4], series: b[5] });
+      return Store.saveBook({
+        code: b[0], title: b[1], author: b[2], level: b[3], category: b[4], series: b[5],
+        wsWords: b[6], wsCharacters: b[7]
+      });
     });
     // 3권은 대출 중, 그중 1권은 연체
     Store.lendBook(bookIds[0], ids[0], U.daysAgo(-4));
@@ -256,6 +264,8 @@ Views.settings = (function () {
           '<div class="form-grid">' +
             '<label class="fld">학원명<input type="text" id="a-name" value="' + U.esc(ac.name) + '"></label>' +
             '<label class="fld">캠퍼스<input type="text" id="a-campus" value="' + U.esc(ac.campus) + '"></label>' +
+            '<label class="fld full">영문 학원명 <span style="font-weight:400">(워크시트 등 영어 인쇄물에 들어갑니다)</span>' +
+              '<input type="text" id="a-enname" value="' + U.esc(ac.enName || '') + '" placeholder="GORAE ENGLISH"></label>' +
             '<label class="fld full">주소<input type="text" id="a-addr" value="' + U.esc(ac.address) + '"></label>' +
             '<label class="fld">대표 연락처<input type="tel" id="a-phone" value="' + U.esc(ac.phone) + '"></label>' +
             '<label class="fld">홈페이지<input type="text" id="a-site" value="' + U.esc(ac.site) + '"></label>' +
@@ -327,6 +337,7 @@ Views.settings = (function () {
       Store.saveAcademy({
         name: el.querySelector('#a-name').value.trim() || '고래영어',
         campus: el.querySelector('#a-campus').value.trim(),
+        enName: el.querySelector('#a-enname').value.trim() || 'GORAE ENGLISH',
         address: el.querySelector('#a-addr').value.trim(),
         phone: el.querySelector('#a-phone').value.trim(),
         site: el.querySelector('#a-site').value.trim(),

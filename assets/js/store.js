@@ -26,6 +26,7 @@ var Store = (function () {
     version: 1,
     academy: {
       name: '고래영어',
+      enName: 'GORAE ENGLISH',   // 워크시트 등 영어 인쇄물에 쓰는 이름
       campus: '초전동캠퍼스',
       address: '경남 진주시 초전동 1639-2',
       phone: '010-3803-8335',
@@ -787,6 +788,19 @@ var Store = (function () {
     return false;
   }
   function deleteLoan(id) { return softDelete('loans', 'loan', id); }
+  /** 대여 기록의 일부 값만 바꿉니다 (워크시트 발행 표시 등) */
+  function updateLoan(id, patch) {
+    var d = get();
+    for (var i = 0; i < d.loans.length; i++) {
+      if (d.loans[i].id === id) {
+        Object.assign(d.loans[i], patch);
+        stamp(d.loans[i]);
+        save({ kind: 'loan', id: id });
+        return true;
+      }
+    }
+    return false;
+  }
 
   /** 지금 연체된 대출 목록 */
   function overdueLoans() {
@@ -988,7 +1002,8 @@ var Store = (function () {
     vocabSummary: vocabSummary,
     books: books, book: book, bookByCode: bookByCode, saveBook: saveBook, deleteBook: deleteBook,
     loans: loans, openLoanOf: openLoanOf, bookStatus: bookStatus,
-    lendBook: lendBook, returnBook: returnBook, deleteLoan: deleteLoan, overdueLoans: overdueLoans,
+    lendBook: lendBook, returnBook: returnBook, deleteLoan: deleteLoan,
+    updateLoan: updateLoan, overdueLoans: overdueLoans,
     ensureCode: ensureCode, studentByCode: studentByCode, findStudent: findStudent,
     summarize: summarize, dayOverview: dayOverview,
     exportJson: exportJson, importJson: importJson, resetAll: resetAll, saveAcademy: saveAcademy,
