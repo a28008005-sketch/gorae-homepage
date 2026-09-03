@@ -36,10 +36,32 @@ async function loadEnv() {
     }
   } catch { /* 파일이 없으면 그냥 넘어간다 */ }
 
-  return {
-    token: process.env.NOTION_TOKEN || '',
-    databaseId: (process.env.NOTION_DATABASE_ID || '').replace(/-/g, ''),
-  };
+  const token = (process.env.NOTION_TOKEN || '').trim();
+  const databaseId = (process.env.NOTION_DATABASE_ID || '').trim().replace(/-/g, '');
+
+  // 값이 잘못 들어오면 알아보기 힘든 오류가 나므로 여기서 먼저 걸러낸다
+  if (token && !/^[\x21-\x7E]+$/.test(token)) {
+    throw new Error(
+      'NOTION_TOKEN에 한글이나 공백 같은 문자가 들어 있습니다.\n' +
+      '       안내문의 예시(여기에_노션_열쇠)를 그대로 붙여넣지 않으셨는지 확인해 주세요.\n' +
+      '       실제 열쇠는 ntn_ 으로 시작하는 영문·숫자입니다.\n' +
+      '       notion.so/my-integrations → 통합 선택 → 시크릿 표시 → 복사'
+    );
+  }
+  if (token && !/^(ntn_|secret_)/.test(token)) {
+    throw new Error(
+      'NOTION_TOKEN이 열쇠 형식이 아닙니다. ntn_ 또는 secret_ 으로 시작해야 합니다.\n' +
+      '       지금 값은 ' + token.length + '글자이고 ' + JSON.stringify(token.slice(0, 6)) + ' 로 시작합니다.'
+    );
+  }
+  if (databaseId && !/^[0-9a-f]{32}$/i.test(databaseId)) {
+    throw new Error(
+      'NOTION_DATABASE_ID가 표 주소 형식이 아닙니다. 32자리 글자·숫자여야 합니다.\n' +
+      '       지금 값은 ' + databaseId.length + '글자입니다.'
+    );
+  }
+
+  return { token, databaseId };
 }
 
 /* ---------- 화면 만들기 ---------- */
