@@ -30,7 +30,7 @@ var Store = (function () {
       campus: '초전동캠퍼스',
       address: '경남 진주시 초전동 1639-2',
       phone: '010-3803-8335',
-      site: 'https://englishwhale.com',
+      site: 'https://whalejinju.kr',
       seatCount: 20,
       times: ['1시', '2시', '3시', '4시', '5시', '6시', '7시', '8시'],
       defaultFee: 250000,
@@ -344,6 +344,35 @@ var Store = (function () {
     var i = flags.indexOf(flag);
     if (i >= 0) flags.splice(i, 1); else flags.push(flag);
     return setAttendance(studentId, date, { flags: flags });
+  }
+
+  /* ---------- 홈페이지 주소 옮기기 ---------- */
+  /** 예전에 쓰던 홈페이지 주소 — 새 도메인(whalejinju.kr)으로 한 번 옮겨줍니다. */
+  var OLD_SITES = [
+    'https://englishwhale.com', 'http://englishwhale.com',
+    'https://www.englishwhale.com', 'http://www.englishwhale.com', 'englishwhale.com'
+  ];
+
+  /**
+   * 이미 쓰고 계신 브라우저에는 예전 주소가 저장돼 있으므로,
+   * 새 도메인으로 한 번만 갱신합니다.
+   * 직접 다른 주소를 넣어 두신 경우에는 건드리지 않습니다.
+   */
+  function migrateSite() {
+    var d = get();
+    if (!d.meta) d.meta = {};
+    if (d.meta.siteMovedToKr) return false;
+
+    var cur = String(d.academy.site || '').trim().replace(/\/+$/, '');
+    var moved = false;
+    if (!cur || OLD_SITES.indexOf(cur) >= 0) {
+      d.academy.site = DEFAULTS.academy.site;
+      stamp(d.academy);
+      moved = true;
+    }
+    d.meta.siteMovedToKr = true;
+    save(moved ? { kind: 'academy', id: 'main' } : undefined);
+    return moved;
   }
 
   /* ---------- 예전 순회 점검 기록 옮기기 ---------- */
@@ -973,6 +1002,7 @@ var Store = (function () {
 
   load();
   migratePatrols();
+  migrateSite();
 
   return {
     STATUS: STATUS, GRADES: GRADES, FLAGS: FLAGS,
@@ -1007,6 +1037,6 @@ var Store = (function () {
     ensureCode: ensureCode, studentByCode: studentByCode, findStudent: findStudent,
     summarize: summarize, dayOverview: dayOverview,
     exportJson: exportJson, importJson: importJson, resetAll: resetAll, saveAcademy: saveAcademy,
-    migratePatrols: migratePatrols
+    migratePatrols: migratePatrols, migrateSite: migrateSite
   };
 })();

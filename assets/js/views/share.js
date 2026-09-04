@@ -190,7 +190,7 @@ Views.share = (function () {
           '</div>' +
           (isFile
             ? '<p class="hint" style="margin-top:14px;color:#a2610f">지금은 파일을 직접 열어 사용 중이라 링크가 이 컴퓨터에서만 열립니다. ' +
-              'GitHub Pages 등에 올린 주소에서 만들면 학부모님도 바로 열어보실 수 있습니다.</p>'
+              '홈페이지 주소(whalejinju.kr)로 접속해 만들면 학부모님도 바로 열어보실 수 있습니다.</p>'
             : '<p class="hint" style="margin-top:14px">카카오톡 · 문자로 링크를 전달하세요. 학부모님은 앱 설치나 로그인 없이 바로 열람할 수 있습니다.</p>'),
         onMount: function (w) {
           w.querySelector('#sh-copy').addEventListener('click', function () {
