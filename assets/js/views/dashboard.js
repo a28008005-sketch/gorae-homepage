@@ -38,6 +38,30 @@ Views.dashboard = (function () {
     }).join('');
   }
 
+  function recentCounselingList(list) {
+    if (!list.length) return UI.emptyBox('최근 상담 기록이 없습니다.', '💬');
+    return list.slice(0, 5).reverse().map(function (c) {
+      var s = Store.student(c.studentId);
+      return '<div class="memo-item">' +
+        '<span class="dt">' + U.fmtDate(c.date) + '</span>' +
+        '<div class="txt"><b>' + U.esc(s ? s.name : '(삭제된 학생)') + '</b><br>' +
+          '<span style="font-size:12.5px;color:#63778a">' + U.esc((c.content || '').substring(0, 60)) + '</span>' +
+        '</div></div>';
+    }).join('');
+  }
+
+  function unpaidWarning(list) {
+    if (!list.length) return '<div style="padding:20px;text-align:center;color:#4CAF50"><span style="font-size:24px">✅</span><br>미납자가 없습니다.</div>';
+    return list.slice(0, 5).map(function (p) {
+      var s = Store.student(p.studentId);
+      var typeName = { tuition: '수강료', textbook: '교재비', shuttle: '셔틀비', etc: '기타' }[p.type] || p.type;
+      return '<div class="memo-item" style="border-left-color:#f44336">' +
+        '<div class="txt"><b>' + U.esc(s ? s.name : '(삭제된 학생)') + '</b><br>' +
+          '<span style="font-size:12.5px;color:#f44336">' + typeName + ' · ' + U.fmtMoney(p.amount) + ' · 마감: ' + U.fmtDate(p.dueDate) + '</span>' +
+        '</div></div>';
+    }).join('');
+  }
+
   function patrolToday() {
     var list = Store.patrols({ date: U.ymd() });
     if (!list.length) return UI.emptyBox('오늘 기록된 순회 점검이 없습니다.', '🔍');
@@ -73,19 +97,29 @@ Views.dashboard = (function () {
     var resting = all.filter(function (s) { return s.status === '휴원생'; });
     var seated = active.filter(function (s) { return s.seat; }).length;
 
+    // 미납금액 계산
+    var unpaidPayments = Store.payments({ status: '미납' });
+    var unpaidTotal = unpaidPayments.reduce(function (sum, p) { return sum + (p.amount || 0); }, 0);
+
+    // 상담 예정 건수 (최근 일주일)
+    var weekAgo = U.daysAgo(7);
+    var recentCounselings = Store.counselings().filter(function (c) {
+      return c.date >= weekAgo;
+    });
+
     el.innerHTML =
       '<div class="stack">' +
 
       '<div class="grid g-4">' +
-        '<div class="stat accent"><div class="lbl">오늘 출석률</div>' +
-          '<div class="val">' + o.rate + '<small>%</small></div>' +
-          '<div class="sub">출석 ' + o.present + ' · 결석 ' + o.absent + ' · 미체크 ' + o.unmarked + '</div></div>' +
-        '<div class="stat"><div class="lbl">등록생</div><div class="val">' + active.length + '<small>명</small></div>' +
+        '<div class="stat accent"><div class="lbl">전체 학생</div>' +
+          '<div class="val">' + active.length + '<small>명</small></div>' +
           '<div class="sub">대기 ' + waiting.length + ' · 휴원 ' + resting.length + '</div></div>' +
-        '<div class="stat"><div class="lbl">오늘 수업</div><div class="val">' + o.expected.length + '<small>명</small></div>' +
-          '<div class="sub">' + o.day + '요일 수업 예정</div></div>' +
-        '<div class="stat"><div class="lbl">좌석 배정</div><div class="val">' + seated + '<small>/' + Store.get().academy.seatCount + '</small></div>' +
-          '<div class="sub">미배정 ' + (active.length - seated) + '명</div></div>' +
+        '<div class="stat"><div class="lbl">오늘 출석</div><div class="val">' + o.present + '<small>/' + o.expected.length + '</small></div>' +
+          '<div class="sub">출석률 ' + o.rate + '% · 지각 ' + (o.late || 0) + ' · 결석 ' + o.absent + '</div></div>' +
+        '<div class="stat" style="border-color:#f44336"><div class="lbl">미납 금액</div><div class="val" style="color:#f44336">' + U.fmtMoney(unpaidTotal) + '</div>' +
+          '<div class="sub">미납 건수 ' + unpaidPayments.length + '건</div></div>' +
+        '<div class="stat"><div class="lbl">상담 예정</div><div class="val">' + recentCounselings.length + '<small>건</small></div>' +
+          '<div class="sub">최근 일주일</div></div>' +
       '</div>' +
 
       '<div class="grid g-21">' +
@@ -93,9 +127,19 @@ Views.dashboard = (function () {
           '<a class="btn sm" href="#/attendance">전체 출결표 →</a></div>' +
           '<div class="card-b tight" id="quick">' + quickCheck(o) + '</div></div>' +
 
+        '<div class="card"><div class="card-h"><h2>최근 상담 기록</h2><div class="sp"></div>' +
+          '<a class="btn sm" href="#/counseling">상담 관리 →</a></div>' +
+          '<div class="card-b" id="recent-counseling">' + recentCounselingList(recentCounselings) + '</div></div>' +
+      '</div>' +
+
+      '<div class="grid g-21">' +
         '<div class="card"><div class="card-h"><h2>오늘 순회 점검</h2><div class="sp"></div>' +
           '<a class="btn sm" href="#/patrol">기록하기</a></div>' +
           '<div class="card-b">' + patrolToday() + '</div></div>' +
+
+        '<div class="card"><div class="card-h"><h2>미납자 안내</h2><div class="sp"></div>' +
+          '<a class="btn sm" href="#/payments">결제 관리 →</a></div>' +
+          '<div class="card-b" id="unpaid-warning">' + unpaidWarning(unpaidPayments) + '</div></div>' +
       '</div>' +
 
       '<div class="card"><div class="card-h"><h2>업무 메모</h2><div class="sp"></div>' +
