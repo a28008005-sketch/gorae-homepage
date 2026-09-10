@@ -8,5 +8,6 @@ vars = { ENVIRONMENT = "production" }
 [env.development]
 vars = { ENVIRONMENT = "development" }
 
-# 나중에 대시보드에서 이 URL로 API 호출합니다
-# https://gorae-notion-api.{your-account}.workers.dev/api/...
+# Secrets는 wrangler secret put 명령어로 설정
+# 배포 전에 다음을 실행하세요:
+# npx wrangler secret put NOTION_API_KEY
