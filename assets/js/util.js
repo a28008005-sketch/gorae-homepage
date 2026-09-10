@@ -136,11 +136,34 @@ var U = (function () {
     });
   }
 
+  /** 'YYYY-MM-DD' -> '2025.09.10' */
+  function fmtDate(s) {
+    if (!s) return '';
+    var d = parseYmd(s);
+    return d.getFullYear() + '.' + pad(d.getMonth() + 1) + '.' + pad(d.getDate());
+  }
+
+  /** ISO datetime -> '2025.09.10 14:30' */
+  function fmtDateTime(iso) {
+    if (!iso) return '';
+    var d = new Date(iso);
+    if (isNaN(d)) return '';
+    return d.getFullYear() + '.' + pad(d.getMonth() + 1) + '.' + pad(d.getDate()) + ' ' +
+      pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+
+  /** 숫자 -> '₩1,000,000' */
+  function fmtMoney(n) {
+    var num = parseInt(n, 10);
+    if (isNaN(num)) return '₩0';
+    return '₩' + num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  }
+
   return {
     DAYS: DAYS, pad: pad, ymd: ymd, ym: ym, parseYmd: parseYmd, dayOf: dayOf,
     human: human, shortDate: shortDate, hhmm: hhmm, nowLocalInput: nowLocalInput,
     daysInMonth: daysInMonth, daysAgo: daysAgo, uid: uid, esc: esc, pct: pct,
     phone: phone, byName: byName, encodeData: encodeData, decodeData: decodeData,
-    download: download, toCsv: toCsv, copy: copy
+    download: download, toCsv: toCsv, copy: copy, fmtDate: fmtDate, fmtDateTime: fmtDateTime, fmtMoney: fmtMoney
   };
 })();

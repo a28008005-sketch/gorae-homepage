@@ -326,6 +326,63 @@ body.share-mode .content{padding:0}
   .tt{grid-template-columns:56px repeat(5,1fr);gap:5px;font-size:11px}
 }
 
+/* ---------- 새로운 모듈 스타일 ---------- */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.stat-card{background:#fff;border:1px solid var(--line);border-radius:11px;padding:14px;text-align:center}
+.stat-label{font-size:12px;color:var(--muted);font-weight:600;margin-bottom:6px}
+.stat-value{font-size:24px;font-weight:700;font-variant-numeric:tabular-nums}
+
+.tabs{display:flex;gap:8px;border-bottom:1px solid var(--line);margin-bottom:20px}
+.tab-btn{
+  border:none;background:none;padding:10px 16px;font-size:14px;font-weight:600;color:var(--muted);
+  cursor:pointer;border-bottom:3px solid transparent;transition:color .15s,border-color .15s;
+  position:relative;bottom:-1px;
+}
+.tab-btn.active{color:var(--blue);border-bottom-color:var(--blue)}
+.tab-content{display:block}
+
+.form-group{display:flex;flex-direction:column;gap:10px;margin-bottom:18px}
+.form-group label{font-size:12.5px;font-weight:700;color:var(--muted)}
+.form-group input,.form-group textarea,.form-group select{width:100%}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.form-row.full{grid-template-columns:1fr}
+
+.alert{padding:12px 14px;border-radius:9px;font-size:13.5px;margin-bottom:16px}
+.alert-info{background:#e8f2fc;border:1px solid #bfdcf5;color:#14588f}
+.info-box{background:#f6f9fc;border-left:4px solid var(--blue);padding:12px 14px;border-radius:4px;font-size:13.5px}
+
+.badge{display:inline-block;padding:4px 10px;border-radius:999px;font-size:11.5px;font-weight:700;background:#eef2f6;color:var(--muted);white-space:nowrap}
+
+.card-header{padding:12px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.card-header h3{margin:0;font-size:15px}
+.card-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid #f0f2f5}
+.card-list{display:flex;flex-direction:column;gap:12px}
+
+.btn-small{padding:6px 12px;font-size:12.5px;border-radius:7px;border:1px solid var(--line);background:#fff;cursor:pointer;color:var(--ink);font-weight:600;transition:background .15s;white-space:nowrap}
+.btn-small:hover{background:var(--blue-soft)}
+.btn-small.btn-danger{background:var(--bad-soft);border-color:#e8b9b5;color:var(--bad)}
+.btn-small.btn-danger:hover{background:#fdeceb}
+
+.btn-primary{
+  background:var(--blue);color:#fff;border:none;padding:10px 18px;border-radius:9px;
+  font-size:14px;font-weight:700;cursor:pointer;transition:background .15s;
+}
+.btn-primary:hover{background:#1569c0}
+
+.page-section{max-width:960px}
+.section-header{display:flex;align-items:center;justify-content:space-between;margin:22px 0 16px;padding-bottom:8px;border-bottom:2px solid var(--line)}
+.section-header h2{margin:0;font-size:16px}
+
+.empty-state{text-align:center;color:var(--muted);padding:40px 20px;font-size:13.5px}
+
+table.table{width:100%;border-collapse:collapse;font-size:13.5px}
+table.table th{background:#f6f9fc;padding:10px 12px;text-align:left;font-size:12px;font-weight:700;color:var(--muted);border-bottom:1px solid var(--line)}
+table.table td{padding:10px 12px;border-bottom:1px solid #eef2f6}
+table.table tr:last-child td{border-bottom:0}
+
+pre{background:#f6f9fc;border:1px solid var(--line);border-radius:8px;padding:12px;overflow-x:auto;font-size:12px;line-height:1.5}
+code{font-family:"Fira Code","Menlo","Monaco",monospace;color:#c33}
+
 /* ---------- Print ---------- */
 @media print{
   .sidebar,.topbar,.app-foot,.no-print{display:none !important}
@@ -333,4 +390,9 @@ body.share-mode .content{padding:0}
   .content{padding:0}
   .card,.report{box-shadow:none;border-color:#ddd}
   .report-hd{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+
+@media(max-width:760px){
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+  .form-row{grid-template-columns:1fr}
 }

@@ -30,7 +30,17 @@ var Store = (function () {
     attendance: [],
     patrols: [],
     memos: [],
-    tasks: []
+    tasks: [],
+    assignments: [],
+    counseling: [],
+    payments: [],
+    notificationSettings: {
+      kakaoKey: '',
+      kakaoApiUrl: '',
+      autoNotifyAttendance: false,
+      autoNotifyPayment: false,
+      autoNotifyGrade: false
+    }
   };
 
   var data = null;
@@ -114,6 +124,9 @@ var Store = (function () {
     d.attendance = d.attendance.filter(function (a) { return a.studentId !== id; });
     d.patrols = d.patrols.filter(function (p) { return p.studentId !== id; });
     d.memos = d.memos.filter(function (m) { return m.studentId !== id; });
+    d.assignments = d.assignments.filter(function (a) { return a.submissions.filter(function(sub) { return sub.studentId === id; }).length === 0; });
+    d.counseling = d.counseling.filter(function (c) { return c.studentId !== id; });
+    d.payments = d.payments.filter(function (p) { return p.studentId !== id; });
     save();
   }
   /** 특정 요일에 수업이 있는 등록생 */
@@ -234,6 +247,120 @@ var Store = (function () {
     save();
   }
 
+  /* ---------- 과제 ---------- */
+  function assignments(opts) {
+    opts = opts || {};
+    var list = get().assignments.slice();
+    if (opts.classId) list = list.filter(function (a) { return a.classId === opts.classId; });
+    if (opts.from) list = list.filter(function (a) { return a.dueDate >= opts.from; });
+    if (opts.to) list = list.filter(function (a) { return a.dueDate <= opts.to; });
+    return list.sort(function (a, b) { return a.dueDate < b.dueDate ? 1 : -1; });
+  }
+  function saveAssignment(a) {
+    var d = get();
+    if (a.id) {
+      for (var i = 0; i < d.assignments.length; i++) {
+        if (d.assignments[i].id === a.id) { d.assignments[i] = Object.assign(d.assignments[i], a); break; }
+      }
+    } else {
+      a.id = U.uid('asn');
+      a.submissions = a.submissions || [];
+      a.createdAt = new Date().toISOString();
+      d.assignments.push(a);
+    }
+    save();
+    return a.id;
+  }
+  function deleteAssignment(id) {
+    var d = get();
+    d.assignments = d.assignments.filter(function (a) { return a.id !== id; });
+    save();
+  }
+  function setAssignmentSubmission(assignmentId, studentId, submitted) {
+    var d = get();
+    var asn = d.assignments.filter(function (a) { return a.id === assignmentId; })[0];
+    if (!asn) return;
+    asn.submissions = asn.submissions || [];
+    var sub = asn.submissions.filter(function (s) { return s.studentId === studentId; })[0];
+    if (!sub) {
+      sub = { studentId: studentId, submitted: submitted, at: new Date().toISOString() };
+      asn.submissions.push(sub);
+    } else {
+      sub.submitted = submitted;
+      sub.at = new Date().toISOString();
+    }
+    save();
+  }
+
+  /* ---------- 상담 일지 ---------- */
+  function counselings(opts) {
+    opts = opts || {};
+    var list = get().counseling.slice();
+    if (opts.studentId) list = list.filter(function (c) { return c.studentId === opts.studentId; });
+    if (opts.from) list = list.filter(function (c) { return c.date >= opts.from; });
+    if (opts.to) list = list.filter(function (c) { return c.date <= opts.to; });
+    return list.sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+  }
+  function saveCounseling(c) {
+    var d = get();
+    if (c.id) {
+      for (var i = 0; i < d.counseling.length; i++) {
+        if (d.counseling[i].id === c.id) { d.counseling[i] = Object.assign(d.counseling[i], c); break; }
+      }
+    } else {
+      c.id = U.uid('cnt');
+      c.date = c.date || U.ymd();
+      d.counseling.push(c);
+    }
+    save();
+    return c.id;
+  }
+  function deleteCounseling(id) {
+    var d = get();
+    d.counseling = d.counseling.filter(function (c) { return c.id !== id; });
+    save();
+  }
+
+  /* ---------- 수납 · 결제 ---------- */
+  function payments(opts) {
+    opts = opts || {};
+    var list = get().payments.slice();
+    if (opts.studentId) list = list.filter(function (p) { return p.studentId === opts.studentId; });
+    if (opts.status) list = list.filter(function (p) { return p.status === opts.status; });
+    if (opts.from) list = list.filter(function (p) { return p.dueDate >= opts.from; });
+    if (opts.to) list = list.filter(function (p) { return p.dueDate <= opts.to; });
+    return list.sort(function (a, b) { return a.dueDate < b.dueDate ? 1 : -1; });
+  }
+  function savePayment(p) {
+    var d = get();
+    if (p.id) {
+      for (var i = 0; i < d.payments.length; i++) {
+        if (d.payments[i].id === p.id) { d.payments[i] = Object.assign(d.payments[i], p); break; }
+      }
+    } else {
+      p.id = U.uid('pay');
+      p.status = p.status || '미납';
+      p.createdAt = new Date().toISOString();
+      d.payments.push(p);
+    }
+    save();
+    return p.id;
+  }
+  function deletePayment(id) {
+    var d = get();
+    d.payments = d.payments.filter(function (p) { return p.id !== id; });
+    save();
+  }
+
+  /* ---------- 알림톡 설정 ---------- */
+  function getNotificationSettings() {
+    return get().notificationSettings || DEFAULTS.notificationSettings;
+  }
+  function saveNotificationSettings(s) {
+    Object.assign(get().notificationSettings, s);
+    save();
+  }
+
   /* ---------- 집계 ---------- */
   /** 한 학생의 기간 통계 (노션의 출석률 / 체크사항 수식과 동일한 의미) */
   function summarize(studentId, from, to) {
@@ -316,6 +443,10 @@ var Store = (function () {
     patrols: patrols, savePatrol: savePatrol, deletePatrol: deletePatrol, isIssue: isIssue,
     memos: memos, addMemo: addMemo, deleteMemo: deleteMemo,
     tasks: tasks, addTask: addTask, updateTask: updateTask, deleteTask: deleteTask,
+    assignments: assignments, saveAssignment: saveAssignment, deleteAssignment: deleteAssignment, setAssignmentSubmission: setAssignmentSubmission,
+    counselings: counselings, saveCounseling: saveCounseling, deleteCounseling: deleteCounseling,
+    payments: payments, savePayment: savePayment, deletePayment: deletePayment,
+    getNotificationSettings: getNotificationSettings, saveNotificationSettings: saveNotificationSettings,
     summarize: summarize, dayOverview: dayOverview,
     exportJson: exportJson, importJson: importJson, resetAll: resetAll, saveAcademy: saveAcademy
   };
