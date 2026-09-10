@@ -79,9 +79,19 @@ async function getStudents(env) {
   }
 }
 
+// 워커는 UTC로 도는데 학원은 한국 시간을 쓴다. 새벽 0~9시에 어제 출석이 뜨지 않도록 서울 기준으로 계산한다.
+function seoulToday() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+}
+
 async function getTodayAttendance(env) {
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const today = seoulToday();
     const data = await notionQuery(env, DATABASES.attendance, {
       property: '날짜',
       date: { equals: today },
@@ -409,7 +419,7 @@ async function handleRequest(request, env) {
     if (path === '/api/attendance/today') return json(await getTodayAttendance(env));
     if (path === '/api/calendar') return json(await getCalendarEvents(env));
     if (path === '/api/health') {
-      return json({ status: 'ok', hasNotionKey: Boolean(env.NOTION_API_KEY) });
+      return json({ status: 'ok', hasNotionKey: Boolean(env.NOTION_API_KEY), today: seoulToday() });
     }
     return json({ error: 'Not found', path }, 404);
   } catch (error) {
