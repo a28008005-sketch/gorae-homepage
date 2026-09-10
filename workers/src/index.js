@@ -116,22 +116,18 @@ async function getTable(env, key) {
   }
 }
 
-async function notionQuery(env, databaseId, filters = null, sorts = null) {
+async function notionApi(env, path, method, body) {
   const notionApiKey = env.NOTION_API_KEY;
   if (!notionApiKey) throw new Error('NOTION_API_KEY 시크릿이 등록되지 않았습니다');
 
-  const body = { page_size: 100 };
-  if (filters) body.filter = filters;
-  if (sorts) body.sorts = sorts;
-
-  const response = await fetch(NOTION_API_URL + '/databases/' + databaseId + '/query', {
-    method: 'POST',
+  const response = await fetch(NOTION_API_URL + path, {
+    method,
     headers: {
       'Authorization': 'Bearer ' + notionApiKey,
       'Notion-Version': '2022-06-28',
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(body),
+    body: body ? JSON.stringify(body) : undefined,
   });
 
   if (!response.ok) {
@@ -139,6 +135,13 @@ async function notionQuery(env, databaseId, filters = null, sorts = null) {
     throw new Error('노션 응답 ' + response.status + ': ' + detail.slice(0, 300));
   }
   return response.json();
+}
+
+async function notionQuery(env, databaseId, filters = null, sorts = null) {
+  const body = { page_size: 100 };
+  if (filters) body.filter = filters;
+  if (sorts) body.sorts = sorts;
+  return notionApi(env, '/databases/' + databaseId + '/query', 'POST', body);
 }
 
 async function getStudents(env) {
@@ -207,6 +210,55 @@ async function getCalendarEvents(env) {
   }
 }
 
+const ATTENDANCE_STATUSES = ['출석', '결석'];
+
+// 출석을 누르면 그 학생의 오늘 줄을 찾아 고치고, 없으면 새로 만든다.
+// 같은 학생을 두 번 눌러도 줄이 두 개 생기지 않게 하기 위함이다.
+async function markAttendance(env, student, status) {
+  try {
+    const name = String(student || '').trim();
+    if (!name) return { success: false, error: '학생 이름이 비어 있습니다' };
+    if (name.length > 50) return { success: false, error: '학생 이름이 너무 깁니다' };
+    if (!ATTENDANCE_STATUSES.includes(status)) {
+      return { success: false, error: '출석 또는 결석만 저장할 수 있습니다' };
+    }
+
+    const today = seoulToday();
+    const existing = await notionQuery(env, DATABASES.attendance, {
+      and: [
+        { property: '날짜', date: { equals: today } },
+        { property: '학생명', title: { equals: name } },
+      ],
+    });
+
+    const properties = { 상태: { select: { name: status } } };
+
+    if (existing.results.length > 0) {
+      await notionApi(env, '/pages/' + existing.results[0].id, 'PATCH', { properties });
+    } else {
+      await notionApi(env, '/pages', 'POST', {
+        parent: { database_id: DATABASES.attendance },
+        properties: {
+          ...properties,
+          학생명: { title: [{ text: { content: name } }] },
+          날짜: { date: { start: today } },
+        },
+      });
+    }
+
+    return { success: true, student: name, status, date: today };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+function sameSecret(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
 // 아래 문자열 안에서는 역따옴표와 ${ 를 절대 쓰지 않는다. 바깥이 템플릿 문자열이라 깨진다.
 const dashboardHTML = `<!DOCTYPE html>
 <html lang="ko">
@@ -271,6 +323,22 @@ header{background:#fff;border-bottom:1px solid #e2e8f0;padding:16px 0}
 .event-row{display:flex;gap:10px;font-size:13px;padding:8px 12px;background:#f8fafc;border-radius:8px}
 @media(prefers-color-scheme:dark){.event-row{background:#334155}}
 .event-date{color:#2563eb;font-weight:600;white-space:nowrap}
+.check-list{display:grid;gap:10px}
+.check-row{padding:12px 14px;background:#f8fafc;border-radius:8px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+@media(prefers-color-scheme:dark){.check-row{background:#334155}}
+.check-btns{display:flex;gap:8px}
+.chk{padding:8px 16px;border:1px solid #cbd5e1;background:#fff;color:#475569;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;min-width:64px}
+@media(prefers-color-scheme:dark){.chk{background:#1e293b;border-color:#475569;color:#cbd5e1}}
+.chk:disabled{opacity:.5;cursor:progress}
+.chk.on-present{background:#16a34a;border-color:#16a34a;color:#fff}
+.chk.on-absent{background:#dc2626;border-color:#dc2626;color:#fff}
+.pw-box{padding:12px 14px;background:#fef3c7;border-radius:8px;margin-bottom:14px}
+@media(prefers-color-scheme:dark){.pw-box{background:#78350f}}
+.pw-msg{font-size:13px;color:#92400e;margin-bottom:8px}
+@media(prefers-color-scheme:dark){.pw-msg{color:#fde68a}}
+.pw-row{display:flex;gap:8px;flex-wrap:wrap}
+.pw-row input{flex:1;min-width:140px;padding:8px 10px;border:1px solid #d6d3d1;border-radius:6px;font-size:14px}
+.pw-row button{padding:8px 16px;border:none;background:#2563eb;color:#fff;border-radius:6px;font-weight:600;cursor:pointer}
 .rows{display:grid;gap:10px}
 .row-item{padding:12px 14px;background:#f8fafc;border-radius:8px;border-left:4px solid #2563eb}
 @media(prefers-color-scheme:dark){.row-item{background:#334155}}
@@ -321,7 +389,15 @@ header{background:#fff;border-bottom:1px solid #e2e8f0;padding:16px 0}
 </div>
 
 <div id="attendance" class="tab-content">
-<div class="card"><div class="card-title">✓ 오늘 출석 현황</div><div id="attendance-list" class="attendance-grid"><div class="muted">불러오는 중…</div></div></div>
+<div class="card">
+<div class="card-title">✓ 오늘 출석 체크</div>
+<div id="pw-box" class="pw-box" hidden>
+<div class="pw-msg" id="pw-msg">출석을 저장하려면 비밀번호가 필요합니다</div>
+<div class="pw-row"><input id="pw-input" type="password" placeholder="비밀번호" autocomplete="current-password"><button id="pw-save" type="button">확인</button></div>
+</div>
+<div id="save-msg" class="error" hidden></div>
+<div id="attendance-list" class="check-list"><div class="muted">불러오는 중…</div></div>
+</div>
 </div>
 
 <div id="calendar" class="tab-content">
@@ -363,6 +439,53 @@ async function fetchAPI(endpoint) {
   }
 }
 
+var PW_KEY = 'gorae-dashboard-pw';
+
+function getPassword() {
+  try { return localStorage.getItem(PW_KEY) || ''; } catch (e) { return ''; }
+}
+
+function setPassword(value) {
+  try {
+    if (value) localStorage.setItem(PW_KEY, value);
+    else localStorage.removeItem(PW_KEY);
+  } catch (e) { /* 저장이 막힌 브라우저에서도 이번 사용은 되도록 넘어간다 */ }
+}
+
+var pendingMark = null;
+
+function askPassword(message) {
+  var box = document.getElementById('pw-box');
+  document.getElementById('pw-msg').textContent = message;
+  box.hidden = false;
+  document.getElementById('pw-input').focus();
+}
+
+async function saveMark(student, status) {
+  var password = getPassword();
+  if (!password) return { needPassword: true };
+
+  try {
+    var response = await fetch('/api/attendance/mark', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        // 한글 비밀번호는 그대로 헤더에 넣을 수 없어 인코딩해서 보낸다.
+        'X-Dashboard-Password': encodeURIComponent(password),
+      },
+      body: JSON.stringify({ student: student, status: status }),
+    });
+
+    if (response.status === 401) {
+      setPassword('');
+      return { needPassword: true, wrong: true };
+    }
+    return await response.json();
+  } catch (error) {
+    return { success: false, error: '서버에 연결하지 못했습니다 (' + error.message + ')' };
+  }
+}
+
 async function loadStudents() {
   var listEl = document.getElementById('students-list');
   var recentEl = document.getElementById('recent-students');
@@ -372,7 +495,7 @@ async function loadStudents() {
     var message = (result && result.error) || '알 수 없는 오류';
     showError(listEl, message);
     showError(recentEl, message);
-    return;
+    return result;
   }
 
   var students = result.data || [];
@@ -381,7 +504,7 @@ async function loadStudents() {
   if (students.length === 0) {
     listEl.innerHTML = '<div class="muted">등록된 학생이 없습니다</div>';
     recentEl.innerHTML = '<div class="muted">등록된 학생이 없습니다</div>';
-    return;
+    return result;
   }
 
   function row(s) {
@@ -393,9 +516,10 @@ async function loadStudents() {
 
   listEl.innerHTML = students.map(row).join('');
   recentEl.innerHTML = students.slice(0, 5).map(row).join('');
+  return result;
 }
 
-async function loadAttendance() {
+async function loadAttendance(studentsResult) {
   var el = document.getElementById('attendance-list');
   var result = await fetchAPI('/attendance/today');
 
@@ -404,21 +528,93 @@ async function loadAttendance() {
     return;
   }
 
-  var records = result.data || [];
+  var marked = {};
+  (result.data || []).forEach(function (r) { marked[r.student] = r.status; });
   document.getElementById('stat-attendance').textContent =
-    records.filter(function (a) { return a.status === '출석'; }).length;
+    (result.data || []).filter(function (a) { return a.status === '출석'; }).length;
 
-  if (records.length === 0) {
-    el.innerHTML = '<div class="muted" style="grid-column:1/-1">오늘 출석 기록이 없습니다</div>';
+  if (!studentsResult || !studentsResult.success) {
+    showError(el, '학생 목록을 불러오지 못해 출석 체크를 만들 수 없습니다');
     return;
   }
 
-  el.innerHTML = records.map(function (r) {
-    var mark = r.status === '출석' ? '✓' : '✗';
-    return '<div class="attendance-item"><div class="attendance-status">' + mark + '</div>' +
-      '<div class="attendance-name">' + esc(r.student) + '</div></div>';
+  // 퇴원생은 매일 보는 체크 목록에 남길 필요가 없다.
+  var students = (studentsResult.data || []).filter(function (s) { return s.status !== '퇴원생'; });
+  if (students.length === 0) {
+    el.innerHTML = '<div class="muted">출석을 체크할 학생이 없습니다</div>';
+    return;
+  }
+
+  el.innerHTML = students.map(function (s) {
+    var now = marked[s.name] || '';
+    return '<div class="check-row" data-student="' + esc(s.name) + '">' +
+      '<div><div class="student-name">' + esc(s.name) + '</div>' +
+      '<div class="student-info">' + esc([s.grade, s.status].filter(Boolean).join(' · ')) + '</div></div>' +
+      '<div class="check-btns">' +
+      '<button type="button" class="chk' + (now === '출석' ? ' on-present' : '') + '" data-status="출석">출석</button>' +
+      '<button type="button" class="chk' + (now === '결석' ? ' on-absent' : '') + '" data-status="결석">결석</button>' +
+      '</div></div>';
   }).join('');
 }
+
+async function applyMark(row, status) {
+  var buttons = row.querySelectorAll('.chk');
+  buttons.forEach(function (b) { b.disabled = true; });
+  var result = await saveMark(row.dataset.student, status);
+  buttons.forEach(function (b) { b.disabled = false; });
+
+  if (result.needPassword) {
+    pendingMark = { row: row, status: status };
+    askPassword(result.wrong
+      ? '비밀번호가 맞지 않습니다. 다시 입력해 주세요'
+      : '출석을 저장하려면 비밀번호가 필요합니다');
+    return;
+  }
+
+  var saveMsg = document.getElementById('save-msg');
+  if (!result.success) {
+    saveMsg.textContent = '저장하지 못했습니다: ' + (result.error || '알 수 없는 오류');
+    saveMsg.hidden = false;
+    return;
+  }
+
+  saveMsg.hidden = true;
+  document.getElementById('pw-box').hidden = true;
+  buttons.forEach(function (b) {
+    b.classList.remove('on-present', 'on-absent');
+    if (b.dataset.status === status) {
+      b.classList.add(status === '출석' ? 'on-present' : 'on-absent');
+    }
+  });
+  document.getElementById('stat-attendance').textContent =
+    document.querySelectorAll('#attendance-list .chk.on-present').length;
+}
+
+document.getElementById('attendance-list').addEventListener('click', function (e) {
+  var btn = e.target.closest('button.chk');
+  if (btn) applyMark(btn.closest('.check-row'), btn.dataset.status);
+});
+
+document.getElementById('pw-save').addEventListener('click', function () {
+  var input = document.getElementById('pw-input');
+  var value = input.value.trim();
+  if (!value) return;
+
+  setPassword(value);
+  input.value = '';
+  document.getElementById('pw-box').hidden = true;
+
+  if (pendingMark) {
+    var row = pendingMark.row;
+    var status = pendingMark.status;
+    pendingMark = null;
+    applyMark(row, status);
+  }
+});
+
+document.getElementById('pw-input').addEventListener('keydown', function (e) {
+  if (e.key === 'Enter') document.getElementById('pw-save').click();
+});
 
 async function loadCalendar() {
   var grid = document.getElementById('calendar-grid');
@@ -520,10 +716,10 @@ document.querySelectorAll('.tab-btn').forEach(function (btn) {
   });
 });
 
-function loadAll() {
-  loadStudents();
-  loadAttendance();
+async function loadAll() {
   loadCalendar();
+  // 학생 목록은 한 번만 불러서 학생 탭과 출석 체크 목록이 함께 쓴다.
+  loadAttendance(await loadStudents());
 
   var open = document.querySelector('.tab-btn.active');
   var openTable = open && document.querySelector('[data-table="' + open.dataset.tab + '"]');
@@ -587,8 +783,37 @@ async function handleRequest(request, env) {
       return json(await getTable(env, key));
     }
 
+    // 기록을 고치는 요청은 비밀번호가 있어야만 받는다.
+    // 비밀번호를 아직 안 걸었으면 보기는 되지만 저장은 막는다 — 주소만 알면 기록을 바꾸는 일이 없도록.
+    if (path === '/api/attendance/mark' && request.method === 'POST') {
+      const expected = env.DASHBOARD_PASSWORD;
+      if (!expected) {
+        return json({ success: false, error: '비밀번호(DASHBOARD_PASSWORD)가 등록되지 않아 저장할 수 없습니다' }, 403);
+      }
+      // 한글 비밀번호도 쓸 수 있도록 헤더에는 인코딩해서 담아 보낸다.
+      // HTTP 헤더는 라틴 문자만 담을 수 있어, 한글을 그대로 넣으면 브라우저가 요청 자체를 거부한다.
+      let given = '';
+      try {
+        given = decodeURIComponent(request.headers.get('X-Dashboard-Password') || '');
+      } catch (e) {
+        given = '';
+      }
+
+      if (!sameSecret(given, expected)) {
+        return json({ success: false, error: '비밀번호가 맞지 않습니다' }, 401);
+      }
+
+      const payload = await request.json().catch(() => ({}));
+      return json(await markAttendance(env, payload.student, payload.status));
+    }
+
     if (path === '/api/health') {
-      return json({ status: 'ok', hasNotionKey: Boolean(env.NOTION_API_KEY), today: seoulToday() });
+      return json({
+        status: 'ok',
+        hasNotionKey: Boolean(env.NOTION_API_KEY),
+        hasPassword: Boolean(env.DASHBOARD_PASSWORD),
+        today: seoulToday(),
+      });
     }
     return json({ error: 'Not found', path }, 404);
   } catch (error) {
