@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>고래영어 원생관리 — 로컬 데모</title>
+<style>
+  * { box-sizing: border-box; }
+  body { 
+    font-family: "Pretendard", -apple-system, BlinkMacSystemFont, sans-serif;
+    margin: 0; padding: 20px; 
+    background: #f4f7fa; 
+    line-height: 1.6;
+  }
+  .container { max-width: 900px; margin: 0 auto; }
+  h1 { color: #0d2c47; font-size: 28px; margin: 0 0 10px; }
+  .subtitle { color: #63778a; margin-bottom: 30px; }
+  .card { 
+    background: #fff; 
+    border: 1px solid #e2e8ef;
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 2px rgba(16,40,64,.05);
+  }
+  .card h2 { 
+    margin: 0 0 8px;
+    font-size: 18px;
+    color: #0d2c47;
+  }
+  .desc { color: #63778a; font-size: 14px; margin: 8px 0; }
+  .menu-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .menu-item {
+    background: #f9fbfd;
+    border: 1px solid #e2e8ef;
+    border-radius: 9px;
+    padding: 12px 14px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .menu-item:hover {
+    background: #e8f2fc;
+    border-color: #1a7fd4;
+    color: #1a7fd4;
+  }
+  .btn {
+    display: inline-block;
+    background: #1a7fd4;
+    color: #fff;
+    padding: 11px 18px;
+    border-radius: 9px;
+    text-decoration: none;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.2s;
+  }
+  .btn:hover { background: #1569c0; }
+  .status {
+    background: #e4f6ec;
+    border-left: 4px solid #12a05c;
+    padding: 12px 14px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+    color: #0d7a45;
+  }
+  .features {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+  .feature {
+    background: linear-gradient(135deg, #e8f2fc 0%, #e2f7f4 100%);
+    padding: 14px;
+    border-radius: 9px;
+    border: 1px solid #bfdcf5;
+  }
+  .feature strong { color: #0d2c47; }
+  .feature-desc { font-size: 13px; color: #63778a; margin-top: 4px; }
+  code { 
+    background: #eef2f6;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: monospace;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🐋 고래영어 원생관리 · 초전동캠퍼스</h1>
+  <p class="subtitle">로컬 환경 (http://localhost:8080)</p>
+
+  <div class="status">
+    ✓ 서버 실행 중 | <strong>총 13개 메뉴</strong> | 신규 4개 모듈 추가됨
+  </div>
+
+  <div class="card">
+    <h2>🚀 지금 바로 체험하기</h2>
+    <p style="margin: 10px 0 0;">아래 버튼을 클릭하면 원생관리 시스템이 열립니다.</p>
+    <p style="margin-top: 14px;">
+      <a href="http://localhost:8080/index.html" class="btn">원생관리 시스템 열기 →</a>
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>📋 신규 4개 모듈</h2>
+    
+    <div class="features">
+      <div class="feature">
+        <strong>📝 과제 관리</strong>
+        <div class="feature-desc">과제 부여, 제출 현황 추적 (즉시 사용 가능)</div>
+      </div>
+      <div class="feature">
+        <strong>💬 상담 일지</strong>
+        <div class="feature-desc">상담 기록, 학부모 피드백 (즉시 사용 가능)</div>
+      </div>
+      <div class="feature">
+        <strong>💳 수납·결제</strong>
+        <div class="feature-desc">청구서, 수납현황 대시보드 (백엔드 연동 필요)</div>
+      </div>
+      <div class="feature">
+        <strong>🔔 알림 설정</strong>
+        <div class="feature-desc">카카오 알림톡 연동 가이드 (구축 안내 제공)</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>13개 전체 메뉴</h2>
+    <div class="menu-list">
+      <div class="menu-item">📊 대시보드</div>
+      <div class="menu-item">🧒 학생 명부</div>
+      <div class="menu-item">✅ 출결·일일학습</div>
+      <div class="menu-item">🔍 순회 점검</div>
+      <div class="menu-item">🪑 좌석 배치</div>
+      <div class="menu-item">🗓️ 수업 시간표</div>
+      <div class="menu-item">📈 통계</div>
+      <div class="menu-item" style="background: linear-gradient(135deg, #e8f2fc, #e2f7f4); border-color: #1a7fd4; color: #1a7fd4; font-weight: 600;">📝 과제 관리 ⭐ NEW</div>
+      <div class="menu-item" style="background: linear-gradient(135deg, #e8f2fc, #e2f7f4); border-color: #1a7fd4; color: #1a7fd4; font-weight: 600;">💬 상담 일지 ⭐ NEW</div>
+      <div class="menu-item" style="background: linear-gradient(135deg, #e8f2fc, #e2f7f4); border-color: #1a7fd4; color: #1a7fd4; font-weight: 600;">💳 수납·결제 ⭐ NEW</div>
+      <div class="menu-item">💌 학부모 공유</div>
+      <div class="menu-item" style="background: linear-gradient(135deg, #e8f2fc, #e2f7f4); border-color: #1a7fd4; color: #1a7fd4; font-weight: 600;">🔔 알림 설정 ⭐ NEW</div>
+      <div class="menu-item">⚙️ 설정·백업</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>📝 사용법 예시</h2>
+    <p><strong>과제 관리:</strong></p>
+    <ol>
+      <li>시스템 열기 → 좌측 "과제 관리" 클릭</li>
+      <li>"과제명" 입력 (예: "Chapter 5 읽기")</li>
+      <li>"반 선택" → "마감일" 설정</li>
+      <li>"과제 발행" 클릭</li>
+      <li>"제출 현황" 버튼으로 학생별 제출 확인</li>
+    </ol>
+    <p><strong>상담 일지:</strong></p>
+    <ol>
+      <li>시스템 열기 → 좌측 "상담 일지" 클릭</li>
+      <li>학생 선택 → 날짜 선택</li>
+      <li>상담 내용 작성</li>
+      <li>"학부모에게 공유" 체크</li>
+      <li>"상담 기록 저장" 클릭</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>✅ 다음 단계</h2>
+    <p><strong>지금 바로:</strong></p>
+    <ul>
+      <li>과제 관리 메뉴에서 과제 1개 만들어보기</li>
+      <li>상담 일지에 상담 기록 입력해보기</li>
+    </ul>
+    <p><strong>추후 구축:</strong></p>
+    <ul>
+      <li>PG사(카카오페이/토스/아임포트) 가입</li>
+      <li>"알림 설정"에서 API 키 입력</li>
+      <li>백엔드 서버 구축 (결제/알림톡 처리)</li>
+    </ul>
+  </div>
+
+  <div style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8ef; color: #63778a; font-size: 13px;">
+    <p>고래영어 초전동캠퍼스 · 경남 진주시 초전동 1639-2 · 010-3803-8335</p>
+  </div>
+</div>
+</body>
+</html>
