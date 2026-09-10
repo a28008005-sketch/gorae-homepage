@@ -14,6 +14,18 @@ const DATABASES = {
   calendar: 'a6650ba193bb4332b1747c5bdb0ac4d6',
 };
 
+// 학생·출석·캘린더는 전용 화면을 쓰고, 나머지는 표 내용을 그대로 목록으로 보여준다.
+const TABLES = [
+  { key: 'counseling', label: '상담일지', icon: '💬' },
+  { key: 'payment', label: '결제', icon: '💳' },
+  { key: 'tasks', label: '과제', icon: '📝' },
+  { key: 'patrols', label: '수업일지', icon: '📔' },
+  { key: 'notifications', label: '알림', icon: '🔔' },
+  { key: 'resources', label: '자료실', icon: '📁' },
+  { key: 'books', label: '도서대여', icon: '📖' },
+  { key: 'memos', label: '업무메모', icon: '🗒️' },
+];
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -33,7 +45,53 @@ function textOf(prop) {
     case 'checkbox': return prop.checkbox ? 'Y' : 'N';
     case 'phone_number': return prop.phone_number || '';
     case 'email': return prop.email || '';
+    case 'url': return prop.url || '';
+    case 'status': return prop.status?.name || '';
+    case 'people': return (prop.people || []).map(p => p.name).filter(Boolean).join(', ');
+    case 'files': return (prop.files || []).map(f => f.name).filter(Boolean).join(', ');
+    case 'created_time': return prop.created_time || '';
+    case 'last_edited_time': return prop.last_edited_time || '';
+    case 'relation': return (prop.relation || []).length ? (prop.relation.length + '건 연결') : '';
+    case 'formula': return textOf({ type: prop.formula?.type, ...prop.formula });
+    case 'rollup': return textOf({ type: prop.rollup?.type, ...prop.rollup });
     default: return '';
+  }
+}
+
+// 표마다 칸 구성이 달라서, 노션이 알려주는 대로 읽어 목록으로 만든다.
+// 이렇게 해두면 나중에 노션에서 칸을 더해도 코드를 고칠 필요가 없다.
+async function getTable(env, key) {
+  try {
+    const data = await notionQuery(env, DATABASES[key]);
+
+    const rows = data.results.map(page => {
+      let heading = '';
+      let when = '';
+      const fields = [];
+
+      for (const [label, prop] of Object.entries(page.properties)) {
+        const value = textOf(prop);
+        if (prop.type === 'title') {
+          heading = value;
+          continue;
+        }
+        // 첫 날짜는 오른쪽에 따로 보여주므로 아래 목록에서는 뺀다.
+        if (prop.type === 'date' && !when && value) {
+          when = value;
+          continue;
+        }
+        if (value) fields.push({ label, value });
+      }
+
+      return { id: page.id, heading: heading || '(제목 없음)', when, fields };
+    });
+
+    // 날짜가 있는 표는 최근 것이 위로 오게 한다.
+    rows.sort((a, b) => (b.when || '').localeCompare(a.when || ''));
+
+    return { success: true, data: rows };
+  } catch (error) {
+    return { success: false, error: error.message };
   }
 }
 
@@ -192,6 +250,17 @@ header{background:#fff;border-bottom:1px solid #e2e8f0;padding:16px 0}
 .event-row{display:flex;gap:10px;font-size:13px;padding:8px 12px;background:#f8fafc;border-radius:8px}
 @media(prefers-color-scheme:dark){.event-row{background:#334155}}
 .event-date{color:#2563eb;font-weight:600;white-space:nowrap}
+.rows{display:grid;gap:10px}
+.row-item{padding:12px 14px;background:#f8fafc;border-radius:8px;border-left:4px solid #2563eb}
+@media(prefers-color-scheme:dark){.row-item{background:#334155}}
+.row-head{display:flex;justify-content:space-between;gap:12px;align-items:baseline}
+.row-title{font-weight:600}
+.row-when{font-size:12px;color:#2563eb;font-weight:600;white-space:nowrap}
+.row-fields{margin-top:6px;display:flex;flex-wrap:wrap;gap:4px 14px}
+.field{font-size:12px;color:#475569}
+@media(prefers-color-scheme:dark){.field{color:#cbd5e1}}
+.field b{color:#64748b;font-weight:600}
+@media(prefers-color-scheme:dark){.field b{color:#94a3b8}}
 .muted{text-align:center;padding:32px 16px;color:#64748b;font-size:14px}
 .error{padding:14px 16px;background:#fee2e2;color:#991b1b;border-radius:8px;font-size:13px;line-height:1.5}
 @media(prefers-color-scheme:dark){.error{background:#7f1d1d;color:#fca5a5}}
@@ -210,6 +279,7 @@ header{background:#fff;border-bottom:1px solid #e2e8f0;padding:16px 0}
 <button class="tab-btn" data-tab="students">학생 목록</button>
 <button class="tab-btn" data-tab="attendance">출석 현황</button>
 <button class="tab-btn" data-tab="calendar">월간 캘린더</button>
+<!--EXTRA_TABS-->
 </div>
 
 <div id="dashboard" class="tab-content active">
@@ -237,6 +307,7 @@ header{background:#fff;border-bottom:1px solid #e2e8f0;padding:16px 0}
 <div id="event-list" class="event-list"></div>
 </div>
 </div>
+<!--EXTRA_PANELS-->
 </div>
 
 <script>
@@ -374,12 +445,44 @@ async function loadCalendar() {
       }).join('');
 }
 
+async function loadTable(key) {
+  var el = document.querySelector('[data-table="' + key + '"]');
+  if (!el || el.dataset.loaded === 'yes') return;
+  el.dataset.loaded = 'yes';
+
+  var result = await fetchAPI('/table/' + key);
+  if (!result || !result.success) {
+    el.dataset.loaded = 'no';
+    showError(el, (result && result.error) || '알 수 없는 오류');
+    return;
+  }
+
+  var rows = result.data || [];
+  if (rows.length === 0) {
+    el.innerHTML = '<div class="muted">아직 등록된 내용이 없습니다</div>';
+    return;
+  }
+
+  el.innerHTML = rows.map(function (r) {
+    var fields = r.fields.map(function (f) {
+      return '<span class="field"><b>' + esc(f.label) + '</b> ' + esc(f.value) + '</span>';
+    }).join('');
+    return '<div class="row-item"><div class="row-head">' +
+      '<span class="row-title">' + esc(r.heading) + '</span>' +
+      (r.when ? '<span class="row-when">' + esc(r.when.slice(0, 10)) + '</span>' : '') +
+      '</div>' + (fields ? '<div class="row-fields">' + fields + '</div>' : '') + '</div>';
+  }).join('');
+}
+
 document.querySelectorAll('.tab-btn').forEach(function (btn) {
   btn.addEventListener('click', function () {
     document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
     document.querySelectorAll('.tab-content').forEach(function (c) { c.classList.remove('active'); });
     btn.classList.add('active');
-    document.getElementById(btn.dataset.tab).classList.add('active');
+    var tab = btn.dataset.tab;
+    document.getElementById(tab).classList.add('active');
+    // 나머지 표는 눌렀을 때 불러온다. 12개를 한꺼번에 부르면 첫 화면이 느려진다.
+    if (document.querySelector('[data-table="' + tab + '"]')) loadTable(tab);
   });
 });
 
@@ -387,6 +490,13 @@ function loadAll() {
   loadStudents();
   loadAttendance();
   loadCalendar();
+
+  var open = document.querySelector('.tab-btn.active');
+  var openTable = open && document.querySelector('[data-table="' + open.dataset.tab + '"]');
+  if (openTable) {
+    openTable.dataset.loaded = 'no';
+    loadTable(open.dataset.tab);
+  }
 }
 
 updateDate();
@@ -395,6 +505,24 @@ setInterval(loadAll, 5 * 60 * 1000);
 </script>
 </body>
 </html>`;
+
+// 탭과 화면은 TABLES 하나만 고치면 따라오도록, 내보낼 때 끼워 넣는다.
+function renderDashboard() {
+  const tabs = TABLES.map(t =>
+    '<button class="tab-btn" data-tab="' + t.key + '">' + t.icon + ' ' + t.label + '</button>'
+  ).join('');
+
+  const panels = TABLES.map(t =>
+    '<div id="' + t.key + '" class="tab-content"><div class="card">' +
+    '<div class="card-title">' + t.icon + ' ' + t.label + '</div>' +
+    '<div class="rows" data-table="' + t.key + '"><div class="muted">불러오는 중…</div></div>' +
+    '</div></div>'
+  ).join('');
+
+  return dashboardHTML
+    .replace('<!--EXTRA_TABS-->', tabs)
+    .replace('<!--EXTRA_PANELS-->', panels);
+}
 
 async function handleRequest(request, env) {
   if (request.method === 'OPTIONS') {
@@ -410,7 +538,7 @@ async function handleRequest(request, env) {
 
   try {
     if (path === '/' || path === '/dashboard') {
-      return new Response(dashboardHTML, {
+      return new Response(renderDashboard(), {
         status: 200,
         headers: { 'Content-Type': 'text/html; charset=utf-8' },
       });
@@ -418,6 +546,13 @@ async function handleRequest(request, env) {
     if (path === '/api/students') return json(await getStudents(env));
     if (path === '/api/attendance/today') return json(await getTodayAttendance(env));
     if (path === '/api/calendar') return json(await getCalendarEvents(env));
+
+    if (path.startsWith('/api/table/')) {
+      const key = path.slice('/api/table/'.length);
+      if (!TABLES.some(t => t.key === key)) return json({ success: false, error: '없는 표: ' + key }, 404);
+      return json(await getTable(env, key));
+    }
+
     if (path === '/api/health') {
       return json({ status: 'ok', hasNotionKey: Boolean(env.NOTION_API_KEY), today: seoulToday() });
     }
