@@ -18,16 +18,21 @@ const DATABASES = {
 
 // 학생·출석·캘린더는 전용 화면을 쓰고, 나머지는 표 내용을 그대로 목록으로 보여준다.
 const TABLES = [
-  { key: 'newsletters', label: '영자신문', icon: '📰' },
-  { key: 'counseling', label: '상담일지', icon: '💬' },
-  { key: 'payment', label: '결제', icon: '💳' },
-  { key: 'tasks', label: '과제', icon: '📝' },
-  { key: 'patrols', label: '수업일지', icon: '📔' },
-  { key: 'notifications', label: '알림', icon: '🔔' },
-  { key: 'resources', label: '자료실', icon: '📁' },
-  { key: 'books', label: '도서대여', icon: '📖' },
-  { key: 'memos', label: '업무메모', icon: '🗒️' },
+  { key: 'newsletters', label: '영자신문', icon: '📰', color: '#93c5fd' },
+  { key: 'counseling', label: '상담일지', icon: '💬', color: '#ddd6fe' },
+  { key: 'payment', label: '결제', icon: '💳', color: '#fde68a' },
+  { key: 'tasks', label: '과제', icon: '📋', color: '#86efac' },
+  { key: 'patrols', label: '수업일지', icon: '📓', color: '#bfdbfe' },
+  { key: 'notifications', label: '알림', icon: '🔔', color: '#fbcfe8' },
+  { key: 'resources', label: '자료실', icon: '📂', color: '#a5f3fc' },
+  { key: 'books', label: '도서대여', icon: '📚', color: '#ddd6fe' },
+  { key: 'memos', label: '업무메모', icon: '📝', color: '#fed7aa' },
 ];
+
+// 탭·제목 앞에 붙는 색깔 타일. 보내주신 아이콘 그림과 같은 느낌을 내기 위한 것.
+function iconTile(icon, color, cls) {
+  return '<span class="' + cls + '" style="background:' + color + '">' + icon + '</span>';
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -282,14 +287,16 @@ header{background:#fff;border-bottom:1px solid #e2e8f0;padding:16px 0}
 @media(prefers-color-scheme:dark){.header-date{color:#94a3b8}}
 .tabs{display:flex;gap:8px;border-bottom:1px solid #e2e8f0;margin:20px 0;overflow-x:auto}
 @media(prefers-color-scheme:dark){.tabs{border-color:#334155}}
-.tab-btn{padding:12px 16px;border:none;background:transparent;cursor:pointer;font-size:14px;font-weight:500;color:#64748b;border-bottom:2px solid transparent;white-space:nowrap}
+.tab-btn{display:inline-flex;align-items:center;gap:7px;padding:10px 14px;border:none;background:transparent;cursor:pointer;font-size:14px;font-weight:500;color:#64748b;border-bottom:2px solid transparent;white-space:nowrap}
+.tab-ico{width:24px;height:24px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;font-size:14px;line-height:1;flex-shrink:0}
+.title-ico{width:28px;height:28px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:16px;line-height:1;margin-right:8px;flex-shrink:0}
 @media(prefers-color-scheme:dark){.tab-btn{color:#94a3b8}}
 .tab-btn.active{color:#2563eb;border-bottom-color:#2563eb}
 .tab-content{display:none}
 .tab-content.active{display:block}
 .card{background:#fff;border-radius:12px;padding:20px;margin-bottom:16px;border:1px solid #e2e8f0}
 @media(prefers-color-scheme:dark){.card{background:#1e293b;border-color:#334155}}
-.card-title{font-size:16px;font-weight:600;margin-bottom:16px}
+.card-title{display:flex;align-items:center;font-size:16px;font-weight:600;margin-bottom:16px}
 .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
 .stat-box{padding:16px;background:#fff;border:1px solid #e2e8f0;border-radius:12px}
 @media(prefers-color-scheme:dark){.stat-box{background:#1e293b;border-color:#334155}}
@@ -368,10 +375,10 @@ header{background:#fff;border-bottom:1px solid #e2e8f0;padding:16px 0}
 
 <div class="container">
 <div class="tabs">
-<button class="tab-btn active" data-tab="dashboard">대시보드</button>
-<button class="tab-btn" data-tab="students">학생 목록</button>
-<button class="tab-btn" data-tab="attendance">출석 현황</button>
-<button class="tab-btn" data-tab="calendar">월간 캘린더</button>
+<button class="tab-btn active" data-tab="dashboard"><span class="tab-ico" style="background:#bfdbfe">🐋</span>대시보드</button>
+<button class="tab-btn" data-tab="students"><span class="tab-ico" style="background:#bbf7d0">👥</span>학생 목록</button>
+<button class="tab-btn" data-tab="attendance"><span class="tab-ico" style="background:#a5f3fc">✅</span>출석 현황</button>
+<button class="tab-btn" data-tab="calendar"><span class="tab-ico" style="background:#bfdbfe">📅</span>월간 캘린더</button>
 <!--EXTRA_TABS-->
 </div>
 
@@ -381,16 +388,16 @@ header{background:#fff;border-bottom:1px solid #e2e8f0;padding:16px 0}
 <div class="stat-box"><div class="stat-label">오늘 출석</div><div class="stat-value" id="stat-attendance">-</div></div>
 <div class="stat-box"><div class="stat-label">이번 달 행사</div><div class="stat-value" id="stat-events">-</div></div>
 </div>
-<div class="card"><div class="card-title">👥 최근 학생</div><div id="recent-students" class="student-list"><div class="muted">불러오는 중…</div></div></div>
+<div class="card"><div class="card-title"><span class="title-ico" style="background:#bbf7d0">👥</span>최근 학생</div><div id="recent-students" class="student-list"><div class="muted">불러오는 중…</div></div></div>
 </div>
 
 <div id="students" class="tab-content">
-<div class="card"><div class="card-title">📚 학생 목록</div><div id="students-list" class="student-list"><div class="muted">불러오는 중…</div></div></div>
+<div class="card"><div class="card-title"><span class="title-ico" style="background:#bbf7d0">👥</span>학생 목록</div><div id="students-list" class="student-list"><div class="muted">불러오는 중…</div></div></div>
 </div>
 
 <div id="attendance" class="tab-content">
 <div class="card">
-<div class="card-title">✓ 오늘 출석 체크</div>
+<div class="card-title"><span class="title-ico" style="background:#a5f3fc">✅</span>오늘 출석 체크</div>
 <div id="pw-box" class="pw-box" hidden>
 <div class="pw-msg" id="pw-msg">출석을 저장하려면 비밀번호가 필요합니다</div>
 <div class="pw-row"><input id="pw-input" type="password" placeholder="비밀번호" autocomplete="current-password"><button id="pw-save" type="button">확인</button></div>
@@ -402,7 +409,7 @@ header{background:#fff;border-bottom:1px solid #e2e8f0;padding:16px 0}
 
 <div id="calendar" class="tab-content">
 <div class="card">
-<div class="card-title" id="calendar-title">📅 캘린더</div>
+<div class="card-title"><span class="title-ico" style="background:#bfdbfe">📅</span><span id="calendar-title">캘린더</span></div>
 <div class="weekdays"><div class="weekday">일</div><div class="weekday">월</div><div class="weekday">화</div><div class="weekday">수</div><div class="weekday">목</div><div class="weekday">금</div><div class="weekday">토</div></div>
 <div id="calendar-grid" class="calendar"></div>
 <div id="event-list" class="event-list"></div>
@@ -631,7 +638,7 @@ async function loadCalendar() {
   var year = today.getFullYear();
   var month = today.getMonth();
 
-  document.getElementById('calendar-title').textContent = '📅 ' + year + '년 ' + (month + 1) + '월';
+  document.getElementById('calendar-title').textContent = year + '년 ' + (month + 1) + '월';
 
   var daysInMonth = new Date(year, month + 1, 0).getDate();
   var firstWeekday = new Date(year, month, 1).getDay();
@@ -739,12 +746,13 @@ setInterval(loadAll, 5 * 60 * 1000);
 // 탭과 화면은 TABLES 하나만 고치면 따라오도록, 내보낼 때 끼워 넣는다.
 function renderDashboard() {
   const tabs = TABLES.map(t =>
-    '<button class="tab-btn" data-tab="' + t.key + '">' + t.icon + ' ' + t.label + '</button>'
+    '<button class="tab-btn" data-tab="' + t.key + '">' +
+    iconTile(t.icon, t.color, 'tab-ico') + t.label + '</button>'
   ).join('');
 
   const panels = TABLES.map(t =>
     '<div id="' + t.key + '" class="tab-content"><div class="card">' +
-    '<div class="card-title">' + t.icon + ' ' + t.label + '</div>' +
+    '<div class="card-title">' + iconTile(t.icon, t.color, 'title-ico') + t.label + '</div>' +
     '<div class="rows" data-table="' + t.key + '"><div class="muted">불러오는 중…</div></div>' +
     '</div></div>'
   ).join('');
