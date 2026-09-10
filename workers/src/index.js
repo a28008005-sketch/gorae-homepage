@@ -12,10 +12,13 @@ const DATABASES = {
   books: 'fef622ad46444043acadb99fae0f8cd4',
   memos: '53c66a36431c45c69fdc12950f88c734',
   calendar: 'a6650ba193bb4332b1747c5bdb0ac4d6',
+  // NEWSLETTERS 저장소가 워크시트 PDF를 올리는 표
+  newsletters: '3c8dc243c7ea4ebb9956508c1dc61c7c',
 };
 
 // 학생·출석·캘린더는 전용 화면을 쓰고, 나머지는 표 내용을 그대로 목록으로 보여준다.
 const TABLES = [
+  { key: 'newsletters', label: '영자신문', icon: '📰' },
   { key: 'counseling', label: '상담일지', icon: '💬' },
   { key: 'payment', label: '결제', icon: '💳' },
   { key: 'tasks', label: '과제', icon: '📝' },
@@ -68,22 +71,40 @@ async function getTable(env, key) {
       let heading = '';
       let when = '';
       const fields = [];
+      const links = [];
 
       for (const [label, prop] of Object.entries(page.properties)) {
-        const value = textOf(prop);
         if (prop.type === 'title') {
-          heading = value;
+          heading = textOf(prop);
           continue;
         }
         // 첫 날짜는 오른쪽에 따로 보여주므로 아래 목록에서는 뺀다.
-        if (prop.type === 'date' && !when && value) {
-          when = value;
+        if (prop.type === 'date' && !when) {
+          const value = textOf(prop);
+          if (value) {
+            when = value;
+            continue;
+          }
+        }
+        // 첨부 파일과 주소는 눌러서 열 수 있게 한다 (영자신문 워크시트 PDF 등).
+        // 노션이 주는 파일 주소는 한 시간쯤 뒤 만료되지만, 탭을 열 때마다 새로 받아온다.
+        if (prop.type === 'files') {
+          for (const file of prop.files || []) {
+            const url = file.file?.url || file.external?.url;
+            if (url) links.push({ label, url });
+          }
           continue;
         }
+        if (prop.type === 'url' && prop.url) {
+          links.push({ label, url: prop.url });
+          continue;
+        }
+
+        const value = textOf(prop);
         if (value) fields.push({ label, value });
       }
 
-      return { id: page.id, heading: heading || '(제목 없음)', when, fields };
+      return { id: page.id, heading: heading || '(제목 없음)', when, fields, links };
     });
 
     // 날짜가 있는 표는 최근 것이 위로 오게 한다.
@@ -259,6 +280,10 @@ header{background:#fff;border-bottom:1px solid #e2e8f0;padding:16px 0}
 .row-fields{margin-top:6px;display:flex;flex-wrap:wrap;gap:4px 14px}
 .field{font-size:12px;color:#475569}
 @media(prefers-color-scheme:dark){.field{color:#cbd5e1}}
+.row-links{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px}
+.link-chip{display:inline-block;padding:5px 10px;background:#dbeafe;color:#1e40af;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none}
+.link-chip:hover{background:#bfdbfe}
+@media(prefers-color-scheme:dark){.link-chip{background:#1e3a8a;color:#93c5fd}.link-chip:hover{background:#1d4ed8}}
 .field b{color:#64748b;font-weight:600}
 @media(prefers-color-scheme:dark){.field b{color:#94a3b8}}
 .muted{text-align:center;padding:32px 16px;color:#64748b;font-size:14px}
@@ -467,10 +492,19 @@ async function loadTable(key) {
     var fields = r.fields.map(function (f) {
       return '<span class="field"><b>' + esc(f.label) + '</b> ' + esc(f.value) + '</span>';
     }).join('');
+
+    var links = (r.links || []).map(function (l) {
+      return '<a class="link-chip" href="' + esc(l.url) + '" target="_blank" rel="noopener">' +
+        esc(l.label) + ' 열기</a>';
+    }).join('');
+
     return '<div class="row-item"><div class="row-head">' +
       '<span class="row-title">' + esc(r.heading) + '</span>' +
       (r.when ? '<span class="row-when">' + esc(r.when.slice(0, 10)) + '</span>' : '') +
-      '</div>' + (fields ? '<div class="row-fields">' + fields + '</div>' : '') + '</div>';
+      '</div>' +
+      (fields ? '<div class="row-fields">' + fields + '</div>' : '') +
+      (links ? '<div class="row-links">' + links + '</div>' : '') +
+      '</div>';
   }).join('');
 }
 
