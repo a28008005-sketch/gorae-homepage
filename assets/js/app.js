@@ -41,6 +41,13 @@ var App = (function () {
     }
   }
 
+  function renderMenu() {
+    var items = Store.menuList();
+    navEl.innerHTML = items.map(function (m) {
+      return '<a href="#/' + m.route + '" data-route="' + m.route + '"><i>' + m.icon + '</i><span>' + m.label + '</span></a>';
+    }).join('');
+  }
+
   function highlight(route) {
     navEl.querySelectorAll('a').forEach(function (a) {
       a.classList.toggle('active', a.getAttribute('data-route') === route);
@@ -58,6 +65,15 @@ var App = (function () {
       return;
     }
     document.body.classList.remove('share-mode');
+
+    /* 권한 검사 */
+    if (!Store.userHasAccess(current)) {
+      current = 'dashboard';
+      if (!Store.userHasAccess('dashboard')) {
+        UI.toast('접근 권한이 없습니다.', true);
+        return;
+      }
+    }
 
     var view = Views[current] || Views.dashboard;
     if (!Views[current]) { current = 'dashboard'; }
@@ -88,6 +104,54 @@ var App = (function () {
     document.getElementById('backdrop').classList.remove('on');
   }
 
+  function showUserMenu() {
+    var user = Store.currentUser();
+    var html = '<div class="modal-header"><h2>사용자 설정</h2></div>' +
+      '<div class="modal-body">' +
+      '<div class="section">' +
+        '<div class="form-group">' +
+          '<label>현재 사용자</label>' +
+          '<div style="padding:10px;background:#f5f5f5;border-radius:4px">' +
+            '<div style="font-weight:bold">' + U.esc(user.name) + '</div>' +
+            '<div style="font-size:12.5px;color:#666;margin-top:4px">역할: ' +
+              ({ 'admin': '관리자', 'teacher': '강사', 'parent': '학부모', 'student': '학생' }[user.role] || user.role) +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="form-group">' +
+          '<label>역할 변경</label>' +
+          '<select id="role-select" style="width:100%">' +
+            '<option value="admin"' + (user.role === 'admin' ? ' selected' : '') + '>관리자 (전체 접근)</option>' +
+            '<option value="teacher"' + (user.role === 'teacher' ? ' selected' : '') + '>강사 (출결, 상담)</option>' +
+            '<option value="parent"' + (user.role === 'parent' ? ' selected' : '') + '>학부모 (공유만)</option>' +
+            '<option value="student"' + (user.role === 'student' ? ' selected' : '') + '>학생 (대시보드만)</option>' +
+          '</select>' +
+        '</div>' +
+        '<div class="form-group">' +
+          '<label>사용자명</label>' +
+          '<input type="text" id="user-name-input" value="' + U.esc(user.name) + '" style="width:100%">' +
+        '</div>' +
+      '</div>' +
+      '</div>' +
+      '<div class="modal-footer">' +
+        '<button class="btn" id="user-menu-close">닫기</button>' +
+        '<button class="btn primary" id="user-menu-save">저장</button>' +
+      '</div>';
+
+    var modal = UI.modal(html);
+    document.getElementById('user-menu-close').addEventListener('click', function () { modal.close(); });
+    document.getElementById('user-menu-save').addEventListener('click', function () {
+      var role = document.getElementById('role-select').value;
+      var name = document.getElementById('user-name-input').value;
+      if (!name.trim()) { UI.toast('사용자명을 입력해 주세요.', true); return; }
+      Store.setCurrentUser(role, name.trim());
+      renderMenu();
+      App.rerender();
+      modal.close();
+      UI.toast('사용자 설정이 저장되었습니다.');
+    });
+  }
+
   function boot() {
     viewEl = document.getElementById('view');
     titleEl = document.getElementById('page-title');
@@ -97,6 +161,7 @@ var App = (function () {
     document.getElementById('today-chip').textContent = U.human(U.ymd());
     document.getElementById('menu-toggle').addEventListener('click', openSidebar);
     document.getElementById('backdrop').addEventListener('click', closeSidebar);
+    document.getElementById('user-menu-btn').addEventListener('click', showUserMenu);
 
     // 저장 가능 여부 안내
     try {
@@ -106,6 +171,7 @@ var App = (function () {
       document.getElementById('storage-note').textContent = '⚠️ 저장 불가 (시크릿 모드)';
     }
 
+    renderMenu();
     refreshBrand();
     window.addEventListener('hashchange', route);
     if (!location.hash) location.hash = '#/dashboard';

@@ -69,10 +69,27 @@ Views.settings = (function () {
 
   function render(el) {
     var ac = Store.get().academy;
+    var user = Store.currentUser();
     var c = counts();
 
     el.innerHTML =
       '<div class="grid g-2">' +
+
+        '<div class="card"><div class="card-h"><h2>사용자 설정</h2></div><div class="card-b">' +
+          '<div class="form-grid">' +
+            '<label class="fld full">사용자명<input type="text" id="u-name" value="' + U.esc(user.name) + '"></label>' +
+            '<label class="fld full">역할' +
+              '<select id="u-role">' +
+                '<option value="admin"' + (user.role === 'admin' ? ' selected' : '') + '>관리자 (전체 접근 · 모든 기능)</option>' +
+                '<option value="teacher"' + (user.role === 'teacher' ? ' selected' : '') + '>강사 (출결, 상담 등)</option>' +
+                '<option value="parent"' + (user.role === 'parent' ? ' selected' : '') + '>학부모 (공유 기능만)</option>' +
+                '<option value="student"' + (user.role === 'student' ? ' selected' : '') + '>학생 (대시보드만)</option>' +
+              '</select>' +
+            '</label>' +
+          '</div>' +
+          '<p class="hint" style="font-size:12.5px;margin-top:14px">현재 역할에 따라 접근할 수 있는 메뉴가 결정됩니다.</p>' +
+          '<button class="btn primary" id="u-save" style="margin-top:14px">사용자 설정 저장</button>' +
+        '</div></div>' +
 
         '<div class="card"><div class="card-h"><h2>학원 정보</h2></div><div class="card-b">' +
           '<div class="form-grid">' +
@@ -116,6 +133,15 @@ Views.settings = (function () {
         '</div>' +
 
       '</div>';
+
+    el.querySelector('#u-save').addEventListener('click', function () {
+      var name = el.querySelector('#u-name').value.trim();
+      var role = el.querySelector('#u-role').value;
+      if (!name) { UI.toast('사용자명을 입력해 주세요.', true); return; }
+      Store.setCurrentUser(role, name);
+      UI.toast('사용자 설정을 저장했습니다.');
+      setTimeout(function () { App.rerender(); }, 300);
+    });
 
     el.querySelector('#a-save').addEventListener('click', function () {
       var times = el.querySelector('#a-times').value.split(',')

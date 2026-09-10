@@ -26,6 +26,11 @@ var Store = (function () {
       seatCount: 20,
       times: ['1시', '2시', '3시', '4시', '5시', '6시', '7시', '8시']
     },
+    currentUser: {
+      role: 'admin',
+      name: '관리자'
+    },
+    users: [],
     students: [],
     attendance: [],
     patrols: [],
@@ -429,6 +434,65 @@ var Store = (function () {
     save();
   }
 
+  /* ---------- 사용자 역할 · 권한 ---------- */
+  function currentUser() {
+    return get().currentUser;
+  }
+  function setCurrentUser(role, name) {
+    var d = get();
+    d.currentUser = { role: role, name: name };
+    save();
+  }
+  function userHasAccess(route) {
+    var role = get().currentUser.role;
+    var MENU_MAP = {
+      'admin': ['dashboard', 'students', 'attendance', 'patrol', 'seats', 'classes', 'stats', 'assignments', 'counseling', 'payments', 'share', 'notifications', 'settings'],
+      'teacher': ['dashboard', 'attendance', 'patrol', 'counseling', 'share', 'notifications', 'settings'],
+      'parent': ['share', 'notifications', 'settings'],
+      'student': ['dashboard']
+    };
+    var allowed = MENU_MAP[role] || [];
+    return allowed.indexOf(route) >= 0;
+  }
+  function menuList() {
+    var role = get().currentUser.role;
+    var MENU_MAP = {
+      'admin': [
+        { route: 'dashboard', label: '대시보드', icon: '📊' },
+        { route: 'students', label: '학생 명부', icon: '🧒' },
+        { route: 'attendance', label: '출결 · 일일학습', icon: '✅' },
+        { route: 'patrol', label: '순회 점검', icon: '🔍' },
+        { route: 'seats', label: '좌석 배치', icon: '🪑' },
+        { route: 'classes', label: '수업 시간표', icon: '🗓️' },
+        { route: 'stats', label: '통계', icon: '📈' },
+        { route: 'assignments', label: '과제 관리', icon: '📝' },
+        { route: 'counseling', label: '상담 일지', icon: '💬' },
+        { route: 'payments', label: '수납 · 결제', icon: '💳' },
+        { route: 'share', label: '학부모 공유', icon: '💌' },
+        { route: 'notifications', label: '알림 설정', icon: '🔔' },
+        { route: 'settings', label: '설정 · 백업', icon: '⚙️' }
+      ],
+      'teacher': [
+        { route: 'dashboard', label: '대시보드', icon: '📊' },
+        { route: 'attendance', label: '출결 · 일일학습', icon: '✅' },
+        { route: 'patrol', label: '순회 점검', icon: '🔍' },
+        { route: 'counseling', label: '상담 일지', icon: '💬' },
+        { route: 'share', label: '학부모 공유', icon: '💌' },
+        { route: 'notifications', label: '알림 설정', icon: '🔔' },
+        { route: 'settings', label: '설정', icon: '⚙️' }
+      ],
+      'parent': [
+        { route: 'share', label: '학부모 공유', icon: '💌' },
+        { route: 'notifications', label: '알림 설정', icon: '🔔' },
+        { route: 'settings', label: '설정', icon: '⚙️' }
+      ],
+      'student': [
+        { route: 'dashboard', label: '대시보드', icon: '📊' }
+      ]
+    };
+    return MENU_MAP[role] || [];
+  }
+
   load();
 
   return {
@@ -448,6 +512,7 @@ var Store = (function () {
     payments: payments, savePayment: savePayment, deletePayment: deletePayment,
     getNotificationSettings: getNotificationSettings, saveNotificationSettings: saveNotificationSettings,
     summarize: summarize, dayOverview: dayOverview,
-    exportJson: exportJson, importJson: importJson, resetAll: resetAll, saveAcademy: saveAcademy
+    exportJson: exportJson, importJson: importJson, resetAll: resetAll, saveAcademy: saveAcademy,
+    currentUser: currentUser, setCurrentUser: setCurrentUser, userHasAccess: userHasAccess, menuList: menuList
   };
 })();
