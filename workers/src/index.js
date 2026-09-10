@@ -4,19 +4,19 @@
 // 환경 변수에서 토큰 읽기 (배포 시 Cloudflare Secrets에 설정)
 const NOTION_API_URL = 'https://api.notion.com/v1';
 
-// 데이터베이스 ID - 나중에 각 테이블 ID로 바꿔야 함
+// 데이터베이스 ID
 const DATABASES = {
-  students: '학생_테이블_ID', // "고래영어 - 학생"
-  attendance: '출석_테이블_ID', // "고래영어 - 출석"
-  counseling: '상담_테이블_ID', // "고래영어 - 상담일지"
-  payment: '결제_테이블_ID', // "고래영어 - 결제"
-  tasks: '과제_테이블_ID', // "고래영어 - 과제"
-  patrols: '수업일지_테이블_ID', // "고래영어 - 수업일지"
-  notifications: '알림_테이블_ID', // "고래영어 - 알림"
-  resources: '자료실_테이블_ID', // "고래영어 - 학원자료실"
-  books: '도서대여_테이블_ID', // "고래영어 - 도서대여"
-  memos: '메모_테이블_ID', // "고래영어 - 업무메모"
-  calendar: '캘린더_테이블_ID', // "고래영어 - 캘린더"
+  students: '3bc7e934731849f893208973a5ea9650', // "고래영어 - 학생"
+  attendance: '07a67769a5504e10a61736c3de6f436e', // "고래영어 - 출석"
+  counseling: 'e968535167dd492b90f63d335a123d47', // "고래영어 - 상담일지"
+  payment: 'fb5eb6a5171a429c84a02ec0a60aa268', // "고래영어 - 결제"
+  tasks: 'e511f5492e25485da9da30f8b411a224', // "고래영어 - 과제"
+  patrols: 'f8c08fb1005c47c9a728fb088039ca7f', // "고래영어 - 수업일지"
+  notifications: '4cefa2a2adb94923ad722bbbe21c2461', // "고래영어 - 알림"
+  resources: '65deb8ef95a94b2f8439bda34d7a0b77', // "고래영어 - 학원자료실"
+  books: 'fef622ad46444043acadb99fae0f8cd4', // "고래영어 - 도서대여"
+  memos: '53c66a36431c45c69fdc12950f88c734', // "고래영어 - 업무메모"
+  calendar: 'a6650ba193bb4332b1747c5bdb0ac4d6', // "고래영어 - 캘린더"
 };
 
 // CORS 헤더
