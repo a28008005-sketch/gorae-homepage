@@ -149,6 +149,24 @@ async function notionQuery(env, databaseId, filters = null, sorts = null) {
   return notionApi(env, '/databases/' + databaseId + '/query', 'POST', body);
 }
 
+// 노션은 한 번에 100줄까지만 준다. 한 달 출석은 (학생 수 × 수업일) 그보다 쉽게 넘어서
+// 이어받기를 해야 뒷날짜가 통째로 빠지지 않는다.
+async function notionQueryAll(env, databaseId, filters = null) {
+  const results = [];
+  let cursor = null;
+  for (let page = 0; page < 20; page++) {
+    const body = { page_size: 100 };
+    if (filters) body.filter = filters;
+    if (cursor) body.start_cursor = cursor;
+
+    const chunk = await notionApi(env, '/databases/' + databaseId + '/query', 'POST', body);
+    results.push(...chunk.results);
+    if (!chunk.has_more) break;
+    cursor = chunk.next_cursor;
+  }
+  return results;
+}
+
 async function getStudents(env) {
   try {
     const data = await notionQuery(env, DATABASES.students);
@@ -191,6 +209,38 @@ async function getTodayAttendance(env) {
         status: textOf(page.properties['상태']),
       })),
     };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+// 달력 칸에 보여줄 이번 달 출결을 날짜별로 센다.
+async function getMonthAttendance(env) {
+  try {
+    const month = seoulToday().slice(0, 7);
+    const year = Number(month.slice(0, 4));
+    const monthNumber = Number(month.slice(5, 7));
+    const lastDay = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
+
+    const pages = await notionQueryAll(env, DATABASES.attendance, {
+      and: [
+        { property: '날짜', date: { on_or_after: month + '-01' } },
+        { property: '날짜', date: { on_or_before: month + '-' + String(lastDay).padStart(2, '0') } },
+      ],
+    });
+
+    const byDate = {};
+    for (const page of pages) {
+      const date = textOf(page.properties['날짜']).slice(0, 10);
+      if (!date) continue;
+      if (!byDate[date]) byDate[date] = { present: 0, absent: 0 };
+
+      const status = textOf(page.properties['상태']);
+      if (status === '출석') byDate[date].present++;
+      else if (status === '결석') byDate[date].absent++;
+    }
+
+    return { success: true, month, data: byDate };
   } catch (error) {
     return { success: false, error: error.message };
   }
@@ -317,10 +367,25 @@ header{background:#fff;border-bottom:1px solid #e2e8f0;padding:16px 0}
 .attendance-status{font-size:28px}
 .attendance-name{font-size:12px;color:#64748b}
 @media(prefers-color-scheme:dark){.attendance-name{color:#94a3b8}}
-.weekdays{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-bottom:8px}
+.weekdays{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin-bottom:8px}
 .weekday{text-align:center;font-size:12px;color:#64748b;font-weight:600}
-.calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
-.calendar-day{padding:8px;background:#f8fafc;border-radius:8px;text-align:center;font-size:13px;aspect-ratio:1;display:flex;justify-content:center;align-items:center}
+.calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.calendar-day{padding:4px 2px;min-width:0;background:#f8fafc;border-radius:8px;text-align:center;font-size:13px;min-height:52px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:2px}
+.d-num{font-size:13px;line-height:1.1}
+.d-att{display:flex;gap:4px;font-size:10px;font-weight:700;line-height:1}
+.d-att .p{color:#16a34a}
+.d-att .a{color:#dc2626}
+@media(prefers-color-scheme:dark){.d-att .p{color:#4ade80}.d-att .a{color:#f87171}}
+.calendar-day.today .p{color:#bbf7d0}
+.calendar-day.today .a{color:#fecaca}
+.calendar-day.event .p{color:#15803d}
+.calendar-day.event .a{color:#b91c1c}
+.cal-legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:12px;font-size:12px;color:#64748b}
+@media(prefers-color-scheme:dark){.cal-legend{color:#94a3b8}}
+.cal-legend b{font-weight:700}
+.cal-legend .p{color:#16a34a}
+.cal-legend .a{color:#dc2626}
+.ev-chip{display:inline-block;width:12px;height:12px;border-radius:3px;background:#fef08a;vertical-align:-2px;margin-right:2px}
 @media(prefers-color-scheme:dark){.calendar-day{background:#334155}}
 .calendar-day.blank{background:transparent}
 .calendar-day.today{background:#2563eb;color:#fff;font-weight:700}
@@ -412,6 +477,7 @@ header{background:#fff;border-bottom:1px solid #e2e8f0;padding:16px 0}
 <div class="card-title"><span class="title-ico" style="background:#bfdbfe">📅</span><span id="calendar-title">캘린더</span></div>
 <div class="weekdays"><div class="weekday">일</div><div class="weekday">월</div><div class="weekday">화</div><div class="weekday">수</div><div class="weekday">목</div><div class="weekday">금</div><div class="weekday">토</div></div>
 <div id="calendar-grid" class="calendar"></div>
+<div class="cal-legend"><span><b class="p">3</b> 출석</span><span><b class="a">1</b> 결석</span><span><i class="ev-chip"></i> 행사가 있는 날</span></div>
 <div id="event-list" class="event-list"></div>
 </div>
 </div>
@@ -626,7 +692,9 @@ document.getElementById('pw-input').addEventListener('keydown', function (e) {
 async function loadCalendar() {
   var grid = document.getElementById('calendar-grid');
   var listEl = document.getElementById('event-list');
-  var result = await fetchAPI('/calendar');
+  var both = await Promise.all([fetchAPI('/calendar'), fetchAPI('/attendance/month')]);
+  var result = both[0];
+  var attResult = both[1];
 
   if (!result || !result.success) {
     showError(listEl, (result && result.error) || '알 수 없는 오류');
@@ -634,6 +702,7 @@ async function loadCalendar() {
   }
 
   var events = result.data || [];
+  var attendance = (attResult && attResult.success && attResult.data) || {};
   var today = new Date();
   var year = today.getFullYear();
   var month = today.getMonth();
@@ -661,7 +730,18 @@ async function loadCalendar() {
     var isToday = key === localDate(today.getFullYear(), today.getMonth(), today.getDate());
     var hasEvent = events.some(function (e) { return e.date && e.date.slice(0, 10) === key; });
     var cls = isToday ? ' today' : (hasEvent ? ' event' : '');
-    cells.push('<div class="calendar-day' + cls + '">' + day + '</div>');
+
+    var counts = attendance[key];
+    var marks = '';
+    if (counts && (counts.present || counts.absent)) {
+      marks = '<span class="d-att">' +
+        (counts.present ? '<b class="p">' + counts.present + '</b>' : '') +
+        (counts.absent ? '<b class="a">' + counts.absent + '</b>' : '') +
+        '</span>';
+    }
+
+    cells.push('<div class="calendar-day' + cls + '">' +
+      '<span class="d-num">' + day + '</span>' + marks + '</div>');
   }
   grid.innerHTML = cells.join('');
 
@@ -783,6 +863,7 @@ async function handleRequest(request, env) {
     }
     if (path === '/api/students') return json(await getStudents(env));
     if (path === '/api/attendance/today') return json(await getTodayAttendance(env));
+    if (path === '/api/attendance/month') return json(await getMonthAttendance(env));
     if (path === '/api/calendar') return json(await getCalendarEvents(env));
 
     if (path.startsWith('/api/table/')) {
