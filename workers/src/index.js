@@ -16,6 +16,8 @@ const DATABASES = {
   newsletters: '3c8dc243c7ea4ebb9956508c1dc61c7c',
   // 보카 앱이 하루치를 끝낼 때마다 스스로 쌓는 표
   voca: '934da1ef11974796af76fca51d6f4af2',
+  // 학생별 진도. 기기가 아니라 여기에 있어야 집·학원 어디서 열어도 이어진다.
+  vocaProgress: 'b157655521584b14a64158358b440fe7',
 };
 
 // 학생·출석·캘린더는 전용 화면을 쓰고, 나머지는 표 내용을 그대로 목록으로 보여준다.
@@ -179,6 +181,7 @@ async function getStudents(env) {
         name: textOf(page.properties['이름']),
         grade: textOf(page.properties['학년']),
         status: textOf(page.properties['상태']),
+        code: textOf(page.properties['단어장코드']),
       })),
     };
   } catch (error) {
@@ -415,6 +418,145 @@ async function getVocaProgress(env) {
 }
 
 // 학생 앱이 공개 주소라 워커 주소도 알려지게 된다. 그래서 원생 정보를 주는 창구는 모두 비밀번호를 본다.
+// 노션 글자 칸은 조각 하나에 2000자까지다. 진도는 그보다 길 수 있어 나눠 담고, 읽을 때 도로 붙인다.
+function toRichText(text) {
+  const chunks = [];
+  for (let i = 0; i < text.length; i += 1800) chunks.push({ text: { content: text.slice(i, i + 1800) } });
+  return chunks.length ? chunks : [{ text: { content: '' } }];
+}
+
+function fromRichText(prop) {
+  return (prop?.rich_text || []).map(piece => piece.plain_text).join('');
+}
+
+// 헷갈리는 글자(O·0, I·1)는 빼고 만든다. 아이들이 손으로 적어 들고 다니기 때문이다.
+function makeCode() {
+  const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const digits = '23456789';
+  let code = '';
+  for (let i = 0; i < 2; i++) code += letters[Math.floor(Math.random() * letters.length)];
+  for (let i = 0; i < 4; i++) code += digits[Math.floor(Math.random() * digits.length)];
+  return code;
+}
+
+async function findStudentByCode(env, code) {
+  const clean = String(code || '').trim().toUpperCase();
+  if (!/^[A-Z0-9]{4,12}$/.test(clean)) return { error: '코드는 영문과 숫자로만 되어 있습니다' };
+
+  const found = await notionQuery(env, DATABASES.students, {
+    property: '단어장코드',
+    rich_text: { equals: clean },
+  });
+  if (found.results.length === 0) return { error: '코드를 찾을 수 없습니다. 선생님께 확인해 주세요' };
+
+  const page = found.results[0];
+  if (textOf(page.properties['상태']) === '퇴원생') return { error: '지금은 쓸 수 없는 코드입니다' };
+
+  return { name: textOf(page.properties['이름']) };
+}
+
+// 학생이 코드를 넣으면 자기 이름과 지난 진도를 돌려준다. 기기가 바뀌어도 이어서 한다.
+async function vocaLogin(env, code) {
+  try {
+    const student = await findStudentByCode(env, code);
+    if (student.error) return { success: false, error: student.error };
+
+    const saved = await notionQuery(env, DATABASES.vocaProgress, {
+      property: '학생명',
+      title: { equals: student.name },
+    });
+
+    let progress = null;
+    let levelId = '';
+    let dayIdx = 0;
+
+    if (saved.results.length > 0) {
+      const row = saved.results[0];
+      levelId = textOf(row.properties['레벨']);
+      dayIdx = row.properties['일차']?.number || 0;
+      try {
+        progress = JSON.parse(fromRichText(row.properties['진도']) || 'null');
+      } catch (e) {
+        progress = null; // 깨진 진도는 없는 셈 치고 새로 시작하게 둔다
+      }
+    }
+
+    return { success: true, name: student.name, levelId, dayIdx, progress };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+async function vocaSave(env, payload) {
+  try {
+    const student = await findStudentByCode(env, payload.code);
+    if (student.error) return { success: false, error: student.error };
+
+    const levelId = String(payload.levelId || '').slice(0, 60);
+    const dayIdx = Number(payload.dayIdx);
+
+    let blob = JSON.stringify(payload.progress || {});
+    // 마스터한 단어 목록이 아주 길어지면 진도 칸에 다 안 들어간다.
+    // 그때는 목록을 비운다 — 다음 일차와 학습 이력은 그대로 남는다.
+    if (blob.length > 150000) {
+      blob = JSON.stringify(Object.assign({}, payload.progress, { mastered: {} }));
+    }
+    if (blob.length > 178000) return { success: false, error: '진도가 너무 큽니다' };
+
+    const properties = {
+      레벨: { rich_text: [{ text: { content: levelId } }] },
+      일차: { number: Number.isFinite(dayIdx) ? dayIdx : 0 },
+      진도: { rich_text: toRichText(blob) },
+      수정일: { date: { start: seoulToday() } },
+    };
+
+    const existing = await notionQuery(env, DATABASES.vocaProgress, {
+      property: '학생명',
+      title: { equals: student.name },
+    });
+
+    if (existing.results.length > 0) {
+      await notionApi(env, '/pages/' + existing.results[0].id, 'PATCH', { properties });
+    } else {
+      await notionApi(env, '/pages', 'POST', {
+        parent: { database_id: DATABASES.vocaProgress },
+        properties: Object.assign({ 학생명: { title: [{ text: { content: student.name } }] } }, properties),
+      });
+    }
+
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+// 코드가 없는 학생에게 한 번에 발급한다. 원장님이 코드를 직접 지어내지 않아도 되게.
+async function issueCodes(env) {
+  try {
+    const pages = await notionQueryAll(env, DATABASES.students);
+    const taken = new Set(pages.map(page => textOf(page.properties['단어장코드'])).filter(Boolean));
+    const issued = [];
+
+    for (const page of pages) {
+      if (textOf(page.properties['단어장코드'])) continue;
+      if (textOf(page.properties['상태']) === '퇴원생') continue;
+
+      let code = makeCode();
+      while (taken.has(code)) code = makeCode();
+      taken.add(code);
+
+      await notionApi(env, '/pages/' + page.id, 'PATCH', {
+        properties: { 단어장코드: { rich_text: [{ text: { content: code } }] } },
+      });
+      issued.push({ name: textOf(page.properties['이름']), code });
+    }
+
+    return { success: true, issued };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
 function passwordOk(request, env) {
   const expected = env.DASHBOARD_PASSWORD;
   if (!expected) return true; // 아직 안 걸었으면 보기는 막지 않는다 (저장은 따로 막는다)
@@ -525,6 +667,18 @@ header{background:#fff;border-bottom:1px solid #e2e8f0;padding:16px 0}
 .chk:disabled{opacity:.5;cursor:progress}
 .chk.on-present{background:#16a34a;border-color:#16a34a;color:#fff}
 .chk.on-absent{background:#dc2626;border-color:#dc2626;color:#fff}
+.code-bar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.code-note{font-size:12px;color:#64748b}
+@media(prefers-color-scheme:dark){.code-note{color:#94a3b8}}
+.code-bar button{padding:8px 14px;border:1px solid #cbd5e1;background:#fff;color:#1e293b;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer}
+@media(prefers-color-scheme:dark){.code-bar button{background:#1e293b;border-color:#475569;color:#e2e8f0}}
+.code-bar button:disabled{opacity:.5;cursor:progress}
+.code-msg{font-size:12px;padding:10px 12px;background:#dbeafe;color:#1e40af;border-radius:8px;margin-bottom:12px;line-height:1.5}
+@media(prefers-color-scheme:dark){.code-msg{background:#1e3a8a;color:#bfdbfe}}
+.code-cell{display:flex;align-items:center;gap:8px}
+.code-chip{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;font-weight:700;letter-spacing:.06em;padding:4px 9px;background:#fff;border:1px solid #cbd5e1;border-radius:6px;color:#1e293b}
+@media(prefers-color-scheme:dark){.code-chip{background:#0f172a;border-color:#475569;color:#e2e8f0}}
+.code-none{font-size:11px;color:#94a3b8}
 .voca-row{padding:14px;background:#f8fafc;border-radius:10px;margin-bottom:10px}
 @media(prefers-color-scheme:dark){.voca-row{background:#334155}}
 .voca-name{font-weight:700;margin-bottom:10px}
@@ -598,7 +752,9 @@ header{background:#fff;border-bottom:1px solid #e2e8f0;padding:16px 0}
 </div>
 
 <div id="students" class="tab-content">
-<div class="card"><div class="card-title"><span class="title-ico" style="background:#bbf7d0">👥</span>학생 목록</div><div id="students-list" class="student-list"><div class="muted">불러오는 중…</div></div></div>
+<div class="card"><div class="card-title"><span class="title-ico" style="background:#bbf7d0">👥</span>학생 목록</div><div class="code-bar"><span class="code-note">학습코드는 아이들이 보카 앱에 들어갈 때 쓰는 열쇠입니다</span><button id="issue-codes" type="button">코드 없는 학생에게 발급</button></div>
+<div id="code-msg" class="code-msg" hidden></div>
+<div id="students-list" class="student-list"><div class="muted">불러오는 중…</div></div></div>
 </div>
 
 <div id="attendance" class="tab-content">
@@ -731,7 +887,9 @@ async function loadStudents() {
     return '<div class="student-item"><div>' +
       '<div class="student-name">' + esc(s.name) + '</div>' +
       '<div class="student-info">' + esc([s.grade, s.status].filter(Boolean).join(' · ')) + '</div>' +
-      '</div><span class="badge">' + esc(s.status || '-') + '</span></div>';
+      '</div><span class="code-cell">' +
+      (s.code ? '<span class="code-chip">' + esc(s.code) + '</span>' : '<span class="code-none">코드 없음</span>') +
+      '<span class="badge">' + esc(s.status || '-') + '</span></span></div>';
   }
 
   listEl.innerHTML = students.map(row).join('');
@@ -982,6 +1140,38 @@ async function loadTable(key) {
   }).join('');
 }
 
+document.getElementById('issue-codes').addEventListener('click', async function () {
+  var button = this;
+  var msg = document.getElementById('code-msg');
+  button.disabled = true;
+  msg.hidden = false;
+  msg.textContent = '발급하는 중…';
+
+  var password = getPassword();
+  var result;
+  try {
+    var response = await fetch('/api/voca/codes', {
+      method: 'POST',
+      headers: password ? { 'X-Dashboard-Password': encodeURIComponent(password) } : {},
+    });
+    result = await response.json();
+  } catch (error) {
+    result = { success: false, error: error.message };
+  }
+  button.disabled = false;
+
+  if (!result || !result.success) {
+    msg.textContent = '발급하지 못했습니다: ' + ((result && result.error) || '알 수 없는 오류');
+    return;
+  }
+  msg.textContent = result.issued.length === 0
+    ? '모든 학생이 이미 코드를 갖고 있습니다'
+    : result.issued.length + '명에게 발급했습니다: ' +
+      result.issued.map(function (x) { return x.name + ' ' + x.code; }).join(', ');
+
+  loadStudents();
+});
+
 document.querySelectorAll('.tab-btn').forEach(function (btn) {
   btn.addEventListener('click', function () {
     document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
@@ -1086,10 +1276,18 @@ async function handleRequest(request, env) {
       });
     }
 
-    // 보카 앱이 성적을 보내는 창구. 학생 앱에는 비밀번호를 줄 수 없어 열어 둔다.
+    // 보카 앱(학생용 공개 주소)이 쓰는 창구들. 비밀번호 대신 학습코드로 본인을 밝힌다.
     if (path === '/api/voca/report' && request.method === 'POST') {
       const payload = await request.json().catch(() => ({}));
       return json(await reportVoca(env, payload));
+    }
+    if (path === '/api/voca/login' && request.method === 'POST') {
+      const payload = await request.json().catch(() => ({}));
+      return json(await vocaLogin(env, payload.code));
+    }
+    if (path === '/api/voca/save' && request.method === 'POST') {
+      const payload = await request.json().catch(() => ({}));
+      return json(await vocaSave(env, payload));
     }
 
     // ── 여기부터는 원생 정보다 ──
@@ -1098,6 +1296,7 @@ async function handleRequest(request, env) {
     }
 
     if (path === '/api/voca/progress') return json(await getVocaProgress(env));
+    if (path === '/api/voca/codes' && request.method === 'POST') return json(await issueCodes(env));
     if (path === '/api/students') return json(await getStudents(env));
     if (path === '/api/attendance/today') return json(await getTodayAttendance(env));
     if (path === '/api/attendance/month') return json(await getMonthAttendance(env));
