@@ -14,6 +14,8 @@ const DATABASES = {
   calendar: 'a6650ba193bb4332b1747c5bdb0ac4d6',
   // NEWSLETTERS 저장소가 워크시트 PDF를 올리는 표
   newsletters: '3c8dc243c7ea4ebb9956508c1dc61c7c',
+  // 보카 앱이 하루치를 끝낼 때마다 스스로 쌓는 표
+  voca: '934da1ef11974796af76fca51d6f4af2',
 };
 
 // 학생·출석·캘린더는 전용 화면을 쓰고, 나머지는 표 내용을 그대로 목록으로 보여준다.
@@ -307,6 +309,125 @@ async function markAttendance(env, student, status) {
   }
 }
 
+// 보카 앱이 하루치를 끝내면 이 창구로 성적을 보낸다.
+// 학생 앱은 공개 주소라 비밀번호를 줄 수 없으므로, 등록된 학생 이름인지로 거른다.
+async function reportVoca(env, payload) {
+  try {
+    const student = String(payload.student || '').trim();
+    const level = String(payload.level || '').trim().slice(0, 60);
+    const day = Number(payload.day);
+    const correct = Number(payload.correct);
+    const total = Number(payload.total);
+
+    if (!student || student.length > 50) return { success: false, error: '학생 이름이 올바르지 않습니다' };
+    if (!Number.isFinite(day) || day < 1 || day > 1000) return { success: false, error: '일차가 올바르지 않습니다' };
+    if (!Number.isFinite(total) || total < 0 || total > 500) return { success: false, error: '문항수가 올바르지 않습니다' };
+    if (!Number.isFinite(correct) || correct < 0 || correct > total) return { success: false, error: '정답수가 올바르지 않습니다' };
+
+    const known = await notionQuery(env, DATABASES.students, { property: '이름', title: { equals: student } });
+    if (known.results.length === 0) return { success: false, error: '등록되지 않은 학생입니다' };
+
+    // 같은 학생이 같은 일차를 다시 풀면 줄을 늘리지 않고 덮어쓴다.
+    const key = student + '|' + level + '|' + day;
+    const existing = await notionQuery(env, DATABASES.voca, { property: '키', rich_text: { equals: key } });
+
+    const properties = {
+      레벨: { rich_text: [{ text: { content: level } }] },
+      일차: { number: day },
+      정답: { number: correct },
+      문항수: { number: total },
+      날짜: { date: { start: seoulToday() } },
+      키: { rich_text: [{ text: { content: key } }] },
+    };
+
+    if (existing.results.length > 0) {
+      await notionApi(env, '/pages/' + existing.results[0].id, 'PATCH', { properties });
+    } else {
+      await notionApi(env, '/pages', 'POST', {
+        parent: { database_id: DATABASES.voca },
+        properties: { ...properties, 학생명: { title: [{ text: { content: student } }] } },
+      });
+    }
+
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+function daysAgo(dateText, n) {
+  const d = new Date(dateText + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() - n);
+  return d.toISOString().slice(0, 10);
+}
+
+// 수행률 = 최근 7일 중 공부한 날 비율 (꾸준히 했는가)
+// 성취률 = 전체 정답 ÷ 전체 문항 (얼마나 맞혔는가)
+async function getVocaProgress(env) {
+  try {
+    const pages = await notionQueryAll(env, DATABASES.voca);
+    const today = seoulToday();
+    const weekStart = daysAgo(today, 6);
+
+    const byStudent = new Map();
+    for (const page of pages) {
+      const name = textOf(page.properties['학생명']);
+      if (!name) continue;
+
+      if (!byStudent.has(name)) {
+        byStudent.set(name, { name, correct: 0, total: 0, recentDays: new Set(), records: [] });
+      }
+      const row = byStudent.get(name);
+
+      const correct = page.properties['정답']?.number || 0;
+      const total = page.properties['문항수']?.number || 0;
+      const date = textOf(page.properties['날짜']).slice(0, 10);
+
+      row.correct += correct;
+      row.total += total;
+      if (date && date >= weekStart && date <= today) row.recentDays.add(date);
+      row.records.push({
+        date,
+        level: textOf(page.properties['레벨']),
+        day: page.properties['일차']?.number || 0,
+        correct,
+        total,
+      });
+    }
+
+    const students = [...byStudent.values()].map(row => {
+      row.records.sort((a, b) => (b.date || '').localeCompare(a.date || '') || b.day - a.day);
+      return {
+        name: row.name,
+        doneRate: Math.round((row.recentDays.size / 7) * 100),
+        doneDays: row.recentDays.size,
+        achieveRate: row.total ? Math.round((row.correct / row.total) * 100) : 0,
+        correct: row.correct,
+        total: row.total,
+        records: row.records.slice(0, 5),
+      };
+    }).sort((a, b) => a.name.localeCompare(b.name));
+
+    return { success: true, data: students };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+// 학생 앱이 공개 주소라 워커 주소도 알려지게 된다. 그래서 원생 정보를 주는 창구는 모두 비밀번호를 본다.
+function passwordOk(request, env) {
+  const expected = env.DASHBOARD_PASSWORD;
+  if (!expected) return true; // 아직 안 걸었으면 보기는 막지 않는다 (저장은 따로 막는다)
+
+  let given = '';
+  try {
+    // 한글 비밀번호를 헤더에 담으려면 인코딩이 필요하다.
+    given = decodeURIComponent(request.headers.get('X-Dashboard-Password') || '');
+  } catch (e) { /* 깨진 값은 틀린 비밀번호와 똑같이 다룬다 */ }
+
+  return sameSecret(given, expected);
+}
+
 function sameSecret(a, b) {
   if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false;
   let diff = 0;
@@ -404,6 +525,21 @@ header{background:#fff;border-bottom:1px solid #e2e8f0;padding:16px 0}
 .chk:disabled{opacity:.5;cursor:progress}
 .chk.on-present{background:#16a34a;border-color:#16a34a;color:#fff}
 .chk.on-absent{background:#dc2626;border-color:#dc2626;color:#fff}
+.voca-row{padding:14px;background:#f8fafc;border-radius:10px;margin-bottom:10px}
+@media(prefers-color-scheme:dark){.voca-row{background:#334155}}
+.voca-name{font-weight:700;margin-bottom:10px}
+.voca-bars{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+.pbar-top{display:flex;justify-content:space-between;font-size:12px;color:#64748b;margin-bottom:4px}
+@media(prefers-color-scheme:dark){.pbar-top{color:#94a3b8}}
+.pbar-top b{font-size:14px;color:#1e293b}
+@media(prefers-color-scheme:dark){.pbar-top b{color:#e2e8f0}}
+.pbar-track{height:10px;border-radius:999px;background:#e2e8f0;overflow:hidden}
+@media(prefers-color-scheme:dark){.pbar-track{background:#475569}}
+.pbar-fill{height:100%;border-radius:999px;transition:width .4s ease}
+.pbar-note{font-size:11px;color:#94a3b8;margin-top:4px}
+.voca-recent{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.rec{font-size:11px;padding:4px 8px;background:#fff;border:1px solid #e2e8f0;border-radius:6px;color:#475569}
+@media(prefers-color-scheme:dark){.rec{background:#1e293b;border-color:#475569;color:#cbd5e1}}
 .pw-box{padding:12px 14px;background:#fef3c7;border-radius:8px;margin-bottom:14px}
 @media(prefers-color-scheme:dark){.pw-box{background:#78350f}}
 .pw-msg{font-size:13px;color:#92400e;margin-bottom:8px}
@@ -447,6 +583,11 @@ header{background:#fff;border-bottom:1px solid #e2e8f0;padding:16px 0}
 <!--EXTRA_TABS-->
 </div>
 
+<div id="pw-box" class="pw-box" hidden>
+<div class="pw-msg" id="pw-msg">비밀번호를 입력하세요</div>
+<div class="pw-row"><input id="pw-input" type="password" placeholder="비밀번호" autocomplete="current-password"><button id="pw-save" type="button">확인</button></div>
+</div>
+
 <div id="dashboard" class="tab-content active">
 <div class="stats-grid">
 <div class="stat-box"><div class="stat-label">등록된 학생</div><div class="stat-value" id="stat-students">-</div></div>
@@ -463,10 +604,6 @@ header{background:#fff;border-bottom:1px solid #e2e8f0;padding:16px 0}
 <div id="attendance" class="tab-content">
 <div class="card">
 <div class="card-title"><span class="title-ico" style="background:#a5f3fc">✅</span>오늘 출석 체크</div>
-<div id="pw-box" class="pw-box" hidden>
-<div class="pw-msg" id="pw-msg">출석을 저장하려면 비밀번호가 필요합니다</div>
-<div class="pw-row"><input id="pw-input" type="password" placeholder="비밀번호" autocomplete="current-password"><button id="pw-save" type="button">확인</button></div>
-</div>
 <div id="save-msg" class="error" hidden></div>
 <div id="attendance-list" class="check-list"><div class="muted">불러오는 중…</div></div>
 </div>
@@ -505,7 +642,17 @@ function updateDate() {
 
 async function fetchAPI(endpoint) {
   try {
-    var response = await fetch('/api' + endpoint);
+    var headers = {};
+    var password = getPassword();
+    // 한글 비밀번호는 그대로 헤더에 넣을 수 없어 인코딩해서 보낸다.
+    if (password) headers['X-Dashboard-Password'] = encodeURIComponent(password);
+
+    var response = await fetch('/api' + endpoint, { headers: headers });
+    if (response.status === 401) {
+      setPassword('');
+      askPassword('비밀번호가 맞지 않습니다. 다시 입력해 주세요');
+      return { success: false, error: '비밀번호가 필요합니다' };
+    }
     return await response.json();
   } catch (error) {
     return { success: false, error: '서버에 연결하지 못했습니다 (' + error.message + ')' };
@@ -682,6 +829,8 @@ document.getElementById('pw-save').addEventListener('click', function () {
     var status = pendingMark.status;
     pendingMark = null;
     applyMark(row, status);
+  } else {
+    loadAll();
   }
 });
 
@@ -753,6 +902,48 @@ async function loadCalendar() {
       }).join('');
 }
 
+function progressBar(label, pct, note, color) {
+  var width = Math.max(0, Math.min(100, pct));
+  return '<div class="pbar-item">' +
+    '<div class="pbar-top"><span>' + label + '</span><b>' + width + '%</b></div>' +
+    '<div class="pbar-track"><div class="pbar-fill" style="width:' + width + '%;background:' + color + '"></div></div>' +
+    '<div class="pbar-note">' + esc(note) + '</div>' +
+    '</div>';
+}
+
+async function loadVoca() {
+  var el = document.getElementById('voca-progress');
+  if (!el) return;
+
+  var result = await fetchAPI('/voca/progress');
+  if (!result || !result.success) {
+    showError(el, (result && result.error) || '알 수 없는 오류');
+    return;
+  }
+
+  var students = result.data || [];
+  if (students.length === 0) {
+    el.innerHTML = '<div class="muted">아직 보카 학습 기록이 없습니다. 학생이 앱에서 하루치를 끝내면 여기에 쌓입니다.</div>';
+    return;
+  }
+
+  el.innerHTML = students.map(function (st) {
+    var recent = st.records.map(function (r) {
+      return '<span class="rec">' + esc((r.date || '').slice(5)) + ' · ' +
+        esc(r.level) + ' ' + r.day + '일차 <b>' + r.correct + '/' + r.total + '</b></span>';
+    }).join('');
+
+    return '<div class="voca-row">' +
+      '<div class="voca-name">' + esc(st.name) + '</div>' +
+      '<div class="voca-bars">' +
+        progressBar('수행률', st.doneRate, '최근 7일 중 ' + st.doneDays + '일 학습', '#2563eb') +
+        progressBar('성취률', st.achieveRate, st.correct + ' / ' + st.total + ' 문항 정답', '#16a34a') +
+      '</div>' +
+      (recent ? '<div class="voca-recent">' + recent + '</div>' : '') +
+      '</div>';
+  }).join('');
+}
+
 async function loadTable(key) {
   var el = document.querySelector('[data-table="' + key + '"]');
   if (!el || el.dataset.loaded === 'yes') return;
@@ -800,10 +991,15 @@ document.querySelectorAll('.tab-btn').forEach(function (btn) {
     document.getElementById(tab).classList.add('active');
     // 나머지 표는 눌렀을 때 불러온다. 12개를 한꺼번에 부르면 첫 화면이 느려진다.
     if (document.querySelector('[data-table="' + tab + '"]')) loadTable(tab);
+    if (tab === 'tasks') loadVoca();
   });
 });
 
 async function loadAll() {
+  // 비밀번호를 묻는 중이면 조회하지 않는다. 5분 자동 새로고침도 여기서 멈춘다.
+  var box = document.getElementById('pw-box');
+  if (box && !box.hidden && !getPassword()) return;
+
   loadCalendar();
   // 학생 목록은 한 번만 불러서 학생 탭과 출석 체크 목록이 함께 쓴다.
   loadAttendance(await loadStudents());
@@ -816,8 +1012,22 @@ async function loadAll() {
   }
 }
 
-updateDate();
-loadAll();
+async function boot() {
+  updateDate();
+
+  // 비밀번호를 걸어 두었는지 먼저 확인한다. 안 걸어 두었으면 묻지 않고 그냥 연다.
+  var health = await fetch('/api/health')
+    .then(function (r) { return r.json(); })
+    .catch(function () { return null; });
+
+  if (health && health.hasPassword && !getPassword()) {
+    askPassword('대시보드를 보려면 비밀번호를 입력하세요');
+    return;
+  }
+  loadAll();
+}
+
+boot();
 setInterval(loadAll, 5 * 60 * 1000);
 </script>
 </body>
@@ -831,7 +1041,13 @@ function renderDashboard() {
   ).join('');
 
   const panels = TABLES.map(t =>
-    '<div id="' + t.key + '" class="tab-content"><div class="card">' +
+    '<div id="' + t.key + '" class="tab-content">' +
+    (t.key === 'tasks'
+      ? '<div class="card"><div class="card-title">' +
+        iconTile('🐳', '#a5f3fc', 'title-ico') + '보카 수행률 · 성취률</div>' +
+        '<div id="voca-progress"><div class="muted">불러오는 중…</div></div></div>'
+      : '') +
+    '<div class="card">' +
     '<div class="card-title">' + iconTile(t.icon, t.color, 'title-ico') + t.label + '</div>' +
     '<div class="rows" data-table="' + t.key + '"><div class="muted">불러오는 중…</div></div>' +
     '</div></div>'
@@ -861,6 +1077,27 @@ async function handleRequest(request, env) {
         headers: { 'Content-Type': 'text/html; charset=utf-8' },
       });
     }
+    if (path === '/api/health') {
+      return json({
+        status: 'ok',
+        hasNotionKey: Boolean(env.NOTION_API_KEY),
+        hasPassword: Boolean(env.DASHBOARD_PASSWORD),
+        today: seoulToday(),
+      });
+    }
+
+    // 보카 앱이 성적을 보내는 창구. 학생 앱에는 비밀번호를 줄 수 없어 열어 둔다.
+    if (path === '/api/voca/report' && request.method === 'POST') {
+      const payload = await request.json().catch(() => ({}));
+      return json(await reportVoca(env, payload));
+    }
+
+    // ── 여기부터는 원생 정보다 ──
+    if (!passwordOk(request, env)) {
+      return json({ success: false, error: '비밀번호가 맞지 않습니다' }, 401);
+    }
+
+    if (path === '/api/voca/progress') return json(await getVocaProgress(env));
     if (path === '/api/students') return json(await getStudents(env));
     if (path === '/api/attendance/today') return json(await getTodayAttendance(env));
     if (path === '/api/attendance/month') return json(await getMonthAttendance(env));
@@ -875,35 +1112,14 @@ async function handleRequest(request, env) {
     // 기록을 고치는 요청은 비밀번호가 있어야만 받는다.
     // 비밀번호를 아직 안 걸었으면 보기는 되지만 저장은 막는다 — 주소만 알면 기록을 바꾸는 일이 없도록.
     if (path === '/api/attendance/mark' && request.method === 'POST') {
-      const expected = env.DASHBOARD_PASSWORD;
-      if (!expected) {
+      // 비밀번호를 아예 안 걸어둔 상태에서는 기록을 고치지 못하게 한다.
+      if (!env.DASHBOARD_PASSWORD) {
         return json({ success: false, error: '비밀번호(DASHBOARD_PASSWORD)가 등록되지 않아 저장할 수 없습니다' }, 403);
       }
-      // 한글 비밀번호도 쓸 수 있도록 헤더에는 인코딩해서 담아 보낸다.
-      // HTTP 헤더는 라틴 문자만 담을 수 있어, 한글을 그대로 넣으면 브라우저가 요청 자체를 거부한다.
-      let given = '';
-      try {
-        given = decodeURIComponent(request.headers.get('X-Dashboard-Password') || '');
-      } catch (e) {
-        given = '';
-      }
-
-      if (!sameSecret(given, expected)) {
-        return json({ success: false, error: '비밀번호가 맞지 않습니다' }, 401);
-      }
-
       const payload = await request.json().catch(() => ({}));
       return json(await markAttendance(env, payload.student, payload.status));
     }
 
-    if (path === '/api/health') {
-      return json({
-        status: 'ok',
-        hasNotionKey: Boolean(env.NOTION_API_KEY),
-        hasPassword: Boolean(env.DASHBOARD_PASSWORD),
-        today: seoulToday(),
-      });
-    }
     return json({ error: 'Not found', path }, 404);
   } catch (error) {
     return json({ error: error.message }, 500);
