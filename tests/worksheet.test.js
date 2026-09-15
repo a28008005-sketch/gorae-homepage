@@ -1,4 +1,4 @@
-const { chromium } = require('playwright');
+const { chromium } = require('./playwright');
 const BASE = 'http://127.0.0.1:8899/index.html';
 const ok = (l,c,e='') => console.log(`  ${c?'✓':'✗ 실패'}  ${l}${e?' — '+e:''}`);
 (async () => {

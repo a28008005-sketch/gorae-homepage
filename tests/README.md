@@ -30,6 +30,14 @@ node tests/cloud-sync.test.js                # 두 기기 양방향 전파 · �
 > `fake-cloud-server.js` 는 Supabase 의 `records` 표 동작만 흉내 낸 것입니다.
 > 실제 Supabase 와 주고받는 부분은 이 스크립트로 검증되지 않습니다.
 
+## 알아둘 것
+
+- 워크시트 테스트에서 `ERR_CERT_AUTHORITY_INVALID` 가 콘솔에 찍힐 수 있습니다.
+  워크시트가 Google Fonts 를 불러오는데 일부 실행 환경에서 인증서를 못 믿어서 나는 것이고,
+  **앱 문제가 아닙니다.** 글꼴은 대체 글꼴로 떨어지고 판정 결과에는 영향이 없습니다.
+- `cloud-sync.test.js` 는 실행 전에 반드시 `/reset` 을 부르세요. 앞 회차 자료가 남아 있으면
+  학생 수가 두 배로 잡혀 엉뚱하게 실패합니다.
+
 ## 스크린샷
 
 `SHOT_DIR` 을 주면 그 폴더에 화면을 저장합니다.
