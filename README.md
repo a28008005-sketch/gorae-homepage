@@ -212,7 +212,15 @@ node tools/bundle.js --demo     # 예시 데이터가 들어간 미리보기용
 
 ---
 
-## 10. 기술 메모
+## 10. 이어서 작업할 때
+
+- [`CLAUDE.md`](CLAUDE.md) — 코드 구조와 지켜야 할 규칙 (새 작업 창에서 자동으로 읽힙니다)
+- [`docs/작업-기록.md`](docs/작업-기록.md) — 지금까지의 결정·검증 상태·남은 일
+- [`tests/README.md`](tests/README.md) — 브라우저로 직접 확인하는 스크립트 실행법
+
+---
+
+## 11. 기술 메모
 
 - 빌드 도구·프레임워크·외부 라이브러리 없이 순수 HTML/CSS/JavaScript로 작성했습니다.
 - `assets/js/util.js` (공통 유틸) → `store.js` (데이터) → `ui.js` (공통 UI) → `cloud.js` (Supabase 어댑터) → `sync.js` (동기화 엔진) → `auth-ui.js` (로그인) → `views/*.js` (화면) → `app.js` (해시 라우터) 순으로 읽힙니다.
