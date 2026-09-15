@@ -1,0 +1,44 @@
+# 고래영어 내부 관리 시스템 배포
+#
+# 하는 일
+#   · 고래영어 학원 내부 관리 시스템을 GitHub Pages에 배포한다
+#
+# 언제 도는지
+#   · main 브랜치에 push할 때 자동으로 실행된다
+#   · Actions 탭에서 수동으로도 실행할 수 있다
+
+name: 내부 시스템 배포
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: GitHub Pages에 배포
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
