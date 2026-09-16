@@ -18,6 +18,13 @@ var Store = (function () {
   var HOMEWORK_TYPES = ['단어', '원서 읽기', '워크북', '녹음', '기타'];
   var SUBMIT_STATUS = ['미제출', '제출', '확인'];
   var BOOK_CATEGORIES = ['리더스', '챕터북', '노블', '논픽션', '그림책', '워크북'];
+  // 학원자료실 — 노션 '고래영어 - 학원자료실' 의 분류를 그대로 씁니다.
+  var RESOURCE_CATEGORIES = ['원서', '워크시트', '책', '리포트', '학습앱'];
+  // 영자신문 워크시트 — 노션 '영자신문 워크시트 마스터 목록' 의 값을 그대로 씁니다.
+  var NEWS_LEVELS = ['K1', 'G2', 'G3-4', 'G5-6'];
+  var NEWS_TOPICS = ['Space', 'Science', 'History', 'Animals', 'Environment', 'Sports',
+                     'Arts', 'Entertainment', 'Government', 'Business', 'Culture', 'Technology'];
+  var NEWS_STATUS = ['완성', '진행중', '계획'];
   var LOAN_DAYS = 7;
   var CLASS_COLORS = ['#215a86', '#357f73', '#a8894f', '#6b5f96', '#a8453f', '#2e7a57', '#96607a', '#4a6577'];
   var WEEKDAYS = ['월', '화', '수', '목', '금', '토'];
@@ -53,7 +60,9 @@ var Store = (function () {
     submissions: [],  // 숙제별 학생 제출 상태
     vocabLogs: [],    // 단어학습앱에서 넘어온 학습 기록
     books: [],        // 도서 목록
-    loans: []         // 도서 대여 기록
+    loans: [],        // 도서 대여 기록
+    resources: [],    // 학원자료실 (링크·파일 모음)
+    newsItems: []     // 영자신문 워크시트 목록
   };
 
   var data = null;
@@ -65,7 +74,8 @@ var Store = (function () {
     klass: 'classes', student: 'students', attendance: 'attendance',
     memo: 'memos', task: 'tasks', payment: 'payments',
     homework: 'homeworks', submission: 'submissions',
-    vocab: 'vocabLogs', book: 'books', loan: 'loans'
+    vocab: 'vocabLogs', book: 'books', loan: 'loans',
+    resource: 'resources', news: 'newsItems'
   };
 
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
@@ -779,6 +789,71 @@ var Store = (function () {
   }
   function deleteBook(id) { return softDelete('books', 'book', id); }
 
+  /* ---------- 학원자료실 ---------- */
+  function resources(opts) {
+    opts = opts || {};
+    var list = alive(get().resources).slice();
+    if (opts.category) list = list.filter(function (r) { return r.category === opts.category; });
+    if (opts.q) {
+      var q = String(opts.q).toLowerCase();
+      list = list.filter(function (r) {
+        return [r.title, r.desc, r.category].join(' ').toLowerCase().indexOf(q) >= 0;
+      });
+    }
+    return list.sort(function (a, b) {
+      return String(b.date || '').localeCompare(String(a.date || ''));
+    });
+  }
+  function resource(id) {
+    return alive(get().resources).filter(function (r) { return r.id === id; })[0] || null;
+  }
+  function saveResource(r) {
+    var d = get(), rec = null;
+    if (r.id) {
+      for (var i = 0; i < d.resources.length; i++) {
+        if (d.resources[i].id === r.id) { rec = Object.assign(d.resources[i], r); break; }
+      }
+    }
+    if (!rec) { r.id = r.id || U.uid('res'); rec = r; d.resources.push(rec); }
+    stamp(rec);
+    save({ kind: 'resource', id: rec.id });
+    return rec.id;
+  }
+  function deleteResource(id) { return softDelete('resources', 'resource', id); }
+
+  /* ---------- 영자신문 워크시트 ---------- */
+  function newsItems(opts) {
+    opts = opts || {};
+    var list = alive(get().newsItems).slice();
+    if (opts.level) list = list.filter(function (n) { return n.level === opts.level; });
+    if (opts.status) list = list.filter(function (n) { return n.status === opts.status; });
+    if (opts.q) {
+      var q = String(opts.q).toLowerCase();
+      list = list.filter(function (n) {
+        return [n.title, n.topic, n.memo, n.level].join(' ').toLowerCase().indexOf(q) >= 0;
+      });
+    }
+    return list.sort(function (a, b) {
+      return String(b.date || '').localeCompare(String(a.date || ''));
+    });
+  }
+  function newsItem(id) {
+    return alive(get().newsItems).filter(function (n) { return n.id === id; })[0] || null;
+  }
+  function saveNewsItem(n) {
+    var d = get(), rec = null;
+    if (n.id) {
+      for (var i = 0; i < d.newsItems.length; i++) {
+        if (d.newsItems[i].id === n.id) { rec = Object.assign(d.newsItems[i], n); break; }
+      }
+    }
+    if (!rec) { n.id = n.id || U.uid('news'); rec = n; d.newsItems.push(rec); }
+    stamp(rec);
+    save({ kind: 'news', id: rec.id });
+    return rec.id;
+  }
+  function deleteNewsItem(id) { return softDelete('newsItems', 'news', id); }
+
   function loans(opts) {
     opts = opts || {};
     var list = alive(get().loans).slice();
@@ -1003,6 +1078,19 @@ var Store = (function () {
     try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) {}
     listeners.forEach(function (fn) { fn(); });
   }
+  /**
+   * '이 작업은 한 번만' 을 기록해 두는 표시입니다.
+   * 이미 표시돼 있으면 false 를 돌려주고, 아니면 표시한 뒤 true 를 돌려줍니다.
+   */
+  function markOnce(key) {
+    var d = get();
+    if (!d.meta) d.meta = {};
+    if (d.meta[key]) return false;
+    d.meta[key] = true;
+    save();
+    return true;
+  }
+
   function saveAcademy(patch) {
     Object.assign(get().academy, patch);
     stamp(get().academy);
@@ -1047,7 +1135,11 @@ var Store = (function () {
     STATUS: STATUS, GRADES: GRADES, FLAGS: FLAGS,
     ATTITUDES: ATTITUDES, WEEKDAYS: WEEKDAYS, PAY_METHODS: PAY_METHODS,
     HOMEWORK_TYPES: HOMEWORK_TYPES, SUBMIT_STATUS: SUBMIT_STATUS,
-    BOOK_CATEGORIES: BOOK_CATEGORIES, LOAN_DAYS: LOAN_DAYS,
+    BOOK_CATEGORIES: BOOK_CATEGORIES,
+    RESOURCE_CATEGORIES: RESOURCE_CATEGORIES,
+    NEWS_LEVELS: NEWS_LEVELS, NEWS_TOPICS: NEWS_TOPICS, NEWS_STATUS: NEWS_STATUS,
+    resources: resources, resource: resource, saveResource: saveResource, deleteResource: deleteResource,
+    newsItems: newsItems, newsItem: newsItem, saveNewsItem: saveNewsItem, deleteNewsItem: deleteNewsItem, LOAN_DAYS: LOAN_DAYS,
     CLASS_COLORS: CLASS_COLORS,
     get: get, save: save, onChange: onChange, onRecordChange: onRecordChange,
     allRecords: allRecords, findRecord: findRecord, applyRemote: applyRemote, stampAll: stampAll,
@@ -1076,6 +1168,7 @@ var Store = (function () {
     ensureCode: ensureCode, studentByCode: studentByCode, findStudent: findStudent,
     summarize: summarize, dayOverview: dayOverview,
     exportJson: exportJson, importJson: importJson, resetAll: resetAll, saveAcademy: saveAcademy,
+    markOnce: markOnce,
     migratePatrols: migratePatrols, migrateSite: migrateSite,
     migrateAttitudes: migrateAttitudes
   };

@@ -80,7 +80,30 @@ const ok = (l,c,e='') => console.log(`  ${c?'✓':'✗ 실패'}  ${l}${e?' — '
     nav: document.querySelectorAll('.nav a i svg').length,
     brand: !!document.querySelector('.brand-mark svg')
   }));
-  ok('메뉴 아이콘 11개 표시', icons.nav === 11 && icons.brand, JSON.stringify(icons));
+  ok('메뉴 아이콘 전부 표시', icons.nav === 13 && icons.brand, JSON.stringify(icons));
+
+  // 학원자료실 — 노션에 있던 자료가 들어오는지
+  await p.goto(BASE + '#/resources', { waitUntil: 'domcontentloaded' }); await p.waitForTimeout(700);
+  const res = await p.evaluate(() => Store.resources().map(r => r.title));
+  ok('학원자료실 자료 채워짐', res.length >= 2 && res.some(t => /데일리 듣기/.test(t)), JSON.stringify(res));
+  ok('자료실 카드 표시', (await p.locator('.res-card').count()) >= 2);
+
+  // 영자신문 워크시트 — 목록과 레벨 거르기
+  await p.goto(BASE + '#/news', { waitUntil: 'domcontentloaded' }); await p.waitForTimeout(700);
+  const news = await p.evaluate(() => Store.newsItems().length);
+  ok('영자신문 워크시트 채워짐', news === 7, String(news));
+  await p.click('[data-lv="G2"]'); await p.waitForTimeout(400);
+  const g2 = await p.locator('#n-rows tr').count();
+  ok('레벨로 거르기', g2 === 2, g2 + '행');
+
+  // 대시보드 캘린더는 하나만 남아야 합니다
+  await p.goto(BASE + '#/dashboard', { waitUntil: 'domcontentloaded' }); await p.waitForTimeout(700);
+  const cal = await p.evaluate(() => ({
+    grids: document.querySelectorAll('.calendar-grid').length,
+    dark: document.querySelectorAll('.cal-panel').length,
+    side: !!document.querySelector('.cal-side')
+  }));
+  ok('대시보드 캘린더는 하나', cal.grids === 1 && cal.dark === 0 && cal.side, JSON.stringify(cal));
   await p.screenshot({ path: (process.env.SHOT_DIR || '.') + '/c-attendance.png' });
 
   // 나머지 화면 회귀

@@ -330,7 +330,7 @@ table.tbl .nm{font-weight:700}
 }
 .section-title svg{flex:0 0 auto;color:var(--brass)}
 .hint{font-size:12.5px;color:var(--muted);line-height:1.6}
-.hint code{background:#f0f2f5;padding:1px 5px;border-radius:5px;font-size:12px}
+.hint code{background:#f0f2f5;padding:1px 5px;border-radius:5px;font-size:12px;display:inline-block}
 
 /* ---------- Parent report ---------- */
 .report{background:#fff;border-radius:16px;border:1px solid var(--line);overflow:hidden}
@@ -517,43 +517,50 @@ body.share-mode .content{padding:0}
 
 
 /* ---------- 캘린더 ----------
-   대시보드 위쪽의 작은 달력과, 아래쪽 '업무 상세 계획' 의 큰 달력이 함께 씁니다. */
-.cal-panel{
-  background:linear-gradient(155deg,var(--navy-3),var(--navy) 92%);
-  border-radius:var(--radius);padding:20px;color:#fff;
-  box-shadow:var(--shadow-lift);margin-bottom:24px;
-}
-.cal-panel-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
-.cal-panel-h h2{margin:0;font-size:15px;font-weight:600;letter-spacing:.01em}
-.cal-nav{display:flex;gap:6px}
-.cal-nav button{
-  border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.07);color:#fff;
-  width:26px;height:26px;border-radius:7px;cursor:pointer;font-size:15px;line-height:1;
-  font-family:inherit;transition:background .12s;
-}
-.cal-nav button:hover{background:rgba(255,255,255,.16)}
+   대시보드의 '업무 상세 계획' 카드. 왼쪽에 달력, 오른쪽에 그날 일정을 놓습니다. */
+.cal-month{margin:0;font-size:13.5px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
+.cal-nav-btns{display:flex;gap:6px}
+.cal-nav-btns .btn{width:28px;padding:5px 0;font-size:15px;line-height:1}
 
-.cal-upcoming{margin-top:16px;border-top:1px solid rgba(255,255,255,.12);padding-top:12px}
+.cal-split{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:24px;align-items:start}
+.cal-side{
+  border-left:1px solid var(--line);padding-left:22px;
+  display:flex;flex-direction:column;gap:18px;min-width:0;
+}
+.cal-side .section-title:first-child{margin-top:0}
+.cal-upcoming-side{border-top:1px solid var(--line);padding-top:14px}
 .cal-upcoming-h{
   display:flex;align-items:center;gap:6px;
-  font-size:11.5px;font-weight:700;color:var(--brass-2);
+  font-size:11.5px;font-weight:700;color:var(--muted);
   letter-spacing:.03em;margin-bottom:8px;
 }
-.cal-upcoming #upcoming-tasks{font-size:12px;color:#c2cdd8;line-height:1.7}
-.cal-task{padding:5px 0;border-bottom:1px solid rgba(255,255,255,.1)}
+.cal-upcoming-h svg{color:var(--brass)}
+.cal-task{padding:5px 0;border-bottom:1px solid var(--line);font-size:12.5px;color:var(--muted)}
 .cal-task:last-child{border-bottom:0}
-.cal-task.empty{color:#8b9cad;border-bottom:0}
+.cal-task.empty{color:#9aa5b0;border-bottom:0}
+.cal-side .empty-day{font-size:12.5px;color:#9aa5b0;padding:4px 0}
 
-.mini-calendar-grid,.calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+/* 오른쪽 칸의 일정 한 줄 */
+.cal-item{display:flex;gap:9px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--line)}
+.cal-item:last-child{border-bottom:0}
+.cal-item .dot{width:6px;height:6px;border-radius:50%;flex:0 0 6px;margin-top:6px}
+.cal-item b{display:block;font-size:12.5px;font-weight:600;line-height:1.45}
+.cal-item span{display:block;font-size:11.5px;color:var(--muted);margin-top:2px}
+.cal-legend .dot{width:6px;height:6px;border-radius:50%;display:inline-block}
+.cal-legend .dot.hw{background:var(--brass)}
+.cal-legend .dot.lib{background:var(--mint)}
+.cal-legend .dot.cls{background:var(--blue-2)}
+.cal-task b{color:var(--ink);font-variant-numeric:tabular-nums;margin-right:3px}
+
+.calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
 
 .calendar-day-label{
   text-align:center;font-size:11px;font-weight:700;color:var(--muted);
   padding:5px 0;letter-spacing:.04em;
 }
-.mini-calendar-grid .calendar-day-label{color:#8b9cad}
 
 .calendar-day{
-  position:relative;min-height:44px;border-radius:8px;padding:5px 0 3px;
+  position:relative;min-height:46px;border-radius:8px;padding:6px 0 4px;
   display:flex;flex-direction:column;align-items:center;gap:3px;
   font-size:12.5px;cursor:pointer;color:var(--ink);
   border:1px solid transparent;transition:background .12s,border-color .12s;
@@ -575,21 +582,33 @@ body.share-mode .content{padding:0}
 .calendar-day .dot.cls{background:var(--blue-2)}
 .calendar-day.selected .dot{box-shadow:0 0 0 1px rgba(255,255,255,.5)}
 
-/* 위쪽 작은 달력은 남색 판 위에 있어 색을 뒤집습니다 */
-.mini-calendar-grid .calendar-day{min-height:30px;font-size:11.5px;color:#c2cdd8;gap:2px}
-.mini-calendar-grid .calendar-day:hover{background:rgba(255,255,255,.08)}
-.mini-calendar-grid .calendar-day.other-month{color:#5c6e7f}
-.mini-calendar-grid .calendar-day.today{border-color:var(--brass-2)}
-.mini-calendar-grid .calendar-day.today .d{color:var(--brass-2)}
-.mini-calendar-grid .calendar-day.selected{background:rgba(255,255,255,.14);border-color:transparent}
-.mini-calendar-grid .calendar-day.selected .d{color:#fff}
+.cal-legend{
+  display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;
+  font-size:11px;color:var(--muted);
+}
+.cal-legend span{display:inline-flex;align-items:center;gap:5px}
 
-#selected-tasks .section-title:first-child{margin-top:0}
-
+@media(max-width:1080px){
+  .cal-split{grid-template-columns:1fr;gap:18px}
+  .cal-side{border-left:0;padding-left:0;border-top:1px solid var(--line);padding-top:16px}
+}
 @media(max-width:760px){
   .calendar-day{min-height:38px;font-size:12px}
-  .cal-panel{padding:16px}
 }
+
+
+/* ---------- 학원자료실 ---------- */
+.res-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px}
+.res-card{
+  border:1px solid var(--line);border-radius:12px;padding:15px 16px;background:#fff;
+  display:flex;flex-direction:column;gap:9px;
+}
+.res-top{display:flex;align-items:center;gap:8px}
+.res-date{margin-left:auto;font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.res-title{font-weight:700;font-size:14.5px;letter-spacing:-.2px;line-height:1.4}
+.res-desc{font-size:12.5px;color:var(--muted);line-height:1.6}
+.res-actions{display:flex;gap:7px;align-items:center;margin-top:auto;padding-top:4px}
+@media(max-width:760px){ .res-grid{grid-template-columns:1fr} }
 
 </style>
 </head>
@@ -613,6 +632,8 @@ body.share-mode .content{padding:0}
       <a href="#/vocab"      data-route="vocab"><i data-icon="vocab" data-icon-size="17"></i><span>단어 학습</span></a>
       <a href="#/library"    data-route="library"><i data-icon="library" data-icon-size="17"></i><span>도서 대여</span></a>
       <a href="#/classes"    data-route="classes"><i data-icon="classes" data-icon-size="17"></i><span>반 · 시간표</span></a>
+      <a href="#/news"       data-route="news"><i data-icon="news" data-icon-size="17"></i><span>영자신문 워크시트</span></a>
+      <a href="#/resources"  data-route="resources"><i data-icon="archive" data-icon-size="17"></i><span>학원자료실</span></a>
       <a href="#/tuition"    data-route="tuition"><i data-icon="tuition" data-icon-size="17"></i><span>수강료 납부</span></a>
       <a href="#/stats"      data-route="stats"><i data-icon="stats" data-icon-size="17"></i><span>통계</span></a>
       <a href="#/share"      data-route="share"><i data-icon="share" data-icon-size="17"></i><span>학부모 공유</span></a>
@@ -719,6 +740,8 @@ var Icon = (function () {
     search:     '<circle cx="10.8" cy="10.8" r="6.6"/><path d="M15.6 15.6l4.6 4.6"/>',
     alert:      '<path d="M12 3.4l9 15.6H3z"/><path d="M12 9.6v4M12 16.4h.01"/>',
     inbox:      '<path d="M3.2 13.2h4.2l1.4 2.6h6.4l1.4-2.6h4.2"/><path d="M6 4.6h12l3 8.6v4.2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4.2z"/>',
+    archive:    '<rect x="2.8" y="3.4" width="18.4" height="4.6" rx="1.6"/><path d="M4.6 8v10.4a2.2 2.2 0 0 0 2.2 2.2h10.4a2.2 2.2 0 0 0 2.2-2.2V8"/><path d="M9.8 12h4.4"/>',
+    news:       '<path d="M4 5.6a1.8 1.8 0 0 1 1.8-1.8h10.4A1.8 1.8 0 0 1 18 5.6v13a1.8 1.8 0 0 0 1.8 1.8H6.2A2.2 2.2 0 0 1 4 18.2z"/><path d="M18 8.6h1.4a1.6 1.6 0 0 1 1.6 1.6v8.2a1.8 1.8 0 0 1-1.8 1.8"/><path d="M7.2 7.6h7.6M7.2 11h7.6M7.2 14.4h4.8"/>',
     receipt:    '<path d="M5.4 2.8h13.2v18.4l-2.2-1.4-2.2 1.4-2.2-1.4-2.2 1.4-2.2-1.4-2.2 1.4z"/><path d="M9 8h6M9 12h6"/>',
     device:     '<rect x="5" y="2.6" width="14" height="18.8" rx="2.4"/><path d="M10.4 18.6h3.2"/>',
     /* 로고의 'W + 고래 꼬리' 를 한 획으로 옮긴 마크입니다. */
@@ -966,6 +989,13 @@ var Store = (function () {
   var HOMEWORK_TYPES = ['단어', '원서 읽기', '워크북', '녹음', '기타'];
   var SUBMIT_STATUS = ['미제출', '제출', '확인'];
   var BOOK_CATEGORIES = ['리더스', '챕터북', '노블', '논픽션', '그림책', '워크북'];
+  // 학원자료실 — 노션 '고래영어 - 학원자료실' 의 분류를 그대로 씁니다.
+  var RESOURCE_CATEGORIES = ['원서', '워크시트', '책', '리포트', '학습앱'];
+  // 영자신문 워크시트 — 노션 '영자신문 워크시트 마스터 목록' 의 값을 그대로 씁니다.
+  var NEWS_LEVELS = ['K1', 'G2', 'G3-4', 'G5-6'];
+  var NEWS_TOPICS = ['Space', 'Science', 'History', 'Animals', 'Environment', 'Sports',
+                     'Arts', 'Entertainment', 'Government', 'Business', 'Culture', 'Technology'];
+  var NEWS_STATUS = ['완성', '진행중', '계획'];
   var LOAN_DAYS = 7;
   var CLASS_COLORS = ['#215a86', '#357f73', '#a8894f', '#6b5f96', '#a8453f', '#2e7a57', '#96607a', '#4a6577'];
   var WEEKDAYS = ['월', '화', '수', '목', '금', '토'];
@@ -1001,7 +1031,9 @@ var Store = (function () {
     submissions: [],  // 숙제별 학생 제출 상태
     vocabLogs: [],    // 단어학습앱에서 넘어온 학습 기록
     books: [],        // 도서 목록
-    loans: []         // 도서 대여 기록
+    loans: [],        // 도서 대여 기록
+    resources: [],    // 학원자료실 (링크·파일 모음)
+    newsItems: []     // 영자신문 워크시트 목록
   };
 
   var data = null;
@@ -1013,7 +1045,8 @@ var Store = (function () {
     klass: 'classes', student: 'students', attendance: 'attendance',
     memo: 'memos', task: 'tasks', payment: 'payments',
     homework: 'homeworks', submission: 'submissions',
-    vocab: 'vocabLogs', book: 'books', loan: 'loans'
+    vocab: 'vocabLogs', book: 'books', loan: 'loans',
+    resource: 'resources', news: 'newsItems'
   };
 
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
@@ -1727,6 +1760,71 @@ var Store = (function () {
   }
   function deleteBook(id) { return softDelete('books', 'book', id); }
 
+  /* ---------- 학원자료실 ---------- */
+  function resources(opts) {
+    opts = opts || {};
+    var list = alive(get().resources).slice();
+    if (opts.category) list = list.filter(function (r) { return r.category === opts.category; });
+    if (opts.q) {
+      var q = String(opts.q).toLowerCase();
+      list = list.filter(function (r) {
+        return [r.title, r.desc, r.category].join(' ').toLowerCase().indexOf(q) >= 0;
+      });
+    }
+    return list.sort(function (a, b) {
+      return String(b.date || '').localeCompare(String(a.date || ''));
+    });
+  }
+  function resource(id) {
+    return alive(get().resources).filter(function (r) { return r.id === id; })[0] || null;
+  }
+  function saveResource(r) {
+    var d = get(), rec = null;
+    if (r.id) {
+      for (var i = 0; i < d.resources.length; i++) {
+        if (d.resources[i].id === r.id) { rec = Object.assign(d.resources[i], r); break; }
+      }
+    }
+    if (!rec) { r.id = r.id || U.uid('res'); rec = r; d.resources.push(rec); }
+    stamp(rec);
+    save({ kind: 'resource', id: rec.id });
+    return rec.id;
+  }
+  function deleteResource(id) { return softDelete('resources', 'resource', id); }
+
+  /* ---------- 영자신문 워크시트 ---------- */
+  function newsItems(opts) {
+    opts = opts || {};
+    var list = alive(get().newsItems).slice();
+    if (opts.level) list = list.filter(function (n) { return n.level === opts.level; });
+    if (opts.status) list = list.filter(function (n) { return n.status === opts.status; });
+    if (opts.q) {
+      var q = String(opts.q).toLowerCase();
+      list = list.filter(function (n) {
+        return [n.title, n.topic, n.memo, n.level].join(' ').toLowerCase().indexOf(q) >= 0;
+      });
+    }
+    return list.sort(function (a, b) {
+      return String(b.date || '').localeCompare(String(a.date || ''));
+    });
+  }
+  function newsItem(id) {
+    return alive(get().newsItems).filter(function (n) { return n.id === id; })[0] || null;
+  }
+  function saveNewsItem(n) {
+    var d = get(), rec = null;
+    if (n.id) {
+      for (var i = 0; i < d.newsItems.length; i++) {
+        if (d.newsItems[i].id === n.id) { rec = Object.assign(d.newsItems[i], n); break; }
+      }
+    }
+    if (!rec) { n.id = n.id || U.uid('news'); rec = n; d.newsItems.push(rec); }
+    stamp(rec);
+    save({ kind: 'news', id: rec.id });
+    return rec.id;
+  }
+  function deleteNewsItem(id) { return softDelete('newsItems', 'news', id); }
+
   function loans(opts) {
     opts = opts || {};
     var list = alive(get().loans).slice();
@@ -1951,6 +2049,19 @@ var Store = (function () {
     try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) {}
     listeners.forEach(function (fn) { fn(); });
   }
+  /**
+   * '이 작업은 한 번만' 을 기록해 두는 표시입니다.
+   * 이미 표시돼 있으면 false 를 돌려주고, 아니면 표시한 뒤 true 를 돌려줍니다.
+   */
+  function markOnce(key) {
+    var d = get();
+    if (!d.meta) d.meta = {};
+    if (d.meta[key]) return false;
+    d.meta[key] = true;
+    save();
+    return true;
+  }
+
   function saveAcademy(patch) {
     Object.assign(get().academy, patch);
     stamp(get().academy);
@@ -1995,7 +2106,11 @@ var Store = (function () {
     STATUS: STATUS, GRADES: GRADES, FLAGS: FLAGS,
     ATTITUDES: ATTITUDES, WEEKDAYS: WEEKDAYS, PAY_METHODS: PAY_METHODS,
     HOMEWORK_TYPES: HOMEWORK_TYPES, SUBMIT_STATUS: SUBMIT_STATUS,
-    BOOK_CATEGORIES: BOOK_CATEGORIES, LOAN_DAYS: LOAN_DAYS,
+    BOOK_CATEGORIES: BOOK_CATEGORIES,
+    RESOURCE_CATEGORIES: RESOURCE_CATEGORIES,
+    NEWS_LEVELS: NEWS_LEVELS, NEWS_TOPICS: NEWS_TOPICS, NEWS_STATUS: NEWS_STATUS,
+    resources: resources, resource: resource, saveResource: saveResource, deleteResource: deleteResource,
+    newsItems: newsItems, newsItem: newsItem, saveNewsItem: saveNewsItem, deleteNewsItem: deleteNewsItem, LOAN_DAYS: LOAN_DAYS,
     CLASS_COLORS: CLASS_COLORS,
     get: get, save: save, onChange: onChange, onRecordChange: onRecordChange,
     allRecords: allRecords, findRecord: findRecord, applyRemote: applyRemote, stampAll: stampAll,
@@ -2024,6 +2139,7 @@ var Store = (function () {
     ensureCode: ensureCode, studentByCode: studentByCode, findStudent: findStudent,
     summarize: summarize, dayOverview: dayOverview,
     exportJson: exportJson, importJson: importJson, resetAll: resetAll, saveAcademy: saveAcademy,
+    markOnce: markOnce,
     migratePatrols: migratePatrols, migrateSite: migrateSite,
     migrateAttitudes: migrateAttitudes
   };
@@ -3408,21 +3524,30 @@ Views.dashboard = (function () {
       // 주요 현황 요약 (상단)
       mainCards() +
 
-      // 상단 미니 캘린더 + 이번주 예정
-      '<div class="cal-panel">' +
-        '<div class="cal-panel-h">' +
-          '<h2>' + year + '년 ' + (month + 1) + '월</h2>' +
-          '<div class="cal-nav">' +
-            '<button id="mini-prev" aria-label="이전 달">‹</button>' +
-            '<button id="mini-next" aria-label="다음 달">›</button>' +
+      // 업무 상세 계획 — 달력은 왼쪽, 그날 일정은 오른쪽에 붙입니다.
+      '<div class="card"><div class="card-h"><h2>업무 상세 계획</h2><div class="sp"></div>' +
+        '<h3 class="cal-month" id="cal-month">' + year + '년 ' + (month + 1) + '월</h3>' +
+        '<div class="cal-nav-btns">' +
+          '<button class="btn sm" id="prev-month" aria-label="이전 달">‹</button>' +
+          '<button class="btn sm" id="next-month" aria-label="다음 달">›</button>' +
+        '</div></div>' +
+        '<div class="card-b cal-split">' +
+          '<div>' +
+            '<div id="full-calendar">' + buildCalendar(year, month, today) + '</div>' +
+            '<div class="cal-legend">' +
+              '<span><i class="dot hw"></i>숙제 마감</span>' +
+              '<span><i class="dot lib"></i>도서 반납</span>' +
+              '<span><i class="dot cls"></i>수업 예정</span>' +
+            '</div>' +
           '</div>' +
-        '</div>' +
-        '<div class="mini-calendar-grid" id="mini-calendar"></div>' +
-        '<div class="cal-upcoming">' +
-          '<div class="cal-upcoming-h">' + Icon.svg('calendar', 12) + ' 이번주 예정</div>' +
-          '<div id="upcoming-tasks"></div>' +
-        '</div>' +
-      '</div>' +
+          '<div class="cal-side">' +
+            '<div id="selected-tasks"></div>' +
+            '<div class="cal-upcoming-side">' +
+              '<div class="cal-upcoming-h">' + Icon.svg('calendar', 12) + ' 이번주 예정</div>' +
+              '<div id="upcoming-tasks"></div>' +
+            '</div>' +
+          '</div>' +
+        '</div></div>' +
 
       // 출결 및 태도
       '<div class="grid g-21">' +
@@ -3469,45 +3594,12 @@ Views.dashboard = (function () {
           '<div class="card-b">' + unpaidList(Store.paymentSummary(U.ym(new Date()))) + '</div></div>' +
       '</div>' +
 
-      // 상세 캘린더
-      '<div class="card"><div class="card-h"><h2>업무 상세 계획</h2></div>' +
-        '<div class="card-b">' +
-          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">' +
-            '<h3 style="margin:0;font-size:14px;font-weight:700" id="cal-month">' + year + '년 ' + (month + 1) + '월</h3>' +
-            '<div style="display:flex;gap:6px">' +
-              '<button class="btn sm" id="prev-month">‹</button>' +
-              '<button class="btn sm" id="next-month">›</button>' +
-            '</div>' +
-          '</div>' +
-          '<div id="full-calendar">' + buildCalendar(year, month, today) + '</div>' +
-          '<div id="selected-tasks" style="margin-top:14px"></div>' +
-        '</div></div>' +
-
       // 민감한 정보 (하단)
       '<div class="section-title" style="margin-top:32px;margin-bottom:16px">' +
         Icon.svg('stats', 13) + ' 관리 현황 요약</div>' +
       sensitiveCards() +
 
       '</div>';
-
-    // 미니 캘린더 — 판만 있고 내용이 비어 있어 채웁니다.
-    var miniYear = year, miniMonth = month;
-    function drawMini() {
-      var host = el.querySelector('#mini-calendar');
-      if (!host) return;
-      host.innerHTML = buildCalendar(miniYear, miniMonth, today);
-      var head = el.querySelector('.cal-panel-h h2');
-      if (head) head.textContent = miniYear + '년 ' + (miniMonth + 1) + '월';
-    }
-    function stepMini(by) {
-      miniMonth += by;
-      if (miniMonth < 0) { miniMonth = 11; miniYear--; }
-      if (miniMonth > 11) { miniMonth = 0; miniYear++; }
-      drawMini();
-    }
-    drawMini();
-    el.querySelector('#mini-prev').addEventListener('click', function () { stepMini(-1); });
-    el.querySelector('#mini-next').addEventListener('click', function () { stepMini(1); });
 
     renderUpcomingTasks();
     renderSelectedTasks(today);
@@ -3583,41 +3675,150 @@ Views.dashboard = (function () {
     }
     addCalendarEvents();
 
+    /**
+     * 달력에서 고른 날짜의 일정을 오른쪽 칸에 정리합니다.
+     * 달력에 찍힌 점(숙제 마감·도서 반납·수업 예정)과 같은 내용을 글로 풀어 줍니다.
+     */
     function renderSelectedTasks(dateStr) {
-      var tasks = Store.tasks('today').concat(Store.tasks('week')).concat(Store.tasks('later'));
-      var dateObj = new Date(dateStr + 'T00:00:00');
-      var dateLabel = dateObj.getFullYear() + '년 ' + (dateObj.getMonth() + 1) + '월 ' + dateObj.getDate() + '일';
+      var d = U.parseYmd(dateStr);
+      var label = d.getFullYear() + '년 ' + (d.getMonth() + 1) + '월 ' + d.getDate() + '일';
 
-      var html = '<div class="task-list-label">' + dateLabel + '의 업무</div>';
+      var hw = Store.homeworks({ open: true }).filter(function (h) { return h.dueDate === dateStr; });
+      var loans = Store.loans({ open: true }).filter(function (l) { return l.dueDate === dateStr; });
+      var overview = Store.dayOverview(dateStr);
 
-      if (!tasks.length) {
-        html += '<div style="font-size:13px;color:#93a4b4;text-align:center;padding:16px 0">할 일이 없습니다.</div>';
-      } else {
-        var todayTasks = Store.tasks('today');
-        var weekTasks = Store.tasks('week');
-        var laterTasks = Store.tasks('later');
+      var html = '<div class="section-title">' + U.esc(label) + ' (' + U.dayOf(dateStr) + ')</div>';
+      var any = false;
 
-        if (todayTasks.length) {
-          html += '<div class="section-title">' + Icon.svg('flame', 13) + ' 오늘</div>';
-          todayTasks.forEach(function(t) {
-            html += '<div class="memo-item' + (t.done ? ' done' : '') + '"><input type="checkbox" class="cbx"' + (t.done ? ' checked' : '') + '><div class="txt">' + U.esc(t.text) + '</div></div>';
-          });
-        }
-
-        if (weekTasks.length) {
-          html += '<div class="section-title">' + Icon.svg('calendar', 13) + ' 이번주</div>';
-          weekTasks.forEach(function(t) {
-            html += '<div class="memo-item' + (t.done ? ' done' : '') + '"><input type="checkbox" class="cbx"' + (t.done ? ' checked' : '') + '><div class="txt">' + U.esc(t.text) + '</div></div>';
-          });
-        }
-
-        if (laterTasks.length) {
-          html += '<div class="section-title">' + Icon.svg('moon', 13) + ' 미뤄두기</div>';
-          laterTasks.forEach(function(t) {
-            html += '<div class="memo-item' + (t.done ? ' done' : '') + '"><input type="checkbox" class="cbx"' + (t.done ? ' checked' : '') + '><div class="txt">' + U.esc(t.text) + '</div></div>';
-          });
-        }
+      if (overview.expected.length) {
+        any = true;
+        html += '<div class="cal-item"><i class="dot cls"></i>' +
+          '<div><b>수업 ' + overview.expected.length + '명</b>' +
+          '<span>' + U.esc(overview.expected.slice(0, 4).map(function (s) { return s.name; }).join(', ')) +
+          (overview.expected.length > 4 ? ' 외 ' + (overview.expected.length - 4) + '명' : '') + '</span></div></div>';
       }
+      hw.forEach(function (h) {
+        any = true;
+        var pr = Store.homeworkProgress(h.id);
+        html += '<div class="cal-item"><i class="dot hw"></i>' +
+          '<div><b>숙제 마감 · ' + U.esc(h.title) + '</b>' +
+          '<span>제출 ' + pr.done + '/' + pr.total + '명</span></div></div>';
+      });
+      loans.forEach(function (l) {
+        any = true;
+        var b = Store.book(l.bookId), st = Store.student(l.studentId);
+        html += '<div class="cal-item"><i class="dot lib"></i>' +
+          '<div><b>도서 반납 · ' + U.esc(st ? st.name : '') + '</b>' +
+          '<span>' + U.esc(b ? b.title : '(삭제된 책)') + '</span></div></div>';
+      });
+
+      if (!any) html += '<div class="empty-day">이 날은 예정된 일정이 없습니다.</div>';
+
+      el.querySelector('#selected-tasks').innerHTML = html;
+    }
+
+    /** 오늘부터 7일 안에 걸린 숙제 마감·도서 반납을 모읍니다. */
+    function renderUpcomingTasks() {
+      var until = U.ymd(new Date(todayDate.getTime() + 7 * 86400000));
+      var rows = [];
+
+      Store.homeworks({ open: true }).forEach(function (h) {
+        if (h.dueDate && h.dueDate >= today && h.dueDate <= until) {
+          rows.push({ date: h.dueDate, text: '숙제 마감 · ' + h.title });
+        }
+      });
+      Store.loans({ open: true }).forEach(function (l) {
+        if (l.dueDate && l.dueDate >= today && l.dueDate <= until) {
+          var st = Store.student(l.studentId);
+          rows.push({ date: l.dueDate, text: '도서 반납 · ' + (st ? st.name : '') });
+        }
+      });
+      rows.sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+
+      var list = el.querySelector('#upcoming-tasks');
+      list.innerHTML = rows.length
+        ? rows.slice(0, 5).map(function (r) {
+            return '<div class="cal-task"><b>' + U.esc(U.shortDate(r.date)) + '</b> ' + U.esc(r.text) + '</div>';
+          }).join('') + (rows.length > 5 ? '<div class="cal-task empty">외 ' + (rows.length - 5) + '건</div>' : '')
+        : '<div class="cal-task empty">앞으로 7일 안에 예정된 일정이 없습니다.</div>';
+    }
+
+    // 캘린더 네비게이션
+    var currentMonth = month;
+    var currentYear = year;
+
+    el.querySelector('#prev-month').addEventListener('click', function() {
+      currentMonth--;
+      if (currentMonth < 0) {
+        currentMonth = 11;
+        currentYear--;
+      }
+      el.querySelector('#cal-month').textContent = currentYear + '년 ' + (currentMonth + 1) + '월';
+      el.querySelector('#full-calendar').innerHTML = buildCalendar(currentYear, currentMonth, today);
+      addCalendarEvents();
+    });
+
+    el.querySelector('#next-month').addEventListener('click', function() {
+      currentMonth++;
+      if (currentMonth > 11) {
+        currentMonth = 0;
+        currentYear++;
+      }
+      el.querySelector('#cal-month').textContent = currentYear + '년 ' + (currentMonth + 1) + '월';
+      el.querySelector('#full-calendar').innerHTML = buildCalendar(currentYear, currentMonth, today);
+      addCalendarEvents();
+    });
+
+    function addCalendarEvents() {
+      UI.on(el, '[data-date]', 'click', function(e, cell) {
+        var date = cell.getAttribute('data-date');
+        document.querySelectorAll('[data-date]').forEach(function(c) {
+          c.classList.remove('selected');
+        });
+        cell.classList.add('selected');
+        renderSelectedTasks(date);
+      });
+    }
+    addCalendarEvents();
+
+    /**
+     * 달력에서 고른 날짜의 일정을 오른쪽 칸에 정리합니다.
+     * 달력에 찍힌 점(숙제 마감·도서 반납·수업 예정)과 같은 내용을 글로 풀어 줍니다.
+     */
+    function renderSelectedTasks(dateStr) {
+      var d = U.parseYmd(dateStr);
+      var label = d.getFullYear() + '년 ' + (d.getMonth() + 1) + '월 ' + d.getDate() + '일';
+
+      var hw = Store.homeworks({ open: true }).filter(function (h) { return h.dueDate === dateStr; });
+      var loans = Store.loans({ open: true }).filter(function (l) { return l.dueDate === dateStr; });
+      var overview = Store.dayOverview(dateStr);
+
+      var html = '<div class="section-title">' + U.esc(label) + ' (' + U.dayOf(dateStr) + ')</div>';
+      var any = false;
+
+      if (overview.expected.length) {
+        any = true;
+        html += '<div class="cal-item"><i class="dot cls"></i>' +
+          '<div><b>수업 ' + overview.expected.length + '명</b>' +
+          '<span>' + U.esc(overview.expected.slice(0, 4).map(function (s) { return s.name; }).join(', ')) +
+          (overview.expected.length > 4 ? ' 외 ' + (overview.expected.length - 4) + '명' : '') + '</span></div></div>';
+      }
+      hw.forEach(function (h) {
+        any = true;
+        var pr = Store.homeworkProgress(h.id);
+        html += '<div class="cal-item"><i class="dot hw"></i>' +
+          '<div><b>숙제 마감 · ' + U.esc(h.title) + '</b>' +
+          '<span>제출 ' + pr.done + '/' + pr.total + '명</span></div></div>';
+      });
+      loans.forEach(function (l) {
+        any = true;
+        var b = Store.book(l.bookId), st = Store.student(l.studentId);
+        html += '<div class="cal-item"><i class="dot lib"></i>' +
+          '<div><b>도서 반납 · ' + U.esc(st ? st.name : '') + '</b>' +
+          '<span>' + U.esc(b ? b.title : '(삭제된 책)') + '</span></div></div>';
+      });
+
+      if (!any) html += '<div class="empty-day">이 날은 예정된 일정이 없습니다.</div>';
 
       el.querySelector('#selected-tasks').innerHTML = html;
     }
@@ -5456,6 +5657,409 @@ Views.classes = (function () {
   }
 
   return { title: title, sub: sub, render: render, openClassForm: openClassForm };
+})();
+
+</script>
+<script>
+/* ===== 영자신문 워크시트 =====
+ *
+ * 노션 '영자신문 워크시트 마스터 목록' 과 '워크시트 만들기 요청' 을 옮긴 화면입니다.
+ *
+ * 워크시트 파일(PDF)을 실제로 만들어 주는 것은 노션 쪽 자동화입니다.
+ * 이 화면은 (1) 지금까지 만든 것을 레벨·주제별로 찾아보고
+ *          (2) 새로 만들 기사를 요청 목록에 적어 두는 일을 합니다.
+ */
+window.Views = window.Views || {};
+Views.news = (function () {
+
+  var NOTION_REQUEST = 'https://app.notion.com/p/3d9e4c508820812cbbafebecf70eff9e';
+  var NOTION_MASTER  = 'https://app.notion.com/p/3c8dc243c7ea4ebb9956508c1dc61c7c';
+
+  var filter = { level: '', status: '', q: '' };
+
+  function title() { return '영자신문 워크시트'; }
+  function sub() {
+    seedOnce();
+    var all = Store.newsItems();
+    var done = all.filter(function (n) { return n.status === '완성'; }).length;
+    return all.length
+      ? '전체 ' + all.length + '건 · 완성 ' + done + '건'
+      : 'Time for Kids 기사로 만드는 레벨별 워크시트';
+  }
+
+  /** 노션 마스터 목록에 있던 워크시트. 처음 한 번만 넣습니다. */
+  var SEED = [
+    { title: 'Meet Sea Turtles', date: '2026-04-30', level: 'K1', topic: 'Animals', status: '완성',
+      sourceUrl: 'https://www.timeforkids.com/k1/meet-sea-turtles-k1/',
+      memo: '7종류의 바다거북이를 소개하는 기사' },
+    { title: 'Saving Sea Turtles', date: '2026-04-30', level: 'K1', topic: 'Animals', status: '완성',
+      sourceUrl: 'https://www.timeforkids.com/k1/saving-sea-turtles/',
+      memo: 'Grace Buschiazzo - South Carolina Aquarium, Sea Turtle Care Center' },
+    { title: 'A Secret World', date: '2026-09-09', level: 'K1', topic: 'Environment', status: '완성',
+      sourceUrl: 'https://www.timeforkids.com/k1/a-secret-world-k1/',
+      memo: '산호초를 바닷속 도시에 비유해 소개하는 K1 기사' },
+    { title: 'Fierce Fish', date: '2026-09-09', level: 'K1', topic: 'Animals', status: '완성',
+      sourceUrl: 'https://www.timeforkids.com/k1/fierce-fish-k1/',
+      memo: '상어의 크기, 먹이, 종류를 사진과 함께 소개하는 K1 기사' },
+    { title: 'Tons of Teeth', date: '2026-09-12', level: 'K1', topic: 'Animals', status: '완성',
+      sourceUrl: 'https://www.timeforkids.com/k1/tons-of-teeth-k1/',
+      memo: '상어 종류별 이빨 모양과 먹이 방식을 사진으로 비교하는 K1 기사' },
+    { title: 'NASA Newcomers', date: '2026-09-09', level: 'G2', topic: 'Space', status: '완성',
+      sourceUrl: 'https://www.timeforkids.com/g2/nasa-newcomers-g2/',
+      memo: '우주비행사 후보자 프로그램에 대한 기사' },
+    { title: 'Gorilla Multiples', date: '2026-09-09', level: 'G2', topic: 'Animals', status: '완성',
+      sourceUrl: 'https://www.timeforkids.com/g2/gorilla-multiples-g2/',
+      memo: '비룽가 국립공원 마운틴고릴라 쌍둥이 출산 기사' }
+  ];
+
+  function seedOnce() {
+    if (!Store.markOnce('newsSeeded')) return;
+    if (Store.newsItems().length) return;
+    SEED.forEach(function (n) { Store.saveNewsItem(JSON.parse(JSON.stringify(n))); });
+  }
+
+  function statusTag(st) {
+    var map = { '완성': 'ok', '진행중': 'warn', '계획': 'gray' };
+    return '<span class="tag ' + (map[st] || 'gray') + '">' + U.esc(st || '계획') + '</span>';
+  }
+
+  /** 레벨별 집계 타일 */
+  function levelTiles() {
+    var all = Store.newsItems();
+    return '<div class="grid g-4">' + Store.NEWS_LEVELS.map(function (lv) {
+      var mine = all.filter(function (n) { return n.level === lv; });
+      var done = mine.filter(function (n) { return n.status === '완성'; }).length;
+      return '<div class="stat"><div class="lbl">' + U.esc(lv) + '</div>' +
+        '<div class="val">' + mine.length + '<small>건</small></div>' +
+        '<div class="sub">' + (mine.length ? '완성 ' + done + '건' : '아직 없습니다') + '</div></div>';
+    }).join('') + '</div>';
+  }
+
+  function rows() {
+    var list = Store.newsItems(filter);
+    if (!list.length) {
+      return '<tr><td colspan="6">' + UI.emptyBox(
+        Store.newsItems().length ? '조건에 맞는 워크시트가 없습니다.' : '아직 만든 워크시트가 없습니다.',
+        'news') + '</td></tr>';
+    }
+    return list.map(function (n) {
+      return '<tr>' +
+        '<td class="nm">' + U.esc(n.title) + '</td>' +
+        '<td><span class="tag blue">' + U.esc(n.level || '-') + '</span></td>' +
+        '<td>' + U.esc(n.topic || '-') + '</td>' +
+        '<td>' + statusTag(n.status) + '</td>' +
+        '<td>' + U.esc(n.date || '-') + '</td>' +
+        '<td>' +
+          (n.sourceUrl
+            ? '<a class="btn sm" href="' + U.esc(n.sourceUrl) + '" target="_blank" rel="noopener">원문 →</a> '
+            : '') +
+          '<button class="btn sm ghost" data-edit="' + n.id + '">수정</button>' +
+        '</td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  function form(n) {
+    n = n || {};
+    return '<div class="form-grid">' +
+      '<label class="fld full">기사 제목<input type="text" id="n-title" value="' + U.esc(n.title || '') + '" placeholder="Meet Sea Turtles"></label>' +
+      '<label class="fld">레벨<select id="n-level">' + UI.options(Store.NEWS_LEVELS, n.level || 'K1') + '</select></label>' +
+      '<label class="fld">주제<select id="n-topic">' + UI.options(Store.NEWS_TOPICS, n.topic || 'Animals') + '</select></label>' +
+      '<label class="fld">상태<select id="n-status">' + UI.options(Store.NEWS_STATUS, n.status || '계획') + '</select></label>' +
+      '<label class="fld">날짜<input type="date" id="n-date" value="' + U.esc(n.date || U.ymd()) + '"></label>' +
+      '<label class="fld full">원문 주소<input type="text" id="n-src" value="' + U.esc(n.sourceUrl || '') + '" placeholder="https://www.timeforkids.com/..."></label>' +
+      '<label class="fld full">워크시트 주소 <span style="font-weight:400">(노션에 올린 PDF 링크)</span>' +
+        '<input type="text" id="n-ws" value="' + U.esc(n.worksheetUrl || '') + '" placeholder="https://"></label>' +
+      '<label class="fld full">메모<textarea id="n-memo" placeholder="어떤 내용의 기사인지 적어 두세요">' + U.esc(n.memo || '') + '</textarea></label>' +
+    '</div>';
+  }
+
+  function openForm(id) {
+    var n = id ? Store.newsItem(id) : null;
+    UI.modal({
+      title: n ? '워크시트 수정' : '워크시트 추가',
+      body: form(n),
+      footer:
+        (n ? '<button class="btn danger" id="n-del">삭제</button>' : '') +
+        '<div class="sp"></div><button class="btn" data-close>취소</button>' +
+        '<button class="btn primary" id="n-save">저장</button>',
+      onMount: function (w) {
+        w.querySelector('#n-save').addEventListener('click', function () {
+          var t = w.querySelector('#n-title').value.trim();
+          if (!t) { UI.toast('기사 제목을 입력해 주세요.', true); return; }
+          Store.saveNewsItem({
+            id: n ? n.id : undefined,
+            title: t,
+            level: w.querySelector('#n-level').value,
+            topic: w.querySelector('#n-topic').value,
+            status: w.querySelector('#n-status').value,
+            date: w.querySelector('#n-date').value,
+            sourceUrl: w.querySelector('#n-src').value.trim(),
+            worksheetUrl: w.querySelector('#n-ws').value.trim(),
+            memo: w.querySelector('#n-memo').value.trim()
+          });
+          UI.close();
+          UI.toast(n ? '수정했습니다.' : '추가했습니다.');
+          App.rerender();
+        });
+        var del = w.querySelector('#n-del');
+        if (del) del.addEventListener('click', function () {
+          UI.confirm('이 워크시트를 목록에서 지울까요?', function () {
+            Store.deleteNewsItem(n.id);
+            UI.close(); UI.toast('삭제했습니다.'); App.rerender();
+          }, { yes: '삭제' });
+        });
+      }
+    });
+  }
+
+  function render(el) {
+    seedOnce();
+
+    el.innerHTML =
+      '<div class="stack">' +
+        levelTiles() +
+
+        '<div class="card"><div class="card-h">' +
+          '<h2>워크시트 목록</h2><div class="sp"></div>' +
+          '<button class="btn primary" id="n-new">+ 워크시트 추가</button>' +
+        '</div>' +
+        '<div class="card-b">' +
+          '<div class="row" style="margin-bottom:14px">' +
+            '<input type="search" id="n-q" placeholder="제목·주제·메모로 찾기" style="flex:1;min-width:180px" value="' + U.esc(filter.q) + '">' +
+            '<div class="chips">' +
+              '<button class="chip' + (filter.level ? '' : ' on') + '" data-lv="">전체 레벨</button>' +
+              Store.NEWS_LEVELS.map(function (lv) {
+                return '<button class="chip' + (filter.level === lv ? ' on blue' : '') + '" data-lv="' + U.esc(lv) + '">' + U.esc(lv) + '</button>';
+              }).join('') +
+            '</div>' +
+            '<div class="chips">' +
+              '<button class="chip' + (filter.status ? '' : ' on') + '" data-st="">전체 상태</button>' +
+              Store.NEWS_STATUS.map(function (st) {
+                return '<button class="chip' + (filter.status === st ? ' on mint' : '') + '" data-st="' + U.esc(st) + '">' + U.esc(st) + '</button>';
+              }).join('') +
+            '</div>' +
+          '</div>' +
+          '<div class="table-wrap"><table class="tbl">' +
+            '<thead><tr><th>기사</th><th>레벨</th><th>주제</th><th>상태</th><th>날짜</th><th></th></tr></thead>' +
+            '<tbody id="n-rows">' + rows() + '</tbody>' +
+          '</table></div>' +
+        '</div></div>' +
+
+        '<div class="card"><div class="card-h"><h2>새 워크시트 만들기</h2></div>' +
+          '<div class="card-b">' +
+            '<p class="hint" style="margin:0 0 12px">' +
+              '워크시트 파일(원문·문제지·정답지 PDF)은 <b>노션</b>에서 자동으로 만들어집니다. ' +
+              '노션의 <b>워크시트 만들기 요청</b> 표에 한 줄만 적어 두시면 한 시간에 한 번 처리되고, ' +
+              '완성되면 <b>마스터 목록</b>에 쌓입니다.</p>' +
+            '<p class="hint" style="margin:0 0 14px">' +
+              '예) 요청 칸에 <code>K레벨 기사 한개 골라서 만들어줘</code> 라고 적고 상태를 <code>대기</code> 로 두시면 됩니다. ' +
+              '이미 만든 기사는 자동으로 건너뜁니다.</p>' +
+            '<div class="row">' +
+              '<a class="btn primary" href="' + NOTION_REQUEST + '" target="_blank" rel="noopener">노션에서 만들기 요청 →</a>' +
+              '<a class="btn" href="' + NOTION_MASTER + '" target="_blank" rel="noopener">노션 마스터 목록 →</a>' +
+            '</div>' +
+          '</div></div>' +
+      '</div>';
+
+    el.querySelector('#n-new').addEventListener('click', function () { openForm(); });
+
+    UI.on(el, '[data-lv]', 'click', function (e, btn) {
+      filter.level = btn.getAttribute('data-lv'); render(el);
+    });
+    UI.on(el, '[data-st]', 'click', function (e, btn) {
+      filter.status = btn.getAttribute('data-st'); render(el);
+    });
+    UI.on(el, '[data-edit]', 'click', function (e, btn) { openForm(btn.getAttribute('data-edit')); });
+
+    var q = el.querySelector('#n-q');
+    q.addEventListener('input', function () {
+      filter.q = q.value.trim();
+      el.querySelector('#n-rows').innerHTML = rows();
+    });
+  }
+
+  return { title: title, sub: sub, render: render };
+})();
+
+</script>
+<script>
+/* ===== 학원자료실 =====
+ *
+ * 노션 '고래영어 - 학원자료실' 을 옮긴 화면입니다.
+ * 학습앱·워크시트·원서 목록처럼 수업에서 자주 여는 링크를 한곳에 모아 둡니다.
+ * 처음 열면 노션에 있던 자료가 자동으로 들어갑니다(seed).
+ */
+window.Views = window.Views || {};
+Views.resources = (function () {
+
+  var filter = { category: '', q: '' };
+
+  function title() { return '학원자료실'; }
+  function sub() {
+    seedOnce();
+    var n = Store.resources().length;
+    return n ? '자료 ' + n + '건 · 수업에서 바로 여는 링크를 모아 둡니다' : '수업 자료와 학습앱 링크를 모아 두는 곳입니다';
+  }
+
+  /** 노션 '고래영어 - 학원자료실' 에 있던 자료. 처음 한 번만 넣습니다. */
+  var SEED = [
+    {
+      title: '고래 데일리 듣기',
+      category: '학습앱',
+      desc: '레벨별(lv240·520·860·1240·1680) 듣기 연습 앱. 열 번 듣고 따라 읽기.',
+      url: 'https://a28008005-sketch.github.io/dailytest/',
+      date: '2026-09-11'
+    },
+    {
+      title: '고래 보카 다이브 (영어 스마트 단어장)',
+      category: '학습앱',
+      desc: '6레벨 720일차 단어·문장 학습. 학생이 하루치를 끝내면 수행률이 단어 학습 화면에 쌓입니다.',
+      url: 'https://a28008005-sketch.github.io/dailytest/voca/',
+      date: '2026-09-11'
+    }
+  ];
+
+  function seedOnce() {
+    if (!Store.markOnce('resourcesSeeded')) return;
+    // 이미 직접 넣어 두신 자료가 있으면 건드리지 않습니다.
+    if (Store.resources().length) return;
+    SEED.forEach(function (r) { Store.saveResource(JSON.parse(JSON.stringify(r))); });
+  }
+
+  function tagOf(cat) {
+    var map = { '학습앱': 'blue', '워크시트': 'mint', '원서': 'ok', '책': 'ok', '리포트': 'warn' };
+    return map[cat] || 'gray';
+  }
+
+  function cards() {
+    var list = Store.resources(filter);
+    if (!list.length) {
+      return UI.emptyBox(
+        Store.resources().length ? '조건에 맞는 자료가 없습니다.' : '아직 등록한 자료가 없습니다. [+ 자료 등록]으로 시작하세요.',
+        'archive');
+    }
+    return '<div class="res-grid">' + list.map(function (r) {
+      return '<div class="res-card">' +
+        '<div class="res-top">' +
+          '<span class="tag ' + tagOf(r.category) + '">' + U.esc(r.category || '기타') + '</span>' +
+          '<span class="res-date">' + U.esc(r.date || '') + '</span>' +
+        '</div>' +
+        '<div class="res-title">' + U.esc(r.title) + '</div>' +
+        (r.desc ? '<div class="res-desc">' + U.esc(r.desc) + '</div>' : '') +
+        '<div class="res-actions">' +
+          (r.url
+            ? '<a class="btn sm primary" href="' + U.esc(r.url) + '" target="_blank" rel="noopener">열기 →</a>' +
+              '<button class="btn sm" data-copy="' + U.esc(r.url) + '">링크 복사</button>'
+            : '<span class="hint">링크가 없습니다</span>') +
+          '<div class="sp"></div>' +
+          '<button class="btn sm ghost" data-edit="' + r.id + '">수정</button>' +
+        '</div>' +
+      '</div>';
+    }).join('') + '</div>';
+  }
+
+  function form(r) {
+    r = r || {};
+    return '<div class="form-grid">' +
+      '<label class="fld full">제목<input type="text" id="r-title" value="' + U.esc(r.title || '') + '" placeholder="고래 데일리 듣기"></label>' +
+      '<label class="fld">분류<select id="r-cat">' +
+        UI.options(Store.RESOURCE_CATEGORIES, r.category || '학습앱') + '</select></label>' +
+      '<label class="fld">등록일<input type="date" id="r-date" value="' + U.esc(r.date || U.ymd()) + '"></label>' +
+      '<label class="fld full">링크<input type="text" id="r-url" value="' + U.esc(r.url || '') + '" placeholder="https://"></label>' +
+      '<label class="fld full">설명<textarea id="r-desc" placeholder="어떤 자료인지, 어떻게 쓰는지 적어 두세요">' + U.esc(r.desc || '') + '</textarea></label>' +
+    '</div>';
+  }
+
+  function openForm(id) {
+    var r = id ? Store.resource(id) : null;
+    UI.modal({
+      title: r ? '자료 수정' : '자료 등록',
+      body: form(r),
+      footer:
+        (r ? '<button class="btn danger" id="r-del">삭제</button>' : '') +
+        '<div class="sp"></div><button class="btn" data-close>취소</button>' +
+        '<button class="btn primary" id="r-save">저장</button>',
+      onMount: function (w) {
+        w.querySelector('#r-save').addEventListener('click', function () {
+          var title = w.querySelector('#r-title').value.trim();
+          if (!title) { UI.toast('제목을 입력해 주세요.', true); return; }
+          Store.saveResource({
+            id: r ? r.id : undefined,
+            title: title,
+            category: w.querySelector('#r-cat').value,
+            date: w.querySelector('#r-date').value,
+            url: w.querySelector('#r-url').value.trim(),
+            desc: w.querySelector('#r-desc').value.trim()
+          });
+          UI.close();
+          UI.toast(r ? '수정했습니다.' : '자료를 등록했습니다.');
+          App.rerender();
+        });
+        var del = w.querySelector('#r-del');
+        if (del) del.addEventListener('click', function () {
+          UI.confirm('이 자료를 목록에서 지울까요?', function () {
+            Store.deleteResource(r.id);
+            UI.close(); UI.toast('삭제했습니다.'); App.rerender();
+          }, { yes: '삭제' });
+        });
+      }
+    });
+  }
+
+  function render(el) {
+    seedOnce();
+
+    el.innerHTML =
+      '<div class="stack">' +
+        '<div class="card"><div class="card-h">' +
+          '<h2>자료 목록</h2><div class="sp"></div>' +
+          '<button class="btn primary" id="r-new">+ 자료 등록</button>' +
+        '</div>' +
+        '<div class="card-b">' +
+          '<div class="row" style="margin-bottom:14px">' +
+            '<input type="search" id="r-q" placeholder="제목·설명으로 찾기" style="flex:1;min-width:180px" value="' + U.esc(filter.q) + '">' +
+            '<div class="chips">' +
+              '<button class="chip' + (filter.category ? '' : ' on') + '" data-cat="">전체</button>' +
+              Store.RESOURCE_CATEGORIES.map(function (c) {
+                return '<button class="chip' + (filter.category === c ? ' on blue' : '') + '" data-cat="' + U.esc(c) + '">' + U.esc(c) + '</button>';
+              }).join('') +
+            '</div>' +
+          '</div>' +
+          cards() +
+        '</div></div>' +
+
+        '<div class="card"><div class="card-h"><h2>노션 자료실</h2></div>' +
+          '<div class="card-b">' +
+            '<p class="hint" style="margin:0 0 10px">' +
+              '노션의 <b>고래영어 - 학원자료실</b> 에 파일(PDF 등)로 올려 두신 자료는 여기서 바로 열 수 없습니다. ' +
+              '링크로 여는 자료만 이 화면에 모아 두고, 파일은 노션에서 받으시는 편이 편합니다.</p>' +
+            '<a class="btn sm" href="https://app.notion.com/p/65deb8ef95a94b2f8439bda34d7a0b77" target="_blank" rel="noopener">노션 자료실 열기 →</a>' +
+          '</div></div>' +
+      '</div>';
+
+    el.querySelector('#r-new').addEventListener('click', function () { openForm(); });
+
+    UI.on(el, '[data-cat]', 'click', function (e, btn) {
+      filter.category = btn.getAttribute('data-cat');
+      render(el);
+    });
+    UI.on(el, '[data-edit]', 'click', function (e, btn) { openForm(btn.getAttribute('data-edit')); });
+    UI.on(el, '[data-copy]', 'click', function (e, btn) {
+      U.copy(btn.getAttribute('data-copy')).then(function () { UI.toast('링크를 복사했습니다.'); });
+    });
+
+    var q = el.querySelector('#r-q');
+    q.addEventListener('input', function () {
+      filter.q = q.value.trim();
+      var host = el.querySelector('.card-b');
+      // 목록만 다시 그려 입력 초점을 잃지 않게 합니다.
+      var grid = host.querySelector('.res-grid') || host.querySelector('.empty');
+      if (grid) grid.outerHTML = cards();
+    });
+  }
+
+  return { title: title, sub: sub, render: render };
 })();
 
 </script>

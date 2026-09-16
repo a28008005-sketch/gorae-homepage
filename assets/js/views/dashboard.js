@@ -235,21 +235,30 @@ Views.dashboard = (function () {
       // 주요 현황 요약 (상단)
       mainCards() +
 
-      // 상단 미니 캘린더 + 이번주 예정
-      '<div class="cal-panel">' +
-        '<div class="cal-panel-h">' +
-          '<h2>' + year + '년 ' + (month + 1) + '월</h2>' +
-          '<div class="cal-nav">' +
-            '<button id="mini-prev" aria-label="이전 달">‹</button>' +
-            '<button id="mini-next" aria-label="다음 달">›</button>' +
+      // 업무 상세 계획 — 달력은 왼쪽, 그날 일정은 오른쪽에 붙입니다.
+      '<div class="card"><div class="card-h"><h2>업무 상세 계획</h2><div class="sp"></div>' +
+        '<h3 class="cal-month" id="cal-month">' + year + '년 ' + (month + 1) + '월</h3>' +
+        '<div class="cal-nav-btns">' +
+          '<button class="btn sm" id="prev-month" aria-label="이전 달">‹</button>' +
+          '<button class="btn sm" id="next-month" aria-label="다음 달">›</button>' +
+        '</div></div>' +
+        '<div class="card-b cal-split">' +
+          '<div>' +
+            '<div id="full-calendar">' + buildCalendar(year, month, today) + '</div>' +
+            '<div class="cal-legend">' +
+              '<span><i class="dot hw"></i>숙제 마감</span>' +
+              '<span><i class="dot lib"></i>도서 반납</span>' +
+              '<span><i class="dot cls"></i>수업 예정</span>' +
+            '</div>' +
           '</div>' +
-        '</div>' +
-        '<div class="mini-calendar-grid" id="mini-calendar"></div>' +
-        '<div class="cal-upcoming">' +
-          '<div class="cal-upcoming-h">' + Icon.svg('calendar', 12) + ' 이번주 예정</div>' +
-          '<div id="upcoming-tasks"></div>' +
-        '</div>' +
-      '</div>' +
+          '<div class="cal-side">' +
+            '<div id="selected-tasks"></div>' +
+            '<div class="cal-upcoming-side">' +
+              '<div class="cal-upcoming-h">' + Icon.svg('calendar', 12) + ' 이번주 예정</div>' +
+              '<div id="upcoming-tasks"></div>' +
+            '</div>' +
+          '</div>' +
+        '</div></div>' +
 
       // 출결 및 태도
       '<div class="grid g-21">' +
@@ -296,45 +305,12 @@ Views.dashboard = (function () {
           '<div class="card-b">' + unpaidList(Store.paymentSummary(U.ym(new Date()))) + '</div></div>' +
       '</div>' +
 
-      // 상세 캘린더
-      '<div class="card"><div class="card-h"><h2>업무 상세 계획</h2></div>' +
-        '<div class="card-b">' +
-          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">' +
-            '<h3 style="margin:0;font-size:14px;font-weight:700" id="cal-month">' + year + '년 ' + (month + 1) + '월</h3>' +
-            '<div style="display:flex;gap:6px">' +
-              '<button class="btn sm" id="prev-month">‹</button>' +
-              '<button class="btn sm" id="next-month">›</button>' +
-            '</div>' +
-          '</div>' +
-          '<div id="full-calendar">' + buildCalendar(year, month, today) + '</div>' +
-          '<div id="selected-tasks" style="margin-top:14px"></div>' +
-        '</div></div>' +
-
       // 민감한 정보 (하단)
       '<div class="section-title" style="margin-top:32px;margin-bottom:16px">' +
         Icon.svg('stats', 13) + ' 관리 현황 요약</div>' +
       sensitiveCards() +
 
       '</div>';
-
-    // 미니 캘린더 — 판만 있고 내용이 비어 있어 채웁니다.
-    var miniYear = year, miniMonth = month;
-    function drawMini() {
-      var host = el.querySelector('#mini-calendar');
-      if (!host) return;
-      host.innerHTML = buildCalendar(miniYear, miniMonth, today);
-      var head = el.querySelector('.cal-panel-h h2');
-      if (head) head.textContent = miniYear + '년 ' + (miniMonth + 1) + '월';
-    }
-    function stepMini(by) {
-      miniMonth += by;
-      if (miniMonth < 0) { miniMonth = 11; miniYear--; }
-      if (miniMonth > 11) { miniMonth = 0; miniYear++; }
-      drawMini();
-    }
-    drawMini();
-    el.querySelector('#mini-prev').addEventListener('click', function () { stepMini(-1); });
-    el.querySelector('#mini-next').addEventListener('click', function () { stepMini(1); });
 
     renderUpcomingTasks();
     renderSelectedTasks(today);
@@ -410,41 +386,150 @@ Views.dashboard = (function () {
     }
     addCalendarEvents();
 
+    /**
+     * 달력에서 고른 날짜의 일정을 오른쪽 칸에 정리합니다.
+     * 달력에 찍힌 점(숙제 마감·도서 반납·수업 예정)과 같은 내용을 글로 풀어 줍니다.
+     */
     function renderSelectedTasks(dateStr) {
-      var tasks = Store.tasks('today').concat(Store.tasks('week')).concat(Store.tasks('later'));
-      var dateObj = new Date(dateStr + 'T00:00:00');
-      var dateLabel = dateObj.getFullYear() + '년 ' + (dateObj.getMonth() + 1) + '월 ' + dateObj.getDate() + '일';
+      var d = U.parseYmd(dateStr);
+      var label = d.getFullYear() + '년 ' + (d.getMonth() + 1) + '월 ' + d.getDate() + '일';
 
-      var html = '<div class="task-list-label">' + dateLabel + '의 업무</div>';
+      var hw = Store.homeworks({ open: true }).filter(function (h) { return h.dueDate === dateStr; });
+      var loans = Store.loans({ open: true }).filter(function (l) { return l.dueDate === dateStr; });
+      var overview = Store.dayOverview(dateStr);
 
-      if (!tasks.length) {
-        html += '<div style="font-size:13px;color:#93a4b4;text-align:center;padding:16px 0">할 일이 없습니다.</div>';
-      } else {
-        var todayTasks = Store.tasks('today');
-        var weekTasks = Store.tasks('week');
-        var laterTasks = Store.tasks('later');
+      var html = '<div class="section-title">' + U.esc(label) + ' (' + U.dayOf(dateStr) + ')</div>';
+      var any = false;
 
-        if (todayTasks.length) {
-          html += '<div class="section-title">' + Icon.svg('flame', 13) + ' 오늘</div>';
-          todayTasks.forEach(function(t) {
-            html += '<div class="memo-item' + (t.done ? ' done' : '') + '"><input type="checkbox" class="cbx"' + (t.done ? ' checked' : '') + '><div class="txt">' + U.esc(t.text) + '</div></div>';
-          });
-        }
-
-        if (weekTasks.length) {
-          html += '<div class="section-title">' + Icon.svg('calendar', 13) + ' 이번주</div>';
-          weekTasks.forEach(function(t) {
-            html += '<div class="memo-item' + (t.done ? ' done' : '') + '"><input type="checkbox" class="cbx"' + (t.done ? ' checked' : '') + '><div class="txt">' + U.esc(t.text) + '</div></div>';
-          });
-        }
-
-        if (laterTasks.length) {
-          html += '<div class="section-title">' + Icon.svg('moon', 13) + ' 미뤄두기</div>';
-          laterTasks.forEach(function(t) {
-            html += '<div class="memo-item' + (t.done ? ' done' : '') + '"><input type="checkbox" class="cbx"' + (t.done ? ' checked' : '') + '><div class="txt">' + U.esc(t.text) + '</div></div>';
-          });
-        }
+      if (overview.expected.length) {
+        any = true;
+        html += '<div class="cal-item"><i class="dot cls"></i>' +
+          '<div><b>수업 ' + overview.expected.length + '명</b>' +
+          '<span>' + U.esc(overview.expected.slice(0, 4).map(function (s) { return s.name; }).join(', ')) +
+          (overview.expected.length > 4 ? ' 외 ' + (overview.expected.length - 4) + '명' : '') + '</span></div></div>';
       }
+      hw.forEach(function (h) {
+        any = true;
+        var pr = Store.homeworkProgress(h.id);
+        html += '<div class="cal-item"><i class="dot hw"></i>' +
+          '<div><b>숙제 마감 · ' + U.esc(h.title) + '</b>' +
+          '<span>제출 ' + pr.done + '/' + pr.total + '명</span></div></div>';
+      });
+      loans.forEach(function (l) {
+        any = true;
+        var b = Store.book(l.bookId), st = Store.student(l.studentId);
+        html += '<div class="cal-item"><i class="dot lib"></i>' +
+          '<div><b>도서 반납 · ' + U.esc(st ? st.name : '') + '</b>' +
+          '<span>' + U.esc(b ? b.title : '(삭제된 책)') + '</span></div></div>';
+      });
+
+      if (!any) html += '<div class="empty-day">이 날은 예정된 일정이 없습니다.</div>';
+
+      el.querySelector('#selected-tasks').innerHTML = html;
+    }
+
+    /** 오늘부터 7일 안에 걸린 숙제 마감·도서 반납을 모읍니다. */
+    function renderUpcomingTasks() {
+      var until = U.ymd(new Date(todayDate.getTime() + 7 * 86400000));
+      var rows = [];
+
+      Store.homeworks({ open: true }).forEach(function (h) {
+        if (h.dueDate && h.dueDate >= today && h.dueDate <= until) {
+          rows.push({ date: h.dueDate, text: '숙제 마감 · ' + h.title });
+        }
+      });
+      Store.loans({ open: true }).forEach(function (l) {
+        if (l.dueDate && l.dueDate >= today && l.dueDate <= until) {
+          var st = Store.student(l.studentId);
+          rows.push({ date: l.dueDate, text: '도서 반납 · ' + (st ? st.name : '') });
+        }
+      });
+      rows.sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+
+      var list = el.querySelector('#upcoming-tasks');
+      list.innerHTML = rows.length
+        ? rows.slice(0, 5).map(function (r) {
+            return '<div class="cal-task"><b>' + U.esc(U.shortDate(r.date)) + '</b> ' + U.esc(r.text) + '</div>';
+          }).join('') + (rows.length > 5 ? '<div class="cal-task empty">외 ' + (rows.length - 5) + '건</div>' : '')
+        : '<div class="cal-task empty">앞으로 7일 안에 예정된 일정이 없습니다.</div>';
+    }
+
+    // 캘린더 네비게이션
+    var currentMonth = month;
+    var currentYear = year;
+
+    el.querySelector('#prev-month').addEventListener('click', function() {
+      currentMonth--;
+      if (currentMonth < 0) {
+        currentMonth = 11;
+        currentYear--;
+      }
+      el.querySelector('#cal-month').textContent = currentYear + '년 ' + (currentMonth + 1) + '월';
+      el.querySelector('#full-calendar').innerHTML = buildCalendar(currentYear, currentMonth, today);
+      addCalendarEvents();
+    });
+
+    el.querySelector('#next-month').addEventListener('click', function() {
+      currentMonth++;
+      if (currentMonth > 11) {
+        currentMonth = 0;
+        currentYear++;
+      }
+      el.querySelector('#cal-month').textContent = currentYear + '년 ' + (currentMonth + 1) + '월';
+      el.querySelector('#full-calendar').innerHTML = buildCalendar(currentYear, currentMonth, today);
+      addCalendarEvents();
+    });
+
+    function addCalendarEvents() {
+      UI.on(el, '[data-date]', 'click', function(e, cell) {
+        var date = cell.getAttribute('data-date');
+        document.querySelectorAll('[data-date]').forEach(function(c) {
+          c.classList.remove('selected');
+        });
+        cell.classList.add('selected');
+        renderSelectedTasks(date);
+      });
+    }
+    addCalendarEvents();
+
+    /**
+     * 달력에서 고른 날짜의 일정을 오른쪽 칸에 정리합니다.
+     * 달력에 찍힌 점(숙제 마감·도서 반납·수업 예정)과 같은 내용을 글로 풀어 줍니다.
+     */
+    function renderSelectedTasks(dateStr) {
+      var d = U.parseYmd(dateStr);
+      var label = d.getFullYear() + '년 ' + (d.getMonth() + 1) + '월 ' + d.getDate() + '일';
+
+      var hw = Store.homeworks({ open: true }).filter(function (h) { return h.dueDate === dateStr; });
+      var loans = Store.loans({ open: true }).filter(function (l) { return l.dueDate === dateStr; });
+      var overview = Store.dayOverview(dateStr);
+
+      var html = '<div class="section-title">' + U.esc(label) + ' (' + U.dayOf(dateStr) + ')</div>';
+      var any = false;
+
+      if (overview.expected.length) {
+        any = true;
+        html += '<div class="cal-item"><i class="dot cls"></i>' +
+          '<div><b>수업 ' + overview.expected.length + '명</b>' +
+          '<span>' + U.esc(overview.expected.slice(0, 4).map(function (s) { return s.name; }).join(', ')) +
+          (overview.expected.length > 4 ? ' 외 ' + (overview.expected.length - 4) + '명' : '') + '</span></div></div>';
+      }
+      hw.forEach(function (h) {
+        any = true;
+        var pr = Store.homeworkProgress(h.id);
+        html += '<div class="cal-item"><i class="dot hw"></i>' +
+          '<div><b>숙제 마감 · ' + U.esc(h.title) + '</b>' +
+          '<span>제출 ' + pr.done + '/' + pr.total + '명</span></div></div>';
+      });
+      loans.forEach(function (l) {
+        any = true;
+        var b = Store.book(l.bookId), st = Store.student(l.studentId);
+        html += '<div class="cal-item"><i class="dot lib"></i>' +
+          '<div><b>도서 반납 · ' + U.esc(st ? st.name : '') + '</b>' +
+          '<span>' + U.esc(b ? b.title : '(삭제된 책)') + '</span></div></div>';
+      });
+
+      if (!any) html += '<div class="empty-day">이 날은 예정된 일정이 없습니다.</div>';
 
       el.querySelector('#selected-tasks').innerHTML = html;
     }
