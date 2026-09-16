@@ -8,6 +8,46 @@ Views.dashboard = (function () {
     return U.human(o.date) + ' · 오늘 수업 예정 ' + o.expected.length + '명';
   }
 
+  /** 종합 현황 요약 카드 */
+  function summaryCards() {
+    var all = Store.students();
+    var today = Store.dayOverview(U.ymd());
+    var openHw = Store.homeworks({ open: true });
+    var openLib = Store.loans({ open: true });
+    var unpaid = Store.paymentSummary(U.ym(new Date()));
+    var unpaidCount = unpaid.list.filter(function(p) {
+      var st = Store.paymentStatus(p);
+      return st.key === 'overdue' || st.key === 'partial' || st.key === 'due';
+    }).length;
+
+    return '<div class="grid g-3" style="margin-bottom:28px">' +
+      '<div class="stat">' +
+        '<div class="lbl">📚 총 등록생</div>' +
+        '<div class="val">' + all.length + '</div>' +
+      '</div>' +
+      '<div class="stat">' +
+        '<div class="lbl">✅ 오늘 출석</div>' +
+        '<div class="val">' + today.present + '<small>/ ' + today.expected.length + '</small></div>' +
+      '</div>' +
+      '<div class="stat">' +
+        '<div class="lbl">❌ 오늘 결석</div>' +
+        '<div class="val">' + today.absent + '<small>/ ' + today.expected.length + '</small></div>' +
+      '</div>' +
+      '<div class="stat">' +
+        '<div class="lbl">📝 진행 중 숙제</div>' +
+        '<div class="val">' + openHw.length + '</div>' +
+      '</div>' +
+      '<div class="stat">' +
+        '<div class="lbl">📖 대출 중 도서</div>' +
+        '<div class="val">' + openLib.length + '</div>' +
+      '</div>' +
+      '<div class="stat">' +
+        '<div class="lbl">💳 미납자</div>' +
+        '<div class="val' + (unpaidCount > 0 ? ' bad' : '') + '">' + unpaidCount + '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
   function quickCheck(o) {
     var pending = o.expected.filter(function (s) {
       var r = Store.attendanceFor(s.id, o.date);
@@ -170,8 +210,11 @@ Views.dashboard = (function () {
     el.innerHTML =
       '<div class="stack">' +
 
+      // 종합 현황 요약
+      summaryCards() +
+
       // 상단 미니 캘린더 + 이번주 예정
-      '<div style="background:linear-gradient(135deg,#003d99 0%,#0052cc 100%);border-radius:12px;padding:20px;color:#fff;box-shadow:0 2px 8px rgba(0,61,153,.12);margin-bottom:24px">' +
+      '<div style="background:linear-gradient(135deg,#002060 0%,#003d99 100%);border-radius:12px;padding:20px;color:#fff;box-shadow:0 2px 8px rgba(0,32,96,.15);margin-bottom:24px">' +
         '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">' +
           '<h2 style="margin:0;font-size:16px;font-weight:700">' + year + '년 ' + (month + 1) + '월</h2>' +
           '<div style="display:flex;gap:6px">' +

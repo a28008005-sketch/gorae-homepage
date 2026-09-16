@@ -133,6 +133,9 @@ button{font-family:inherit}
 .stat.orange{background:linear-gradient(135deg,#d98218 0%,#f59e0b 100%);border-color:transparent;color:#fff}
 .stat.orange .lbl,.stat.orange .sub{color:#fef3c7}
 .stat.orange .val small{color:#fef3c7}
+.stat.bad{background:linear-gradient(135deg,#b91c1c 0%,#ef4444 100%);border-color:transparent;color:#fff}
+.stat.bad .lbl,.stat.bad .sub{color:#fecaca}
+.stat.bad .val small{color:#fecaca}
 
 /* ---------- Controls ---------- */
 .btn{
