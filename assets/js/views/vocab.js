@@ -118,7 +118,7 @@ Views.vocab = (function () {
   }
 
   function codeTable(list) {
-    if (!list.length) return UI.emptyBox('등록생이 없습니다.', '🧒');
+    if (!list.length) return UI.emptyBox('등록생이 없습니다.', 'students');
     return '<div class="table-wrap"><table class="tbl" style="min-width:auto">' +
       '<thead><tr><th>학생</th><th>학년</th><th>반</th><th>코드</th></tr></thead><tbody>' +
       list.map(function (s) {
@@ -169,7 +169,7 @@ Views.vocab = (function () {
 
       (Store.vocabLogs().length ? '' :
         '<div class="card" style="margin-bottom:16px"><div class="card-b">' +
-          '<p class="hint" style="margin:0">📱 아직 들어온 기록이 없습니다. 단어학습앱에서 결과를 내보내 ' +
+          '<p class="hint" style="margin:0">아직 들어온 기록이 없습니다. 단어학습앱에서 결과를 내보내 ' +
           '<b>[기록 가져오기]</b>로 넣거나, 앱이 <code>#/import?d=...</code> 링크를 열도록 만들면 자동으로 쌓입니다. ' +
           '형식은 <b>docs/단어학습앱-연동.md</b>에 정리해 두었습니다.</p>' +
         '</div></div>') +
@@ -179,7 +179,7 @@ Views.vocab = (function () {
           (studied.length
             ? studied.slice().sort(function (a, b) { return b.sum.accuracy - a.sum.accuracy; })
                 .map(function (d) { return UI.bar(d.s.name, d.sum.accuracy, 100, '%'); }).join('')
-            : UI.emptyBox('기간 내 학습 기록이 없습니다.', '📱')) +
+            : UI.emptyBox('기간 내 학습 기록이 없습니다.', 'device')) +
         '</div></div>' +
 
         '<div class="card"><div class="card-h"><h2>최근 학습</h2></div><div class="card-b">' +
@@ -193,7 +193,7 @@ Views.vocab = (function () {
               return '<div class="memo-item"><span class="dt">' + U.shortDate(v.date) + '</span>' +
                 '<div class="txt"><b>' + U.esc(s ? s.name : '(삭제됨)') + '</b> ' +
                   '<span class="tag ' + (rate >= 80 ? 'ok' : rate >= 60 ? 'warn' : 'bad') + '">' + rate + '%</span>' +
-                  '<br><span style="font-size:12px;color:#63778a">' + U.esc(v.setName || '') +
+                  '<br><span style="font-size:12px;color:#6b7b8a">' + U.esc(v.setName || '') +
                   ' · ' + v.correct + '/' + v.total + '개</span></div></div>';
             }).join('');
           })() +
@@ -215,7 +215,7 @@ Views.vocab = (function () {
               '<td class="num">' + (d.sum.total ? d.sum.accuracy + '%' : '-') + '</td>' +
               '<td class="num">' + d.sum.minutes + '분</td>' +
               '<td>' + (d.sum.lastDate ? U.shortDate(d.sum.lastDate) : '-') + '</td></tr>';
-          }).join('') : '<tr><td colspan="8">' + UI.emptyBox('등록생이 없습니다.', '🧒') + '</td></tr>') +
+          }).join('') : '<tr><td colspan="8">' + UI.emptyBox('등록생이 없습니다.', 'students') + '</td></tr>') +
         '</tbody></table></div></div>';
 
     UI.on(el, '[data-period]', 'click', function (e, b) {
@@ -245,7 +245,7 @@ Views.vocab = (function () {
     el.innerHTML = '<div class="card"><div class="card-b">' +
       (payload
         ? '<p class="hint" style="margin-top:0">단어학습앱이 보낸 기록입니다. 확인 후 가져오기를 눌러 주세요.</p>'
-        : UI.emptyBox('링크에서 기록을 읽지 못했습니다. 링크가 잘리지 않았는지 확인해 주세요.', '⚠️')) +
+        : UI.emptyBox('링크에서 기록을 읽지 못했습니다. 링크가 잘리지 않았는지 확인해 주세요.', 'alert')) +
       '</div></div>';
     if (payload) openImport(text);
   }

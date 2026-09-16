@@ -15,7 +15,8 @@ var AuthUI = (function () {
     gateEl.className = 'gate';
     gateEl.innerHTML =
       '<div class="gate-card">' +
-        '<div class="gate-brand">🐋 ' + U.esc(ac.name) + ' <span>' + U.esc(ac.campus || '') + '</span></div>' +
+        '<div class="gate-brand">' + Icon.svg('whale', 22) + '<span class="gate-brand-nm">' + U.esc(ac.name) + '</span>' +
+          '<span>' + U.esc(ac.campus || '') + '</span></div>' +
         '<h1>선생님 로그인</h1>' +
         '<p class="gate-sub">학원 계정으로 로그인하면 다른 선생님이 입력한 기록까지 함께 보입니다.</p>' +
         (message ? '<div class="gate-msg">' + U.esc(message) + '</div>' : '') +
@@ -58,7 +59,7 @@ var AuthUI = (function () {
     gateEl.querySelector('#g-local').addEventListener('click', function () {
       UI.confirm(
         '이 기기에만 저장하는 모드로 바꿀까요?<br>' +
-        '<span style="font-size:13px;color:#63778a">클라우드 연결이 끊기고, 이 기기에 남아 있는 기록만 보입니다. ' +
+        '<span style="font-size:13px;color:#6b7b8a">클라우드 연결이 끊기고, 이 기기에 남아 있는 기록만 보입니다. ' +
         '설정 화면에서 언제든 다시 연결할 수 있습니다.</span>',
         function () {
           Sync.disableCloud();
@@ -119,8 +120,8 @@ var AuthUI = (function () {
       var meta = LABEL[s] || LABEL.off;
       var pending = Sync.pendingCount();
       chip.className = 'sync-chip ' + meta.cls;
-      chip.textContent = (s === 'off' ? '💾 ' : '☁️ ') + meta.text +
-        (pending ? ' (' + pending + ')' : '');
+      chip.innerHTML = Icon.svg(s === 'off' ? 'device' : 'cloud', 13) +
+        '<span>' + U.esc(meta.text + (pending ? ' (' + pending + ')' : '')) + '</span>';
       chip.hidden = false;
     });
   }

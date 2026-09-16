@@ -155,7 +155,23 @@ var U = (function () {
     });
   }
 
+  /**
+   * 학부모에게 보내는 공개 링크(리포트·납부확인서)의 기준 주소입니다.
+   *
+   * 대시보드를 비밀번호로 잠가 두면(클라우드플레어 워커) 학부모가 링크를 열 때도
+   * 비밀번호 창이 뜹니다. 그래서 설정에 '공개 링크 주소'(academy.publicBase)를 넣어 두면
+   * 그 주소로 링크를 만듭니다. 비어 있으면 지금 보고 있는 주소를 그대로 씁니다.
+   */
+  function publicBase() {
+    var here = location.href.split('#')[0];
+    var set = '';
+    try { set = String((Store.get().academy || {}).publicBase || '').trim(); } catch (e) { set = ''; }
+    if (!set) return here;
+    return set.charAt(set.length - 1) === '/' ? set : set + '/';
+  }
+
   return {
+    publicBase: publicBase,
     DAYS: DAYS, pad: pad, ymd: ymd, ym: ym, parseYmd: parseYmd, dayOf: dayOf,
     human: human, shortDate: shortDate, hhmm: hhmm, nowLocalInput: nowLocalInput,
     daysInMonth: daysInMonth, daysAgo: daysAgo, uid: uid, esc: esc, pct: pct,

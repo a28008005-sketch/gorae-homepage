@@ -1,0 +1,18 @@
+name = "gorae-staff-gate"
+main = "worker.js"
+compatibility_date = "2025-09-01"
+
+# staff.whalejinju.kr 로 들어오는 모든 요청을 이 워커가 먼저 받습니다.
+# zone_name 은 클라우드플레어에 등록된 도메인 이름입니다.
+[[routes]]
+pattern = "staff.whalejinju.kr/*"
+zone_name = "whalejinju.kr"
+
+# 비밀값은 여기에 적지 않습니다. 아래 명령으로 따로 넣습니다.
+#   npx wrangler secret put STAFF_PASSWORD     (선생님들이 쓰는 학원 비밀번호)
+#   npx wrangler secret put SESSION_SECRET     (쿠키 서명용 아무 긴 문자열)
+#   npx wrangler secret put NOTION_TOKEN       (노션 연동을 쓸 때만)
+#
+# 노션 학생 명부의 데이터베이스 ID 는 비밀이 아니라서 여기에 두어도 됩니다.
+[vars]
+NOTION_STUDENT_DB = "2c3e4c50882081c2b2c5ded6f7a8ba5a"

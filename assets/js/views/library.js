@@ -27,7 +27,7 @@ Views.library = (function () {
     if (!list.length) {
       return '<tr><td colspan="7">' + UI.emptyBox(
         Store.books().length ? '조건에 맞는 책이 없습니다.' : '등록된 도서가 없습니다. [+ 도서 등록] 또는 [CSV 일괄 등록]으로 시작하세요.',
-        '📚') + '</td></tr>';
+        'book') + '</td></tr>';
     }
     return list.slice(0, 300).map(function (b) {
       var st = Store.bookStatus(b);
@@ -167,7 +167,7 @@ Views.library = (function () {
           w.querySelector('#b-del').addEventListener('click', function () {
             UI.close();
             UI.confirm('<b>' + U.esc(b.title) + '</b> 를 목록에서 지울까요?<br>' +
-              '<span style="font-size:13px;color:#63778a">지난 대여 기록은 남습니다.</span>',
+              '<span style="font-size:13px;color:#6b7b8a">지난 대여 기록은 남습니다.</span>',
               function () {
                 Store.deleteBook(b.id);
                 UI.toast('삭제했습니다.');
@@ -402,7 +402,7 @@ Views.library = (function () {
         '<div class="stat accent"><div class="lbl">보유 도서</div><div class="val">' + U.num(all.length) + '<small>권</small></div>' +
           '<div class="sub">대출 가능 ' + (all.length - open.length) + '권</div></div>' +
         '<div class="stat"><div class="lbl">대출 중</div><div class="val">' + open.length + '<small>권</small></div></div>' +
-        '<div class="stat"><div class="lbl">연체</div><div class="val" style="color:' + (over.length ? '#d5453f' : 'inherit') + '">' +
+        '<div class="stat"><div class="lbl">연체</div><div class="val" style="color:' + (over.length ? '#a8453f' : 'inherit') + '">' +
           over.length + '<small>권</small></div>' +
           '<div class="sub">' + (over.length ? '반납 안내가 필요합니다' : '연체 없음') + '</div></div>' +
         '<div class="stat"><div class="lbl">이달 대출</div><div class="val">' +
@@ -417,7 +417,7 @@ Views.library = (function () {
             var b = Store.book(l.bookId), s = Store.student(l.studentId);
             return '<div class="memo-item"><div class="txt"><b>' + U.esc(s ? s.name : '') + '</b> · ' +
               U.esc(b ? b.title : '(삭제된 책)') +
-              '<br><span style="font-size:12px;color:#63778a">반납 예정 ' + U.esc(l.dueDate) +
+              '<br><span style="font-size:12px;color:#6b7b8a">반납 예정 ' + U.esc(l.dueDate) +
               ' · ' + U.dayDiff(l.dueDate, U.ymd()) + '일 지남</span></div>' +
               '<button class="btn sm" data-return="' + l.id + '">반납</button></div>';
           }).join('') +

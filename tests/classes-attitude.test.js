@@ -54,13 +54,33 @@ const ok = (l,c,e='') => console.log(`  ${c?'✓':'✗ 실패'}  ${l}${e?' — '
   await p.goto(BASE + '#/attendance', { waitUntil: 'domcontentloaded' }); await p.waitForTimeout(600);
   await p.click('#sc-all'); await p.waitForTimeout(400);
   ok('수업 태도 줄 표시', (await p.locator('.att-attitude').count()) > 0);
-  await p.click('.att-row:first-child [data-attitude="💤 졸음"]'); await p.waitForTimeout(500);
+  await p.click('.att-row:first-child [data-attitude="졸음"]'); await p.waitForTimeout(500);
   const saved = await p.evaluate(() => {
     const s = Store.students({active:true})[0];
     const r = Store.attendanceFor(s.id, U.ymd());
     return r && r.attitude;
   });
-  ok('수업 태도 저장', Array.isArray(saved) && saved.includes('💤 졸음'), JSON.stringify(saved));
+  ok('수업 태도 저장', Array.isArray(saved) && saved.includes('졸음'), JSON.stringify(saved));
+
+  // 이모지가 붙어 저장되어 있던 예전 기록이 새 이름으로 옮겨오는지
+  const renamed = await p.evaluate(() => {
+    const s = Store.students({active:true})[0];
+    const rec = Store.attendanceFor(s.id, U.ymd());
+    rec.attitude = ['🟢 집중', '📱 휴대폰 사용'];
+    const d = Store.get();
+    d.meta.attitudesRenamed = false;
+    Store.migrateAttitudes();
+    return Store.attendanceFor(s.id, U.ymd()).attitude;
+  });
+  ok('예전 태도 이름 이관',
+     renamed.join('|') === '집중|휴대폰 사용', JSON.stringify(renamed));
+
+  // 아이콘이 이모지 대신 SVG 로 그려졌는지
+  const icons = await p.evaluate(() => ({
+    nav: document.querySelectorAll('.nav a i svg').length,
+    brand: !!document.querySelector('.brand-mark svg')
+  }));
+  ok('메뉴 아이콘 11개 표시', icons.nav === 11 && icons.brand, JSON.stringify(icons));
   await p.screenshot({ path: (process.env.SHOT_DIR || '.') + '/c-attendance.png' });
 
   // 나머지 화면 회귀

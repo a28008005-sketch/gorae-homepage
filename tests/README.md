@@ -19,6 +19,12 @@ node tests/worksheet.test.js                 # 워크시트 레벨 판정·생�
 node tests/bundle-check.js                   # dist 단일 파일이 제대로 동작하는지
 ```
 
+클라우드플레어 워커는 브라우저 없이 확인합니다. 정적 서버도 필요 없습니다.
+
+```bash
+node tests/worker.test.js                    # 비밀번호 문지기 · 공개 통로 · 노션 창구
+```
+
 클라우드 동기화 확인은 가짜 백엔드를 먼저 띄웁니다.
 
 ```bash

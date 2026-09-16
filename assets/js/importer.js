@@ -115,7 +115,7 @@ var VocabImport = (function () {
           '<thead><tr><th>학생</th><th>날짜</th><th>단어장</th><th class="num">정답</th><th class="num">정답률</th></tr></thead>' +
           '<tbody>' + rows + '</tbody></table></div>' +
           (res.ready.length > 12 ? '<div class="hint" style="margin-top:6px">외 ' + (res.ready.length - 12) + '건</div>' : '')
-        : UI.emptyBox('가져올 기록이 없습니다.', '📥')) +
+        : UI.emptyBox('가져올 기록이 없습니다.', 'inbox')) +
       (res.unknown.length
         ? '<div class="section-title">학생을 찾지 못한 줄 (' + res.unknown.length + '건)</div>' +
           '<p class="hint" style="margin-top:0">아래 값과 일치하는 학생 코드나 이름이 명부에 없습니다. ' +

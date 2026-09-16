@@ -13,7 +13,7 @@ Views.classes = (function () {
   function classCard(c) {
     var members = Store.studentsInClass(c.id);
     var full = c.capacity && members.length >= c.capacity;
-    return '<div class="class-card" style="--klass:' + U.esc(c.color || '#1a7fd4') + '">' +
+    return '<div class="class-card" style="--klass:' + U.esc(c.color || '#215a86') + '">' +
       '<div class="class-top">' +
         '<div>' +
           '<div class="class-name">' + U.esc(c.name) + '</div>' +
@@ -61,7 +61,7 @@ Views.classes = (function () {
         out += '<div class="cell">' + here.map(function (c) {
           var n = Store.studentsInClass(c.id).length;
           return '<button class="tt-block" data-edit="' + c.id + '" ' +
-            'style="--klass:' + U.esc(c.color || '#1a7fd4') + '">' +
+            'style="--klass:' + U.esc(c.color || '#215a86') + '">' +
             '<b>' + U.esc(c.name) + '</b><span>' + n + '명' +
             (c.teacher ? ' · ' + U.esc(c.teacher) : '') + '</span></button>';
         }).join('') + '</div>';
@@ -137,7 +137,7 @@ Views.classes = (function () {
             var n = Store.studentsInClass(c.id).length;
             UI.close();
             UI.confirm('<b>' + U.esc(c.name) + '</b> 반을 삭제할까요?<br>' +
-              '<span style="font-size:13px;color:#63778a">' +
+              '<span style="font-size:13px;color:#6b7b8a">' +
               (n ? '소속 학생 ' + n + '명은 반 미배정 상태가 되고, 출결·수강료 기록은 그대로 남습니다.'
                  : '소속 학생이 없어 다른 기록에는 영향이 없습니다.') + '</span>',
               function () {
@@ -171,7 +171,7 @@ Views.classes = (function () {
               '<span class="hint">' + U.esc(s.grade || '') + '</span>' +
               (other ? '<span class="tag gray">' + U.esc(other.name) + '</span>' : '') +
             '</label>';
-          }).join('') : UI.emptyBox('등록생이 없습니다.', '🧒')) +
+          }).join('') : UI.emptyBox('등록생이 없습니다.', 'students')) +
         '</div>',
       footer: '<span class="hint" id="m-count"></span><div class="sp"></div>' +
               '<button class="btn" data-close>취소</button><button class="btn primary" id="m-save">저장</button>',
@@ -217,7 +217,7 @@ Views.classes = (function () {
     }
     UI.confirm(
       '지금 학생들의 요일·시간을 묶어 반 ' + keys.length + '개를 만들까요?<br>' +
-      '<span style="font-size:13px;color:#63778a">' +
+      '<span style="font-size:13px;color:#6b7b8a">' +
       keys.map(function (k) {
         var g = groups[k];
         return '· ' + (g.days.join('·') || '요일없음') + ' ' + (g.time || '') + ' — ' + g.members.length + '명';
@@ -250,7 +250,7 @@ Views.classes = (function () {
           '<div class="card-b">' +
             (cs.length
               ? '<div class="class-grid">' + cs.map(classCard).join('') + '</div>'
-              : UI.emptyBox('아직 만든 반이 없습니다. [+ 반 만들기]로 시작하세요.', '🗓️')) +
+              : UI.emptyBox('아직 만든 반이 없습니다. [+ 반 만들기]로 시작하세요.', 'calendar')) +
           '</div>' +
         '</div>' +
 

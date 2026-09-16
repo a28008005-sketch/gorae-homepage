@@ -60,7 +60,7 @@ Views.attendance = (function () {
     if (!list.length) {
       return UI.emptyBox(scope === 'day'
         ? U.dayOf(date) + '요일에 수업이 있는 학생이 없습니다. 오른쪽 위에서 [전체 등록생]으로 바꿔보세요.'
-        : '등록생이 없습니다. 학생 명부에서 먼저 등록해 주세요.', '🗓️');
+        : '등록생이 없습니다. 학생 명부에서 먼저 등록해 주세요.', 'calendar');
     }
     return list.map(row).join('');
   }

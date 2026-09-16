@@ -29,7 +29,7 @@ Views.students = (function () {
 
   function rows() {
     var list = Store.students().filter(matches);
-    if (!list.length) return '<tr><td colspan="8">' + UI.emptyBox('조건에 맞는 학생이 없습니다.', '🔎') + '</td></tr>';
+    if (!list.length) return '<tr><td colspan="8">' + UI.emptyBox('조건에 맞는 학생이 없습니다.', 'search') + '</td></tr>';
     var today = U.ymd();
     return list.map(function (s) {
       var rec = Store.attendanceFor(s.id, today);
@@ -130,7 +130,7 @@ Views.students = (function () {
             UI.close();
             UI.confirm(
               '<b>' + U.esc(s.name) + '</b> 학생을 삭제할까요?<br>' +
-              '<span style="color:#63778a;font-size:13px">출결 · 수강료 · 메모 기록이 모두 함께 삭제되며 되돌릴 수 없습니다.<br>' +
+              '<span style="color:#6b7b8a;font-size:13px">출결 · 수강료 · 메모 기록이 모두 함께 삭제되며 되돌릴 수 없습니다.<br>' +
               '기록을 남기려면 대신 등록 여부를 <b>퇴원생</b>으로 바꿔 주세요.</span>',
               function () {
                 Store.deleteStudent(s.id);
@@ -199,8 +199,8 @@ Views.students = (function () {
             '<td>' + (att.length
               ? '<span class="tag ' + (att.some(Store.isIssue) ? 'warn' : 'ok') + '">' + U.esc(att.join(' ')) + '</span>'
               : '–') + '</td>' +
-            '<td>' + (r.planner ? '✅' : '–') + '</td><td>' + (r.planDone ? '✅' : '–') + '</td>' +
-            '<td>' + (r.homework ? '✅' : '–') + '</td><td>' + U.esc(r.note || '') + '</td></tr>';
+            '<td>' + (r.planner ? '○' : '–') + '</td><td>' + (r.planDone ? '○' : '–') + '</td>' +
+            '<td>' + (r.homework ? '○' : '–') + '</td><td>' + U.esc(r.note || '') + '</td></tr>';
         }).join('') + '</tbody></table></div>'
         : '<div class="hint">기록이 없습니다.</div>') +
 

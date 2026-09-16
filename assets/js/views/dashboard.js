@@ -14,10 +14,10 @@ Views.dashboard = (function () {
       return !r || !r.status;
     });
     if (!o.expected.length) {
-      return UI.emptyBox('오늘(' + o.day + '요일)은 예정된 수업이 없습니다.', '🗓️');
+      return UI.emptyBox('오늘(' + o.day + '요일)은 예정된 수업이 없습니다.', 'calendar');
     }
     if (!pending.length) {
-      return '<div class="empty"><span class="big">✅</span>오늘 출결 체크를 모두 마쳤습니다.<br>' +
+      return '<div class="empty"><span class="big">' + Icon.svg('check', 30) + '</span>오늘 출결 체크를 모두 마쳤습니다.<br>' +
         '<span style="font-size:12.5px">출석 ' + o.present + '명 · 결석 ' + o.absent + '명</span></div>';
     }
     return pending.map(function (s) {
@@ -41,7 +41,7 @@ Views.dashboard = (function () {
   /** 오늘 기록된 수업 태도 */
   function attitudeToday() {
     var list = Store.attendanceOn(U.ymd()).filter(function (r) { return (r.attitude || []).length; });
-    if (!list.length) return UI.emptyBox('오늘 기록된 수업 태도가 없습니다.', '🙂');
+    if (!list.length) return UI.emptyBox('오늘 기록된 수업 태도가 없습니다.', 'smile');
     // 주의가 필요한 학생을 위로 올립니다.
     list.sort(function (a, b) {
       return ((b.attitude || []).some(Store.isIssue) ? 1 : 0) - ((a.attitude || []).some(Store.isIssue) ? 1 : 0);
@@ -52,7 +52,7 @@ Views.dashboard = (function () {
       return '<div class="memo-item">' +
         '<div class="txt"><b>' + U.esc(s ? s.name : '(삭제된 학생)') + '</b> ' +
           '<span class="tag ' + (issue ? 'warn' : 'ok') + '">' + U.esc((r.attitude || []).join(' ')) + '</span>' +
-          (r.attitudeNote ? '<br><span style="font-size:12.5px;color:#63778a">' + U.esc(r.attitudeNote) + '</span>' : '') +
+          (r.attitudeNote ? '<br><span style="font-size:12.5px;color:#6b7b8a">' + U.esc(r.attitudeNote) + '</span>' : '') +
         '</div></div>';
     }).join('');
   }
@@ -77,10 +77,10 @@ Views.dashboard = (function () {
       return Store.paymentStatus(b).overdue - Store.paymentStatus(a).overdue;
     });
     if (!pay.list.length) {
-      return '<div class="hint">이번 달 청구서가 아직 없습니다. <a href="#/tuition" style="color:#1a7fd4;font-weight:600">청구서를 생성</a>해 주세요.</div>';
+      return '<div class="hint">이번 달 청구서가 아직 없습니다. <a href="#/tuition" style="color:#215a86;font-weight:600">청구서를 생성</a>해 주세요.</div>';
     }
     if (!list.length) {
-      return '<div class="empty" style="padding:26px 12px"><span class="big">💰</span>이번 달 수강료를 모두 받았습니다.</div>';
+      return '<div class="empty" style="padding:26px 12px"><span class="big">' + Icon.svg('coin', 30) + '</span>이번 달 수강료를 모두 받았습니다.</div>';
     }
     return list.slice(0, 6).map(function (p) {
       var s = Store.student(p.studentId);
@@ -88,19 +88,19 @@ Views.dashboard = (function () {
       var remain = (Number(p.amount) || 0) - (Number(p.paidAmount) || 0);
       return '<div class="memo-item"><div class="txt"><b>' + U.esc(s ? s.name : '') + '</b> ' +
         '<span class="tag ' + st.tag + '">' + U.esc(st.label) + '</span>' +
-        '<br><span style="font-size:12px;color:#63778a">' + U.won(remain) + ' · 기한 ' + U.esc(p.dueDate || '-') + '</span></div></div>';
+        '<br><span style="font-size:12px;color:#6b7b8a">' + U.won(remain) + ' · 기한 ' + U.esc(p.dueDate || '-') + '</span></div></div>';
     }).join('') + (list.length > 6 ? '<div class="hint" style="margin-top:8px">외 ' + (list.length - 6) + '명</div>' : '');
   }
 
   /** 진행 중 숙제의 제출 현황 */
   function homeworkBox() {
     var open = Store.homeworks({ open: true });
-    if (!open.length) return '<div class="hint">진행 중인 숙제가 없습니다. <a href="#/homework" style="color:#1a7fd4;font-weight:600">숙제 내기</a></div>';
+    if (!open.length) return '<div class="hint">진행 중인 숙제가 없습니다. <a href="#/homework" style="color:#215a86;font-weight:600">숙제 내기</a></div>';
     return open.slice(0, 5).map(function (h) {
       var pr = Store.homeworkProgress(h.id);
       return '<div class="memo-item"><div class="txt"><b>' + U.esc(h.title) + '</b> ' +
         '<span class="tag ' + (pr.rate === 100 ? 'ok' : pr.rate >= 60 ? 'warn' : 'bad') + '">' + pr.rate + '%</span>' +
-        '<br><span style="font-size:12px;color:#63778a">제출 ' + pr.done + '/' + pr.total + '명' +
+        '<br><span style="font-size:12px;color:#6b7b8a">제출 ' + pr.done + '/' + pr.total + '명' +
         (h.dueDate ? ' · 마감 ' + U.esc(h.dueDate) : '') + '</span></div></div>';
     }).join('') + (open.length > 5 ? '<div class="hint" style="margin-top:8px">외 ' + (open.length - 5) + '건</div>' : '');
   }
@@ -110,9 +110,9 @@ Views.dashboard = (function () {
     var over = Store.overdueLoans();
     var open = Store.loans({ open: true });
     if (!Store.books().length) {
-      return '<div class="hint">등록된 도서가 없습니다. <a href="#/library" style="color:#1a7fd4;font-weight:600">도서 등록</a></div>';
+      return '<div class="hint">등록된 도서가 없습니다. <a href="#/library" style="color:#215a86;font-weight:600">도서 등록</a></div>';
     }
-    if (!open.length) return '<div class="empty" style="padding:26px 12px"><span class="big">📖</span>대출 중인 책이 없습니다.</div>';
+    if (!open.length) return '<div class="empty" style="padding:26px 12px"><span class="big">' + Icon.svg('book', 30) + '</span>대출 중인 책이 없습니다.</div>';
     var soon = open.slice().sort(function (a, b) {
       return String(a.dueDate || '').localeCompare(String(b.dueDate || ''));
     });
@@ -122,7 +122,7 @@ Views.dashboard = (function () {
       return '<div class="memo-item"><div class="txt"><b>' + U.esc(st ? st.name : '') + '</b> ' +
         '<span class="tag ' + (late ? 'bad' : 'blue') + '">' +
           (late ? U.dayDiff(l.dueDate, U.ymd()) + '일 연체' : '~' + U.esc(l.dueDate || '')) + '</span>' +
-        '<br><span style="font-size:12px;color:#63778a">' + U.esc(b ? b.title : '(삭제된 책)') + '</span></div></div>';
+        '<br><span style="font-size:12px;color:#6b7b8a">' + U.esc(b ? b.title : '(삭제된 책)') + '</span></div></div>';
     }).join('') + (over.length ? '<div class="hint" style="margin-top:8px">연체 ' + over.length + '권</div>' : '');
   }
 
@@ -172,9 +172,9 @@ Views.dashboard = (function () {
             '<button class="btn primary" id="task-add">추가</button>' +
           '</div>' +
           '<div class="grid g-3">' +
-            '<div><div class="section-title">🔥 오늘</div>' + taskList('today') + '</div>' +
-            '<div><div class="section-title">📅 이번주</div>' + taskList('week') + '</div>' +
-            '<div><div class="section-title">💤 미뤄두기</div>' + taskList('later') + '</div>' +
+            '<div><div class="section-title">' + Icon.svg('flame', 13) + ' 오늘</div>' + taskList('today') + '</div>' +
+            '<div><div class="section-title">' + Icon.svg('calendar', 13) + ' 이번주</div>' + taskList('week') + '</div>' +
+            '<div><div class="section-title">' + Icon.svg('moon', 13) + ' 미뤄두기</div>' + taskList('later') + '</div>' +
           '</div>' +
         '</div></div>' +
 

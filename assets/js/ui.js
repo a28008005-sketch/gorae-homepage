@@ -81,8 +81,11 @@ var UI = (function () {
     return '<span class="tag ok">출석</span>';
   }
 
+  /** icon 은 Icon 에 등록된 이름('book' 등)이거나, 그대로 찍을 문자열입니다. */
   function emptyBox(msg, icon) {
-    return '<div class="empty"><span class="big">' + (icon || '🐋') + '</span>' + U.esc(msg) + '</div>';
+    var name = icon || 'whale';
+    var mark = (window.Icon && Icon.has(name)) ? Icon.svg(name, 30) : name;
+    return '<div class="empty"><span class="big">' + mark + '</span>' + U.esc(msg) + '</div>';
   }
 
   function bar(name, value, max, suffix) {

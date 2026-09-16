@@ -172,7 +172,7 @@ Views.settings = (function () {
           '<button class="btn primary" id="c-connect">클라우드 연결</button>' +
           '<a class="btn" href="docs/서버형-설치안내.md" target="_blank" rel="noopener">설치 안내 보기</a>' +
         '</div>' +
-        '<p class="hint" style="margin-top:12px">⚠️ 여기에는 반드시 <b>anon public</b> 키만 넣으세요. ' +
+        '<p class="hint" style="margin-top:12px">여기에는 반드시 <b>anon public</b> 키만 넣으세요. ' +
         'service_role 키는 브라우저에 넣으면 안 됩니다.</p>';
     }
     var u = Sync.currentUser();
@@ -221,7 +221,7 @@ Views.settings = (function () {
     if (upload) {
       upload.addEventListener('click', function () {
         UI.confirm('이 기기의 기록 전체를 클라우드로 올릴까요?<br>' +
-          '<span style="font-size:13px;color:#63778a">같은 기록이 클라우드에 이미 있다면 이 기기의 내용으로 덮어씁니다.</span>',
+          '<span style="font-size:13px;color:#6b7b8a">같은 기록이 클라우드에 이미 있다면 이 기기의 내용으로 덮어씁니다.</span>',
           function () {
             upload.disabled = true; upload.textContent = '올리는 중…';
             Sync.uploadAll().then(function (n) {
@@ -244,7 +244,7 @@ Views.settings = (function () {
     var off = el.querySelector('#c-off');
     if (off) off.addEventListener('click', function () {
       UI.confirm('클라우드 연결을 해제할까요?<br>' +
-        '<span style="font-size:13px;color:#63778a">이 기기의 기록은 그대로 남고, 이후 변경은 다른 선생님께 전달되지 않습니다.</span>',
+        '<span style="font-size:13px;color:#6b7b8a">이 기기의 기록은 그대로 남고, 이후 변경은 다른 선생님께 전달되지 않습니다.</span>',
         function () {
           Sync.disableCloud();
           UI.toast('연결을 해제했습니다.');
@@ -269,6 +269,12 @@ Views.settings = (function () {
             '<label class="fld full">주소<input type="text" id="a-addr" value="' + U.esc(ac.address) + '"></label>' +
             '<label class="fld">대표 연락처<input type="tel" id="a-phone" value="' + U.esc(ac.phone) + '"></label>' +
             '<label class="fld">홈페이지<input type="text" id="a-site" value="' + U.esc(ac.site) + '"></label>' +
+            '<label class="fld full">학부모 공개 링크 주소 ' +
+              '<span style="font-weight:400">(비워 두면 지금 보고 있는 주소를 씁니다)</span>' +
+              '<input type="text" id="a-pubbase" placeholder="https://staff.whalejinju.kr/p/" value="' + U.esc(ac.publicBase || '') + '"></label>' +
+            '<p class="hint full" style="margin:-4px 0 4px">' +
+              '대시보드를 비밀번호로 잠가 두었다면, 학부모에게 보내는 리포트·납부확인서 링크는 ' +
+              '비밀번호 없이 열리는 주소로 만들어야 합니다. 그 주소를 여기에 적어 주세요.</p>' +
             '<label class="fld full">수업 시간대 <span style="font-weight:400">(쉼표로 구분)</span>' +
               '<input type="text" id="a-times" value="' + U.esc(ac.times.join(', ')) + '"></label>' +
           '</div>' +
@@ -341,6 +347,7 @@ Views.settings = (function () {
         address: el.querySelector('#a-addr').value.trim(),
         phone: el.querySelector('#a-phone').value.trim(),
         site: el.querySelector('#a-site').value.trim(),
+        publicBase: el.querySelector('#a-pubbase').value.trim(),
         times: times.length ? times : ['1시', '2시', '3시', '4시'],
         defaultFee: Number(el.querySelector('#a-fee').value) || 0,
         billingDay: Math.min(Math.max(Number(el.querySelector('#a-bday').value) || 10, 1), 31),
@@ -382,7 +389,7 @@ Views.settings = (function () {
 
     el.querySelector('#b-sample').addEventListener('click', function () {
       UI.confirm('예시 학생 8명과 최근 3주치 출결 기록을 추가할까요?<br>' +
-        '<span style="font-size:13px;color:#63778a">기존 기록은 지워지지 않고 함께 남습니다.</span>', function () {
+        '<span style="font-size:13px;color:#6b7b8a">기존 기록은 지워지지 않고 함께 남습니다.</span>', function () {
         seedSample();
         UI.toast('예시 데이터를 넣었습니다.');
         render(el);
@@ -391,7 +398,7 @@ Views.settings = (function () {
 
     el.querySelector('#b-reset').addEventListener('click', function () {
       UI.confirm('저장된 <b>모든 기록이 삭제</b>됩니다. 되돌릴 수 없습니다.<br>' +
-        '<span style="font-size:13px;color:#63778a">먼저 백업 파일을 내려받아 두시길 권합니다.</span>', function () {
+        '<span style="font-size:13px;color:#6b7b8a">먼저 백업 파일을 내려받아 두시길 권합니다.</span>', function () {
         Store.resetAll();
         UI.toast('초기화했습니다.');
         App.refreshBrand();

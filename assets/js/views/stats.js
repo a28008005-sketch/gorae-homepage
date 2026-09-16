@@ -39,7 +39,7 @@ Views.stats = (function () {
       return { date: d, rate: o.rate, marked: o.present + o.absent };
     }).filter(function (r) { return r.marked > 0; });
 
-    if (!rows.length) return UI.emptyBox('이 달에 기록된 출결이 없습니다.', '📈');
+    if (!rows.length) return UI.emptyBox('이 달에 기록된 출결이 없습니다.', 'stats');
     return rows.map(function (r) {
       return UI.bar(U.shortDate(r.date), r.rate, 100, '%');
     }).join('');
@@ -74,13 +74,13 @@ Views.stats = (function () {
         '<div class="card"><div class="card-h"><h2>학생별 출석률</h2></div><div class="card-b">' +
           (data.length ? data.slice().sort(function (a, b) { return b.sum.rate - a.sum.rate; })
             .map(function (d) { return UI.bar(d.s.name, d.sum.total ? d.sum.rate : 0, 100, '%'); }).join('')
-            : UI.emptyBox('등록생이 없습니다.', '🧒')) +
+            : UI.emptyBox('등록생이 없습니다.', 'students')) +
         '</div></div>' +
 
         '<div class="card"><div class="card-h"><h2>관심이 필요한 학생</h2></div><div class="card-b">' +
           (lowest.length ? lowest.map(function (d) {
             return '<div class="memo-item"><div class="txt"><b>' + U.esc(d.s.name) + '</b>' +
-              '<br><span style="font-size:12px;color:#63778a">출석률 ' + d.sum.rate + '% · 결석 ' + d.sum.absent +
+              '<br><span style="font-size:12px;color:#6b7b8a">출석률 ' + d.sum.rate + '% · 결석 ' + d.sum.absent +
               '회 · 지각 ' + d.sum.flags['지각'] + '회 · 태도 주의 ' + d.sum.attitudeIssues + '일</span></div></div>';
           }).join('') : '<div class="hint">집계할 출결 기록이 없습니다.</div>') +
         '</div></div>' +
@@ -102,7 +102,7 @@ Views.stats = (function () {
               '<td class="num">' + d.sum.flags['지각'] + '</td><td class="num">' + d.sum.flags['외출'] + '</td>' +
               '<td class="num">' + d.sum.flags['조퇴'] + '</td><td class="num">' + d.sum.planner + '</td>' +
               '<td class="num">' + d.sum.homework + '</td><td class="num">' + d.sum.attitudeIssues + '</td></tr>';
-          }).join('') : '<tr><td colspan="12">' + UI.emptyBox('등록생이 없습니다.', '🧒') + '</td></tr>') +
+          }).join('') : '<tr><td colspan="12">' + UI.emptyBox('등록생이 없습니다.', 'students') + '</td></tr>') +
         '</tbody></table></div></div>';
 
     el.querySelector('#month').addEventListener('change', function (e) {

@@ -46,14 +46,14 @@ Views.share = (function () {
             : r.s === '결석' ? '<span class="tag bad">결석</span>'
             : (r.f.length ? '<span class="tag warn">출석 · ' + U.esc(r.f.join('/')) + '</span>' : '<span class="tag ok">출석</span>');
           return '<tr><td>' + U.shortDate(r.d) + '</td><td>' + tag + '</td>' +
-            '<td>' + (r.p ? '✅' : '–') + '</td><td>' + (r.c ? '✅' : '–') + '</td>' +
-            '<td>' + (r.h ? '✅' : '–') + '</td><td>' + U.esc(r.n) + '</td></tr>';
+            '<td>' + (r.p ? '○' : '–') + '</td><td>' + (r.c ? '○' : '–') + '</td>' +
+            '<td>' + (r.h ? '○' : '–') + '</td><td>' + U.esc(r.n) + '</td></tr>';
         }).join('') + '</tbody></table></div>'
       : '<div class="hint">이 기간에 기록된 출결이 없습니다.</div>';
 
     return '<div class="report">' +
       '<div class="report-hd">' +
-        '<div style="font-size:12.5px;color:#c9e3f8">🐋 ' + U.esc(rep.academy.name) + ' ' + U.esc(rep.academy.campus) + ' 학습 리포트</div>' +
+        '<div style="font-size:12.5px;color:#a3b6c7">' + U.esc(rep.academy.name) + ' ' + U.esc(rep.academy.campus) + ' 학습 리포트</div>' +
         '<div class="who" style="margin-top:6px">' + U.esc(rep.student.name) +
           (rep.student.grade ? ' <span style="font-size:14px;font-weight:500">· ' + U.esc(rep.student.grade) + '</span>' : '') +
           (rep.student.className ? ' <span style="font-size:13px;font-weight:500;opacity:.85">· ' + U.esc(rep.student.className) + '</span>' : '') + '</div>' +
@@ -92,8 +92,7 @@ Views.share = (function () {
 
   /* ---------- 공유 링크 ---------- */
   function linkFor(rep) {
-    var base = location.href.split('#')[0];
-    return base + '#/report?d=' + U.encodeData(rep);
+    return U.publicBase() + '#/report?d=' + U.encodeData(rep);
   }
 
   /* ---------- 관리자 화면 ---------- */
@@ -147,7 +146,7 @@ Views.share = (function () {
       var rep = currentReport();
       el.querySelector('#sh-preview').innerHTML = rep
         ? reportHtml(rep)
-        : '<div class="card"><div class="card-b">' + UI.emptyBox('학생을 먼저 등록해 주세요.', '🧒') + '</div></div>';
+        : '<div class="card"><div class="card-b">' + UI.emptyBox('학생을 먼저 등록해 주세요.', 'students') + '</div></div>';
     }
     preview();
 
@@ -209,7 +208,7 @@ Views.share = (function () {
     document.body.classList.add('share-mode');
     if (!rep || !rep.student) {
       el.innerHTML = '<div class="share-view"><div class="card"><div class="card-b">' +
-        UI.emptyBox('리포트를 불러올 수 없습니다. 링크가 잘리지 않았는지 확인해 주세요.', '⚠️') +
+        UI.emptyBox('리포트를 불러올 수 없습니다. 링크가 잘리지 않았는지 확인해 주세요.', 'alert') +
         '</div></div></div>';
       return;
     }

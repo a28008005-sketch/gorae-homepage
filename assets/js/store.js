@@ -13,12 +13,13 @@ var Store = (function () {
   var GRADES = ['1학년', '2학년', '3학년', '4학년', '5학년', '6학년', '중1', '중2', '중3'];
   var FLAGS = ['지각', '외출', '조퇴'];
   // 수업 태도 (예전 '순회 점검 기록'을 일일학습 안으로 합쳤습니다)
-  var ATTITUDES = ['🟢 집중', '💤 졸음', '🏃 이탈/부재', '📱 휴대폰 사용', '💬 잡담/소란'];
+  // 이모지를 뺀 글자만 씁니다. 예전에 이모지가 붙어 저장된 기록은 migrateAttitudes() 가 옮깁니다.
+  var ATTITUDES = ['집중', '졸음', '이탈/부재', '휴대폰 사용', '잡담/소란'];
   var HOMEWORK_TYPES = ['단어', '원서 읽기', '워크북', '녹음', '기타'];
   var SUBMIT_STATUS = ['미제출', '제출', '확인'];
   var BOOK_CATEGORIES = ['리더스', '챕터북', '노블', '논픽션', '그림책', '워크북'];
   var LOAN_DAYS = 7;
-  var CLASS_COLORS = ['#1a7fd4', '#17b7a6', '#d98218', '#8a6ad4', '#d5453f', '#12a05c', '#c2557f', '#4a7a99'];
+  var CLASS_COLORS = ['#215a86', '#357f73', '#a8894f', '#6b5f96', '#a8453f', '#2e7a57', '#96607a', '#4a6577'];
   var WEEKDAYS = ['월', '화', '수', '목', '금', '토'];
   var PAY_METHODS = ['계좌이체', '현금', '카드', '기타'];
 
@@ -31,6 +32,7 @@ var Store = (function () {
       address: '경남 진주시 초전동 1639-2',
       phone: '010-3803-8335',
       site: 'https://whalejinju.kr',
+      publicBase: '',           // 학부모 공개 링크의 기준 주소 (비우면 지금 주소)
       seatCount: 20,
       times: ['1시', '2시', '3시', '4시', '5시', '6시', '7시', '8시'],
       defaultFee: 250000,
@@ -332,8 +334,11 @@ var Store = (function () {
   }
   /** 수업 태도 항목 켜고 끄기 */
   function toggleAttitude(studentId, date, state) {
+    state = ATTITUDE_ALIAS[state] || state;
     var rec = attendanceFor(studentId, date);
-    var list = rec && rec.attitude ? rec.attitude.slice() : [];
+    var list = (rec && rec.attitude ? rec.attitude : []).map(function (a) {
+      return ATTITUDE_ALIAS[a] || a;
+    });
     var i = list.indexOf(state);
     if (i >= 0) list.splice(i, 1); else list.push(state);
     return setAttendance(studentId, date, { attitude: list });
@@ -377,7 +382,11 @@ var Store = (function () {
 
   /* ---------- 예전 순회 점검 기록 옮기기 ---------- */
   /** 예전 상태 이름 -> 지금 수업 태도 이름 */
-  var ATTITUDE_ALIAS = { '🟢 학습중': '🟢 집중' };
+  var ATTITUDE_ALIAS = {
+    '🟢 학습중': '집중',  '🟢 집중': '집중',
+    '💤 졸음': '졸음',    '🏃 이탈/부재': '이탈/부재',
+    '📱 휴대폰 사용': '휴대폰 사용', '💬 잡담/소란': '잡담/소란'
+  };
 
   /**
    * 예전에 따로 쌓아 둔 순회 점검 기록을 그날의 일일학습 기록 안으로 합칩니다.
@@ -1000,9 +1009,39 @@ var Store = (function () {
     save({ kind: 'academy', id: 'main' });
   }
 
+  /**
+   * 수업 태도 이름에서 이모지를 뺀 뒤, 이미 저장된 기록의 이름도 새 이름으로 맞춥니다.
+   * 한 번만 실행됩니다. 이 과정이 없으면 예전 기록이 통계에서 빠집니다.
+   */
+  function migrateAttitudes() {
+    var d = get();
+    if (!d.meta) d.meta = {};
+    if (d.meta.attitudesRenamed) return 0;
+
+    var moved = 0;
+    (d.attendance || []).forEach(function (r) {
+      if (!r.attitude || !r.attitude.length) return;
+      var next = [], changed = false;
+      r.attitude.forEach(function (a) {
+        var name = ATTITUDE_ALIAS[a] || a;
+        if (name !== a) changed = true;
+        if (next.indexOf(name) < 0) next.push(name);
+      });
+      if (!changed) return;
+      r.attitude = next;
+      stamp(r);
+      save({ kind: 'attendance', id: r.id });
+      moved++;
+    });
+    d.meta.attitudesRenamed = true;
+    if (!moved) save();   // 옮길 것이 없어도 '끝냈다' 표시는 남겨 둡니다
+    return moved;
+  }
+
   load();
   migratePatrols();
   migrateSite();
+  migrateAttitudes();
 
   return {
     STATUS: STATUS, GRADES: GRADES, FLAGS: FLAGS,
@@ -1037,6 +1076,7 @@ var Store = (function () {
     ensureCode: ensureCode, studentByCode: studentByCode, findStudent: findStudent,
     summarize: summarize, dayOverview: dayOverview,
     exportJson: exportJson, importJson: importJson, resetAll: resetAll, saveAcademy: saveAcademy,
-    migratePatrols: migratePatrols, migrateSite: migrateSite
+    migratePatrols: migratePatrols, migrateSite: migrateSite,
+    migrateAttitudes: migrateAttitudes
   };
 })();

@@ -7,30 +7,38 @@
 <meta name="description" content="고래영어 학원 자체 원생관리 시스템 — 학생명부, 출결체크, 일일학습관리, 순회점검, 좌석배치, 통계, 학부모 공유">
 <meta name="google-site-verification" content="vwZAD6rT5JyxO4_bZ6eF2pimT0aLZ-cJL_VdhM6fCnc">
 <meta name="naver-site-verification" content="db3cb546a75b923268ebff487637454d622781e0">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐋</text></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect width='24' height='24' rx='5' fill='%230a2033'/><g fill='none' stroke='%23c0a06a' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><path d='M2.6 6.8l3.5 10.6L10.2 9l3.6 8.4 2.4-5.6'/><path d='M16.2 11.8c1.9-.2 3.4-1.3 4.4-3.2.3-.6 1.2-.4 1.2.3 0 2.4-1 4.5-2.9 5.9-.5.4-1.3.1-1.5-.5z'/></g></svg>">
 <style>
 /* ===== 고래영어 원생관리 · 스타일 ===== */
+/* 색은 로고의 짙은 남색을 기준으로 채도를 낮춰 잡았습니다.
+   강조는 밝은 파랑 대신 황동색(--brass)으로 주어 차분하게 보이도록 했습니다. */
 :root{
-  --navy:#0d2c47;
-  --navy-2:#123a5c;
-  --blue:#1a7fd4;
-  --blue-soft:#e8f2fc;
-  --mint:#17b7a6;
-  --mint-soft:#e2f7f4;
-  --ink:#16232e;
-  --muted:#63778a;
-  --line:#e2e8ef;
-  --bg:#f4f7fa;
+  --navy:#0a2033;
+  --navy-2:#102d45;
+  --navy-3:#17405f;
+  --blue:#215a86;
+  --blue-2:#2b6f9f;
+  --blue-soft:#eaf0f5;
+  --brass:#a8894f;
+  --brass-2:#c0a06a;
+  --brass-soft:#f5efe3;
+  --mint:#357f73;
+  --mint-soft:#e9f1ef;
+  --ink:#14212c;
+  --muted:#6b7b8a;
+  --line:#e3e7ec;
+  --bg:#f5f6f8;
   --card:#ffffff;
-  --ok:#12a05c;
-  --ok-soft:#e4f6ec;
-  --warn:#d98218;
-  --warn-soft:#fdf1e0;
-  --bad:#d5453f;
-  --bad-soft:#fdeceb;
-  --radius:14px;
-  --shadow:0 1px 2px rgba(16,40,64,.05), 0 6px 20px rgba(16,40,64,.06);
-  --sidebar-w:230px;
+  --ok:#2e7a57;
+  --ok-soft:#eaf2ed;
+  --warn:#a8792f;
+  --warn-soft:#f7f1e4;
+  --bad:#a8453f;
+  --bad-soft:#f7ecec;
+  --radius:12px;
+  --shadow:0 1px 1px rgba(20,33,44,.04), 0 4px 14px rgba(20,33,44,.05);
+  --shadow-lift:0 2px 4px rgba(20,33,44,.05), 0 12px 32px rgba(20,33,44,.08);
+  --sidebar-w:236px;
 }
 
 *{box-sizing:border-box}
@@ -49,30 +57,46 @@ button{font-family:inherit}
 
 .sidebar{
   width:var(--sidebar-w); flex:0 0 var(--sidebar-w);
-  background:linear-gradient(175deg,var(--navy),var(--navy-2));
-  color:#dce8f2; display:flex; flex-direction:column;
+  background:linear-gradient(185deg,var(--navy-2),var(--navy) 62%);
+  color:#c8d4de; display:flex; flex-direction:column;
   position:sticky; top:0; height:100vh;
+  border-right:1px solid rgba(255,255,255,.06);
 }
-.brand{display:flex;align-items:center;gap:10px;padding:20px 18px 16px}
-.brand-mark{font-size:26px;line-height:1}
-.brand-text{display:flex;flex-direction:column;line-height:1.25}
-.brand-text b{color:#fff;font-size:16px;letter-spacing:-.2px}
-.brand-text small{color:#8fb4d0;font-size:11.5px}
+.brand{
+  display:flex;align-items:center;gap:11px;padding:22px 18px 18px;
+  border-bottom:1px solid rgba(255,255,255,.07);margin-bottom:8px;
+}
+.brand-mark{width:30px;height:30px;flex:0 0 30px;color:var(--brass-2);line-height:0}
+.brand-mark svg{width:100%;height:100%;display:block}
+.brand-text{display:flex;flex-direction:column;line-height:1.3}
+.brand-text b{color:#fff;font-size:15.5px;letter-spacing:.01em;font-weight:600}
+.brand-text small{color:#7f93a5;font-size:11px;letter-spacing:.06em}
 
-.nav{display:flex;flex-direction:column;gap:2px;padding:6px 10px;flex:1;overflow-y:auto}
+.nav{display:flex;flex-direction:column;gap:1px;padding:4px 10px;flex:1;overflow-y:auto}
 .nav a{
-  display:flex;align-items:center;gap:10px;
-  padding:9px 12px;border-radius:9px;font-size:14px;color:#c6dbec;
-  transition:background .13s,color .13s;
+  position:relative;
+  display:flex;align-items:center;gap:11px;
+  padding:9px 12px;border-radius:8px;font-size:13.5px;color:#a9bccd;
+  transition:background .14s,color .14s;
 }
-.nav a i{font-style:normal;font-size:15px;width:20px;text-align:center;opacity:.95}
-.nav a:hover{background:rgba(255,255,255,.08);color:#fff}
-.nav a.active{background:var(--blue);color:#fff;font-weight:600;box-shadow:0 4px 12px rgba(26,127,212,.35)}
+.nav a i{
+  font-style:normal;width:17px;height:17px;flex:0 0 17px;
+  display:inline-flex;align-items:center;justify-content:center;opacity:.72;
+}
+.nav a i svg{width:17px;height:17px;display:block}
+.nav a:hover{background:rgba(255,255,255,.05);color:#e8eef4}
+.nav a:hover i{opacity:1}
+.nav a.active{background:rgba(255,255,255,.09);color:#fff;font-weight:600}
+.nav a.active i{opacity:1;color:var(--brass-2)}
+.nav a.active::before{
+  content:"";position:absolute;left:-10px;top:8px;bottom:8px;width:2px;
+  border-radius:0 2px 2px 0;background:var(--brass-2);
+}
 
-.sidebar-foot{padding:14px 18px 18px;border-top:1px solid rgba(255,255,255,.09);font-size:11.5px;color:#89aac6}
-.storage-note{margin-bottom:6px}
-.ext-link{color:#8fc7f0}
-.ext-link:hover{text-decoration:underline}
+.sidebar-foot{padding:14px 18px 18px;border-top:1px solid rgba(255,255,255,.07);font-size:11px;color:#77899a}
+.storage-note{margin-bottom:6px;letter-spacing:.01em}
+.ext-link{color:#9db3c6}
+.ext-link:hover{color:var(--brass-2)}
 
 .main{flex:1;min-width:0;display:flex;flex-direction:column}
 
@@ -82,28 +106,29 @@ button{font-family:inherit}
   position:sticky;top:0;z-index:20;
 }
 .topbar-title{flex:1;min-width:0}
-.topbar-title h1{margin:0;font-size:19px;letter-spacing:-.3px}
-.topbar-title p{margin:2px 0 0;font-size:12.5px;color:var(--muted)}
+.topbar-title h1{margin:0;font-size:18.5px;letter-spacing:-.2px;font-weight:600}
+.topbar-title p{margin:3px 0 0;font-size:12.5px;color:var(--muted)}
 .today-chip{
-  background:var(--blue-soft);color:#14588f;border-radius:999px;
-  padding:6px 13px;font-size:12.5px;font-weight:600;white-space:nowrap;
+  background:#f1f3f6;color:#4a5b6b;border:1px solid var(--line);border-radius:999px;
+  padding:5px 13px;font-size:12px;font-weight:600;white-space:nowrap;
+  font-variant-numeric:tabular-nums;
 }
 .icon-btn{
-  border:1px solid var(--line);background:#fff;border-radius:9px;
+  border:1px solid var(--line);background:#fff;border-radius:8px;
   width:36px;height:36px;font-size:16px;cursor:pointer;color:var(--ink);
 }
 .only-mobile{display:none}
 
 .content{padding:24px 26px 40px;flex:1}
-.app-foot{padding:16px 26px 24px;color:#93a4b4;font-size:11.5px;border-top:1px solid var(--line);background:#fff}
+.app-foot{padding:16px 26px 24px;color:#93a0ac;font-size:11.5px;border-top:1px solid var(--line);background:#fff}
 
-.backdrop{display:none;position:fixed;inset:0;background:rgba(10,25,40,.45);z-index:25}
+.backdrop{display:none;position:fixed;inset:0;background:rgba(10,22,33,.5);z-index:25}
 .backdrop.on{display:block}
 
 /* ---------- Blocks ---------- */
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
 .card-h{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line)}
-.card-h h2{margin:0;font-size:15px;letter-spacing:-.2px}
+.card-h h2{margin:0;font-size:14.5px;letter-spacing:-.1px;font-weight:600}
 .card-h .sp{flex:1}
 .card-b{padding:16px 18px}
 .card-b.tight{padding:8px 10px}
@@ -120,14 +145,21 @@ button{font-family:inherit}
 .sp{flex:1}
 
 /* stat tiles */
-.stat{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow)}
-.stat .lbl{font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:6px}
-.stat .val{font-size:27px;font-weight:700;letter-spacing:-.6px;margin-top:6px;line-height:1.15}
-.stat .val small{font-size:14px;font-weight:600;color:var(--muted);margin-left:3px}
-.stat .sub{font-size:12px;color:var(--muted);margin-top:4px}
-.stat.accent{background:linear-gradient(160deg,#155f9f,#1a7fd4);border-color:transparent;color:#fff}
-.stat.accent .lbl,.stat.accent .sub{color:#cbe4f8}
-.stat.accent .val small{color:#cbe4f8}
+.stat{
+  background:#fff;border:1px solid var(--line);border-radius:var(--radius);
+  padding:16px 18px;box-shadow:var(--shadow);
+}
+.stat .lbl{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;letter-spacing:.01em}
+.stat .val{font-size:27px;font-weight:700;letter-spacing:-.7px;margin-top:7px;line-height:1.15;font-variant-numeric:tabular-nums}
+.stat .val small{font-size:13.5px;font-weight:600;color:var(--muted);margin-left:3px;letter-spacing:0}
+.stat .sub{font-size:11.5px;color:var(--muted);margin-top:5px}
+.stat.accent{
+  background:linear-gradient(155deg,var(--navy-3),var(--navy) 90%);
+  border-color:transparent;color:#fff;box-shadow:var(--shadow-lift);
+}
+.stat.accent .lbl,.stat.accent .sub{color:#a3b6c7}
+.stat.accent .val{color:#fff}
+.stat.accent .val small{color:#a3b6c7}
 
 /* ---------- Controls ---------- */
 .btn{
@@ -136,15 +168,15 @@ button{font-family:inherit}
   border-radius:9px;padding:8px 14px;font-size:13.5px;font-weight:600;cursor:pointer;
   transition:background .12s,border-color .12s,transform .06s;
 }
-.btn:hover{background:#f7fafc}
+.btn:hover{background:#f6f8fa;border-color:#d5dbe2}
 .btn:active{transform:translateY(1px)}
-.btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
-.btn.primary:hover{background:#1670bd}
+.btn.primary{background:var(--navy-3);border-color:var(--navy-3);color:#fff}
+.btn.primary:hover{background:var(--blue-2);border-color:var(--blue-2)}
 .btn.mint{background:var(--mint);border-color:var(--mint);color:#fff}
-.btn.mint:hover{background:#13a596}
+.btn.mint:hover{background:#2c6d63;border-color:#2c6d63}
 .btn.ghost{background:transparent}
-.btn.danger{color:var(--bad);border-color:#f0c4c2}
-.btn.danger:hover{background:var(--bad-soft)}
+.btn.danger{color:var(--bad);border-color:#e4c9c7}
+.btn.danger:hover{background:var(--bad-soft);border-color:#dbb8b6}
 .btn.sm{padding:5px 10px;font-size:12.5px;border-radius:8px}
 .btn.block{width:100%}
 .btn:disabled{opacity:.5;cursor:not-allowed}
@@ -154,7 +186,7 @@ input[type=datetime-local],input[type=search],input[type=number],select,textarea
   border:1px solid var(--line);border-radius:9px;padding:8px 11px;font-size:13.5px;
   font-family:inherit;color:var(--ink);background:#fff;width:100%;
 }
-input:focus,select:focus,textarea:focus{outline:2px solid #bfdcf5;outline-offset:-1px;border-color:var(--blue)}
+input:focus,select:focus,textarea:focus{outline:2px solid #cfdae4;outline-offset:-1px;border-color:var(--blue)}
 textarea{resize:vertical;min-height:64px;line-height:1.5}
 label.fld{display:flex;flex-direction:column;gap:5px;font-size:12.5px;color:var(--muted);font-weight:600}
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px}
@@ -166,14 +198,14 @@ label.fld{display:flex;flex-direction:column;gap:5px;font-size:12.5px;color:var(
   border-right:1px solid var(--line);
 }
 .seg button:last-child{border-right:0}
-.seg button.on{background:var(--blue);color:#fff}
+.seg button.on{background:var(--navy-3);color:#fff}
 
 .chips{display:flex;gap:6px;flex-wrap:wrap}
 .chip{
   border:1px solid var(--line);background:#fff;border-radius:999px;padding:5px 11px;
   font-size:12.5px;cursor:pointer;color:var(--muted);font-weight:600;white-space:nowrap;
 }
-.chip.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.chip.on{background:var(--navy-2);border-color:var(--navy-2);color:#fff}
 .chip.on.blue{background:var(--blue);border-color:var(--blue)}
 .chip.on.mint{background:var(--mint);border-color:var(--mint)}
 .chip.on.warn{background:var(--warn);border-color:var(--warn)}
@@ -181,34 +213,35 @@ label.fld{display:flex;flex-direction:column;gap:5px;font-size:12.5px;color:var(
 .chip.static{cursor:default}
 
 .tag{display:inline-block;border-radius:999px;padding:2px 9px;font-size:11.5px;font-weight:700;white-space:nowrap}
-.tag.ok{background:var(--ok-soft);color:#0d7a45}
-.tag.bad{background:var(--bad-soft);color:#b8332e}
-.tag.warn{background:var(--warn-soft);color:#a2610f}
-.tag.blue{background:var(--blue-soft);color:#14588f}
-.tag.mint{background:var(--mint-soft);color:#0d8375}
-.tag.gray{background:#eef2f6;color:#5f7183}
+.tag.ok{background:var(--ok-soft);color:#296b4d}
+.tag.bad{background:var(--bad-soft);color:#963934}
+.tag.warn{background:var(--warn-soft);color:#8a6226}
+.tag.blue{background:var(--blue-soft);color:#2b5a80}
+.tag.mint{background:var(--mint-soft);color:#2d6d63}
+.tag.gray{background:#f0f2f5;color:#5f6d7a}
 
 /* ---------- Table ---------- */
 .table-wrap{overflow-x:auto}
 table.tbl{width:100%;border-collapse:collapse;font-size:13.5px;min-width:640px}
 table.tbl th{
   text-align:left;font-size:12px;color:var(--muted);font-weight:700;
-  padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap;background:#fafcfd;
+  padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap;background:#fafbfc;letter-spacing:.02em;
 }
-table.tbl td{padding:10px 12px;border-bottom:1px solid #eef2f6;vertical-align:middle}
+table.tbl td{padding:10px 12px;border-bottom:1px solid #edf0f3;vertical-align:middle}
 table.tbl tr:last-child td{border-bottom:0}
-table.tbl tbody tr:hover{background:#f8fbfd}
+table.tbl tbody tr:hover{background:#f8f9fb}
 table.tbl td.num{text-align:right;font-variant-numeric:tabular-nums}
 table.tbl .nm{font-weight:700}
 .clickable{cursor:pointer}
 
 .empty{padding:40px 20px;text-align:center;color:var(--muted);font-size:13.5px}
-.empty .big{font-size:30px;display:block;margin-bottom:8px}
+.empty .big{font-size:30px;display:block;margin-bottom:10px;line-height:1}
+.empty .big svg{display:inline-block;color:#b6c0ca;stroke-width:1.3}
 
 /* ---------- Attendance rows ---------- */
 .att-row{
   display:grid;grid-template-columns:150px 128px 1fr;gap:12px;align-items:center;
-  padding:11px 12px;border-bottom:1px solid #eef2f6;
+  padding:11px 12px;border-bottom:1px solid #edf0f3;
 }
 .att-row:last-child{border-bottom:0}
 .att-who{display:flex;align-items:center;gap:9px;min-width:0}
@@ -226,7 +259,7 @@ table.tbl .nm{font-weight:700}
   display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);background:#fff;
   border-radius:8px;padding:5px 9px;font-size:12.5px;cursor:pointer;font-weight:600;color:var(--muted);
 }
-.check.on{background:var(--mint-soft);border-color:#a9e5dd;color:#0d8375}
+.check.on{background:var(--mint-soft);border-color:#bcd5d0;color:#2d6d63}
 .check input{display:none}
 
 /* ---------- Timetable ---------- */
@@ -235,46 +268,46 @@ table.tbl .nm{font-weight:700}
 .tt .tm{font-size:12.5px;color:var(--muted);font-weight:700;display:flex;align-items:center;justify-content:center}
 .tt .cell{border:1px solid var(--line);border-radius:11px;background:#fff;padding:8px;min-height:74px}
 .tt .pill{
-  background:var(--blue-soft);color:#14588f;border-radius:7px;padding:3px 7px;
+  background:var(--blue-soft);color:#2b5a80;border-radius:6px;padding:3px 7px;
   font-size:11.5px;font-weight:700;margin-bottom:4px;display:block;
 }
 
 /* ---------- Bars ---------- */
 .bar-row{display:grid;grid-template-columns:96px 1fr 62px;gap:10px;align-items:center;padding:6px 0}
-.bar-track{background:#eef2f6;border-radius:999px;height:9px;overflow:hidden}
-.bar-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--blue),var(--mint))}
-.bar-fill.low{background:linear-gradient(90deg,#e0894a,var(--bad))}
+.bar-track{background:#edf0f3;border-radius:999px;height:8px;overflow:hidden}
+.bar-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--navy-3),var(--blue-2))}
+.bar-fill.low{background:linear-gradient(90deg,var(--brass),#a8654f)}
 .bar-val{font-size:12.5px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
 .bar-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* ---------- Memo / tasks ---------- */
-.memo-item{display:flex;gap:9px;align-items:flex-start;padding:8px 0;border-bottom:1px solid #eef2f6;font-size:13.5px}
+.memo-item{display:flex;gap:9px;align-items:flex-start;padding:8px 0;border-bottom:1px solid #edf0f3;font-size:13.5px}
 .memo-item:last-child{border-bottom:0}
 .memo-item .txt{flex:1;min-width:0;word-break:break-word}
-.memo-item.done .txt{text-decoration:line-through;color:#a8b6c2}
+.memo-item.done .txt{text-decoration:line-through;color:#a4afb9}
 .memo-item .dt{font-size:11.5px;color:var(--muted);white-space:nowrap}
-.cbx{width:17px;height:17px;accent-color:var(--blue);margin-top:2px;flex:0 0 auto;cursor:pointer}
-.x-btn{border:0;background:transparent;color:#b8c4cf;cursor:pointer;font-size:15px;line-height:1;padding:0 2px}
+.cbx{width:16px;height:16px;accent-color:var(--navy-3);margin-top:2px;flex:0 0 auto;cursor:pointer}
+.x-btn{border:0;background:transparent;color:#b3bcc5;cursor:pointer;font-size:15px;line-height:1;padding:0 2px}
 .x-btn:hover{color:var(--bad)}
 
 /* ---------- Modal ---------- */
 .modal-wrap{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}
-.modal-bg{position:absolute;inset:0;background:rgba(10,25,40,.5)}
+.modal-bg{position:absolute;inset:0;background:rgba(10,22,33,.52)}
 .modal{
-  position:relative;background:#fff;border-radius:16px;width:100%;max-width:620px;
-  max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(10,30,50,.28);
+  position:relative;background:#fff;border-radius:14px;width:100%;max-width:620px;
+  max-height:88vh;display:flex;flex-direction:column;box-shadow:0 28px 64px rgba(10,22,33,.24);
 }
 .modal.wide{max-width:860px}
 .modal-h{display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid var(--line)}
 .modal-h h3{margin:0;font-size:16px}
 .modal-b{padding:18px 20px;overflow-y:auto}
-.modal-f{padding:14px 20px;border-top:1px solid var(--line);display:flex;gap:9px;justify-content:flex-end;background:#fafcfd;border-radius:0 0 16px 16px}
+.modal-f{padding:14px 20px;border-top:1px solid var(--line);display:flex;gap:9px;justify-content:flex-end;background:#fafbfc;border-radius:0 0 14px 14px}
 
 /* ---------- Toast ---------- */
 .toast-root{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);z-index:120;display:flex;flex-direction:column;gap:8px;align-items:center}
 .toast{
   background:var(--navy);color:#fff;padding:10px 18px;border-radius:999px;font-size:13.5px;font-weight:600;
-  box-shadow:0 8px 24px rgba(10,30,50,.28);animation:pop .2s ease-out;
+  box-shadow:0 10px 28px rgba(10,22,33,.3);animation:pop .2s ease-out;
 }
 .toast.bad{background:var(--bad)}
 @keyframes pop{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
@@ -284,18 +317,22 @@ table.tbl .nm{font-weight:700}
 .kv dt{color:var(--muted);font-size:12.5px;font-weight:600}
 .kv dd{margin:0}
 
-.section-title{font-size:12.5px;font-weight:700;color:var(--muted);margin:16px 0 8px;letter-spacing:.02em}
+.section-title{
+  font-size:12px;font-weight:700;color:var(--muted);margin:16px 0 8px;letter-spacing:.03em;
+  display:flex;align-items:center;gap:6px;
+}
+.section-title svg{flex:0 0 auto;color:var(--brass)}
 .hint{font-size:12.5px;color:var(--muted);line-height:1.6}
-.hint code{background:#eef2f6;padding:1px 5px;border-radius:5px;font-size:12px}
+.hint code{background:#f0f2f5;padding:1px 5px;border-radius:5px;font-size:12px}
 
 /* ---------- Parent report ---------- */
 .report{background:#fff;border-radius:16px;border:1px solid var(--line);overflow:hidden}
-.report-hd{background:linear-gradient(160deg,#0d2c47,#1a7fd4);color:#fff;padding:22px 24px}
+.report-hd{background:linear-gradient(150deg,var(--navy-3),var(--navy) 88%);color:#fff;padding:24px 26px}
 .report-hd .who{font-size:21px;font-weight:700;letter-spacing:-.3px}
-.report-hd .sub{font-size:12.5px;color:#c9e3f8;margin-top:4px}
+.report-hd .sub{font-size:12.5px;color:#a3b6c7;margin-top:5px}
 .report-bd{padding:20px 24px}
 .report-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
-.report-stat{background:#f6f9fc;border-radius:11px;padding:12px;text-align:center}
+.report-stat{background:#f6f7f9;border:1px solid var(--line);border-radius:10px;padding:12px;text-align:center}
 .report-stat .v{font-size:20px;font-weight:700}
 .report-stat .l{font-size:11.5px;color:var(--muted);margin-top:2px}
 .share-view{max-width:760px;margin:0 auto;padding:26px 16px 60px}
@@ -332,38 +369,44 @@ body.share-mode .content{padding:0}
 /* ---------- 로그인 게이트 ---------- */
 .gate{
   position:fixed;inset:0;z-index:80;
-  background:linear-gradient(165deg,#0d2c47,#123a5c 55%,#1a5c96);
+  background:linear-gradient(165deg,var(--navy),var(--navy-2) 55%,var(--navy-3));
   display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;
 }
 .gate-card{
-  background:#fff;border-radius:18px;padding:32px 30px;width:100%;max-width:400px;
-  box-shadow:0 24px 60px rgba(5,20,35,.35);
+  background:#fff;border-radius:16px;padding:34px 30px;width:100%;max-width:400px;
+  box-shadow:0 28px 70px rgba(5,14,24,.4);
 }
-.gate-brand{font-size:14px;font-weight:700;color:var(--navy);margin-bottom:20px}
+.gate-brand{
+  display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;
+  color:var(--navy);margin-bottom:22px;
+}
+.gate-brand svg{color:var(--brass);flex:0 0 auto}
+.gate-brand .gate-brand-nm{color:var(--navy);font-weight:700}
 .gate-brand span{color:var(--muted);font-weight:500}
 .gate-card h1{margin:0 0 6px;font-size:21px;letter-spacing:-.4px}
 .gate-sub{margin:0 0 20px;font-size:13px;color:var(--muted);line-height:1.6}
 .gate-msg{
-  background:var(--blue-soft);color:#14588f;border-radius:9px;
+  background:var(--blue-soft);color:#2b5a80;border-radius:8px;
   padding:9px 12px;font-size:12.5px;margin-bottom:16px;
 }
 .gate-err{
-  background:var(--bad-soft);color:#b8332e;border-radius:9px;
+  background:var(--bad-soft);color:#963934;border-radius:8px;
   padding:9px 12px;font-size:12.5px;margin-top:12px;font-weight:600;
 }
 
 /* ---------- 동기화 상태 칩 ---------- */
 .sync-chip{
+  display:inline-flex;align-items:center;gap:6px;
   border:1px solid var(--line);background:#fff;border-radius:999px;
-  padding:6px 13px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;
+  padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;
   color:var(--muted);transition:background .12s;
 }
-.sync-chip:hover{background:#f7fafc}
-.sync-chip.ok{background:var(--ok-soft);border-color:#a9dcc0;color:#0d7a45}
-.sync-chip.blue{background:var(--blue-soft);border-color:#b9d9f4;color:#14588f}
-.sync-chip.warn{background:var(--warn-soft);border-color:#f0d5a8;color:#a2610f}
-.sync-chip.bad{background:var(--bad-soft);border-color:#f0c4c2;color:#b8332e}
-.sync-chip.gray{background:#eef2f6;border-color:var(--line);color:#5f7183}
+.sync-chip:hover{background:#f6f8fa}
+.sync-chip.ok{background:var(--ok-soft);border-color:#bcd7c8;color:#296b4d}
+.sync-chip.blue{background:var(--blue-soft);border-color:#ccd8e2;color:#2b5a80}
+.sync-chip.warn{background:var(--warn-soft);border-color:#e3d3b4;color:#8a6226}
+.sync-chip.bad{background:var(--bad-soft);border-color:#e4c9c7;color:#963934}
+.sync-chip.gray{background:#f0f2f5;border-color:var(--line);color:#5f6d7a}
 
 .topbar-right{display:flex;align-items:center;gap:8px}
 @media(max-width:760px){
@@ -381,15 +424,15 @@ body.share-mode .content{padding:0}
 .class-top>div{flex:1;min-width:0}
 .class-name{font-weight:700;font-size:14.5px;letter-spacing:-.2px}
 .class-meta{font-size:12px;color:var(--muted);margin-top:3px}
-.class-note{font-size:12px;color:var(--muted);background:#f6f9fc;border-radius:8px;padding:7px 10px}
+.class-note{font-size:12px;color:var(--muted);background:#f6f7f9;border-radius:8px;padding:7px 10px}
 .class-members{display:flex;flex-wrap:wrap;gap:5px;min-height:24px}
 .class-actions{display:flex;gap:7px;margin-top:auto;padding-top:2px}
 
 .pill{
-  background:var(--blue-soft);color:#14588f;border-radius:7px;padding:3px 8px;
+  background:var(--blue-soft);color:#2b5a80;border-radius:6px;padding:3px 8px;
   font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;border:0;
 }
-.pill:hover{background:#d5e8f9}
+.pill:hover{background:#dde5ec}
 
 .swatch{
   width:26px;height:26px;border-radius:8px;border:2px solid transparent;cursor:pointer;padding:0;
@@ -412,10 +455,10 @@ body.share-mode .content{padding:0}
 .member-list{max-height:52vh;overflow-y:auto;border:1px solid var(--line);border-radius:11px}
 .member-row{
   display:flex;align-items:center;gap:10px;padding:9px 13px;
-  border-bottom:1px solid #eef2f6;cursor:pointer;font-size:13.5px;
+  border-bottom:1px solid #edf0f3;cursor:pointer;font-size:13.5px;
 }
 .member-row:last-child{border-bottom:0}
-.member-row:hover{background:#f8fbfd}
+.member-row:hover{background:#f8f9fb}
 .member-name{font-weight:700}
 
 /* 출결 행의 수업 태도 줄 */
@@ -444,7 +487,7 @@ body.share-mode .content{padding:0}
 
 .sub-row{
   display:flex;align-items:center;gap:12px;padding:9px 4px;
-  border-bottom:1px solid #eef2f6;flex-wrap:wrap;
+  border-bottom:1px solid #edf0f3;flex-wrap:wrap;
 }
 .sub-row:last-child{border-bottom:0}
 .sub-row .member-name{min-width:70px}
@@ -452,7 +495,7 @@ body.share-mode .content{padding:0}
 /* ---------- 코드 칩 (학생 코드 · 청구기호) ---------- */
 .code-chip{
   font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
-  background:#eef2f6;color:#42566a;border-radius:6px;
+  background:#f0f2f5;color:#4a5b6b;border-radius:5px;
   padding:2px 7px;font-size:11.5px;font-weight:700;letter-spacing:.04em;
 }
 
@@ -470,7 +513,7 @@ body.share-mode .content{padding:0}
 <div id="app-shell">
   <aside class="sidebar" id="sidebar">
     <div class="brand">
-      <span class="brand-mark">🐋</span>
+      <span class="brand-mark" data-icon="whale" data-icon-size="30"></span>
       <span class="brand-text">
         <b>고래영어</b>
         <small id="brand-campus">초전동캠퍼스</small>
@@ -478,22 +521,22 @@ body.share-mode .content{padding:0}
     </div>
 
     <nav class="nav" id="nav">
-      <a href="#/dashboard"  data-route="dashboard"><i>📊</i><span>대시보드</span></a>
-      <a href="#/students"   data-route="students"><i>🧒</i><span>학생 명부</span></a>
-      <a href="#/attendance" data-route="attendance"><i>✅</i><span>출결 · 일일학습</span></a>
-      <a href="#/homework"   data-route="homework"><i>📚</i><span>숙제 관리</span></a>
-      <a href="#/vocab"      data-route="vocab"><i>🔤</i><span>단어 학습</span></a>
-      <a href="#/library"    data-route="library"><i>📖</i><span>도서 대여</span></a>
-      <a href="#/classes"    data-route="classes"><i>🗓️</i><span>반 · 시간표</span></a>
-      <a href="#/tuition"    data-route="tuition"><i>💳</i><span>수강료 납부</span></a>
-      <a href="#/stats"      data-route="stats"><i>📈</i><span>통계</span></a>
-      <a href="#/share"      data-route="share"><i>💌</i><span>학부모 공유</span></a>
-      <a href="#/settings"   data-route="settings"><i>⚙️</i><span>설정 · 백업</span></a>
+      <a href="#/dashboard"  data-route="dashboard"><i data-icon="dashboard" data-icon-size="17"></i><span>대시보드</span></a>
+      <a href="#/students"   data-route="students"><i data-icon="students" data-icon-size="17"></i><span>학생 명부</span></a>
+      <a href="#/attendance" data-route="attendance"><i data-icon="attendance" data-icon-size="17"></i><span>출결 · 일일학습</span></a>
+      <a href="#/homework"   data-route="homework"><i data-icon="homework" data-icon-size="17"></i><span>숙제 관리</span></a>
+      <a href="#/vocab"      data-route="vocab"><i data-icon="vocab" data-icon-size="17"></i><span>단어 학습</span></a>
+      <a href="#/library"    data-route="library"><i data-icon="library" data-icon-size="17"></i><span>도서 대여</span></a>
+      <a href="#/classes"    data-route="classes"><i data-icon="classes" data-icon-size="17"></i><span>반 · 시간표</span></a>
+      <a href="#/tuition"    data-route="tuition"><i data-icon="tuition" data-icon-size="17"></i><span>수강료 납부</span></a>
+      <a href="#/stats"      data-route="stats"><i data-icon="stats" data-icon-size="17"></i><span>통계</span></a>
+      <a href="#/share"      data-route="share"><i data-icon="share" data-icon-size="17"></i><span>학부모 공유</span></a>
+      <a href="#/settings"   data-route="settings"><i data-icon="settings" data-icon-size="17"></i><span>설정 · 백업</span></a>
     </nav>
 
     <div class="sidebar-foot">
       <div class="storage-note" id="storage-note">이 브라우저에 저장됨</div>
-      <a class="ext-link" href="https://whalejinju.kr" target="_blank" rel="noopener">whalejinju.kr ↗</a>
+      <a class="ext-link" href="https://whalejinju.kr" target="_blank" rel="noopener">학원 홈페이지 ↗</a>
     </div>
   </aside>
 
@@ -522,6 +565,115 @@ body.share-mode .content{padding:0}
 <div id="modal-root"></div>
 <div id="toast-root" class="toast-root"></div>
 
+<script>
+/** 도메인 인식 라우팅 — staff.whalejinju.kr vs whalejinju.kr */
+
+(function() {
+  var currentHost = window.location.hostname;
+
+  // 로컬/테스트 환경 무시
+  if (currentHost === 'localhost' || currentHost.startsWith('127.') || currentHost === '[::1]') {
+    return;
+  }
+
+  // staff.whalejinju.kr (대시보드) — 정상, 아무것도 하지 않음
+  if (currentHost === 'staff.whalejinju.kr') {
+    return;
+  }
+
+  // whalejinju.kr (프로모션 사이트) — 대시보드로 리다이렉트 확인
+  if (currentHost === 'whalejinju.kr') {
+    // 학원 프로모션 사이트로 이동해야 함을 알림
+    // 현재는 로깅만 함 (실제 리다이렉트는 프로모션 사이트에서 처리)
+    console.log('[Domain Check] 학원 프로모션 사이트입니다. 원생관리는 staff.whalejinju.kr 에서 접근하세요.');
+    return;
+  }
+
+  // 기타 도메인 — 경고만 표시
+  console.warn('[Domain Check] 예상치 못한 도메인입니다:', currentHost);
+})();
+
+</script>
+<script>
+/* ===== 아이콘 =====
+ *
+ * 화면 곳곳에 쓰던 이모지(📊 🧒 ✅ …)를 선으로 그린 아이콘으로 바꿉니다.
+ * 이모지는 기기마다 모양과 색이 달라 화면이 들쭉날쭉해 보였습니다.
+ * 여기 아이콘은 글자색(currentColor)을 따라가므로 어디에 놓아도 톤이 맞습니다.
+ *
+ * 쓰는 법
+ *   HTML 안:  <i data-icon="students"></i>   → 화면이 뜰 때 자동으로 채워집니다
+ *   JS 안:    Icon.svg('students', 18)       → SVG 문자열을 돌려줍니다
+ */
+var Icon = (function () {
+
+  /* 24x24 기준, 선 굵기 1.6. path 만 적어 둡니다. */
+  var PATH = {
+    dashboard:  '<rect x="3" y="3" width="7.5" height="7.5" rx="1.6"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.6"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.6"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.6"/>',
+    students:   '<circle cx="9" cy="8" r="3.2"/><path d="M3.2 19.2c0-3.1 2.6-5.2 5.8-5.2s5.8 2.1 5.8 5.2"/><path d="M16.4 5.2a3.2 3.2 0 0 1 0 6.1"/><path d="M17.6 14.3c2.1.5 3.4 2.2 3.4 4.4"/>',
+    attendance: '<rect x="3.2" y="4.4" width="17.6" height="16.4" rx="2.2"/><path d="M8 2.6v3.6M16 2.6v3.6M3.2 9.4h17.6"/><path d="M9 14.6l2.1 2.1 4-4.1"/>',
+    homework:   '<path d="M8.4 4.2H6.6a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10.8a2 2 0 0 0 2-2v-13a2 2 0 0 0-2-2h-1.8"/><rect x="8.4" y="2.4" width="7.2" height="3.6" rx="1.3"/><path d="M8.6 11.4h6.8M8.6 15.4h4.6"/>',
+    vocab:      '<path d="M3.4 18.6L8.6 5.4h1.2l5.2 13.2"/><path d="M5.4 14.2h7.6"/><path d="M17.6 18.6v-6.4a2.4 2.4 0 1 1 4.8 0v6.4"/><path d="M17.6 15.4h4.8"/>',
+    library:    '<path d="M3.6 5.4a2 2 0 0 1 2-2h4.2a2.2 2.2 0 0 1 2.2 2.2v14a1.8 1.8 0 0 0-1.8-1.8H3.6z"/><path d="M20.4 5.4a2 2 0 0 0-2-2h-4.2A2.2 2.2 0 0 0 12 5.6v14a1.8 1.8 0 0 1 1.8-1.8h6.6z"/>',
+    classes:    '<rect x="3.2" y="4.6" width="17.6" height="16.2" rx="2.2"/><path d="M8 2.8v3.6M16 2.8v3.6M3.2 9.6h17.6"/><path d="M7.4 13.2h3M13.6 13.2h3M7.4 17h3M13.6 17h3"/>',
+    tuition:    '<rect x="2.6" y="5" width="18.8" height="14" rx="2.4"/><path d="M2.6 9.8h18.8"/><path d="M6.4 14.8h3.4"/>',
+    stats:      '<path d="M3.4 20.4h17.2"/><rect x="5.2" y="12" width="3.4" height="6"/><rect x="10.4" y="7.6" width="3.4" height="10.4"/><rect x="15.6" y="4" width="3.4" height="14"/>',
+    share:      '<rect x="2.8" y="4.8" width="18.4" height="14.4" rx="2.2"/><path d="M3.6 6.6l7.5 5.8a1.4 1.4 0 0 0 1.8 0l7.5-5.8"/>',
+    settings:   '<circle cx="12" cy="12" r="3.1"/><path d="M19.2 14.6a1.5 1.5 0 0 0 .3 1.7l.1.1a1.8 1.8 0 1 1-2.6 2.6l-.1-.1a1.5 1.5 0 0 0-1.7-.3 1.5 1.5 0 0 0-.9 1.4v.3a1.8 1.8 0 1 1-3.6 0v-.2a1.5 1.5 0 0 0-1-1.4 1.5 1.5 0 0 0-1.7.3l-.1.1a1.8 1.8 0 1 1-2.6-2.6l.1-.1a1.5 1.5 0 0 0 .3-1.7 1.5 1.5 0 0 0-1.4-.9h-.3a1.8 1.8 0 1 1 0-3.6h.2a1.5 1.5 0 0 0 1.4-1 1.5 1.5 0 0 0-.3-1.7l-.1-.1a1.8 1.8 0 1 1 2.6-2.6l.1.1a1.5 1.5 0 0 0 1.7.3h.1a1.5 1.5 0 0 0 .9-1.4v-.3a1.8 1.8 0 1 1 3.6 0v.2a1.5 1.5 0 0 0 .9 1.4 1.5 1.5 0 0 0 1.7-.3l.1-.1a1.8 1.8 0 1 1 2.6 2.6l-.1.1a1.5 1.5 0 0 0-.3 1.7v.1a1.5 1.5 0 0 0 1.4.9h.3a1.8 1.8 0 1 1 0 3.6h-.2a1.5 1.5 0 0 0-1.4.9z"/>',
+
+    /* 화면 안에서 쓰는 것들 */
+    check:      '<circle cx="12" cy="12" r="8.8"/><path d="M8.2 12.2l2.6 2.6 5-5.2"/>',
+    calendar:   '<rect x="3.2" y="4.6" width="17.6" height="16.2" rx="2.2"/><path d="M8 2.8v3.6M16 2.8v3.6M3.2 9.6h17.6"/>',
+    smile:      '<circle cx="12" cy="12" r="8.8"/><path d="M8.6 14.2c.8 1.2 2 1.9 3.4 1.9s2.6-.7 3.4-1.9"/><path d="M9.4 9.6h.01M14.6 9.6h.01"/>',
+    coin:       '<ellipse cx="12" cy="6.6" rx="7.6" ry="3.2"/><path d="M4.4 6.6v10.8c0 1.8 3.4 3.2 7.6 3.2s7.6-1.4 7.6-3.2V6.6"/><path d="M4.4 12c0 1.8 3.4 3.2 7.6 3.2s7.6-1.4 7.6-3.2"/>',
+    book:       '<path d="M4 4.4a1.8 1.8 0 0 1 1.8-1.8h11.6a1.4 1.4 0 0 1 1.4 1.4v14.4H5.8A1.8 1.8 0 0 0 4 20.2z"/><path d="M4 19.6a1.8 1.8 0 0 1 1.8-1.8h13"/>',
+    flame:      '<path d="M12 21.4c3.5 0 6.2-2.6 6.2-6 0-3.9-3.2-5.7-4.4-9.8-.2-.7-1-1-1.5-.5-1.6 1.5-2.4 3.2-2.4 4.8 0 1 .3 1.8.6 2.5-1-.3-1.7-1-2.1-1.9-.3-.6-1.1-.6-1.4 0a7 7 0 0 0-.8 3.3c0 3.8 2.6 7.6 5.8 7.6z"/>',
+    moon:       '<path d="M20 14.6A8.6 8.6 0 0 1 9.4 4 8.8 8.8 0 1 0 20 14.6z"/>',
+    cloud:      '<path d="M6.8 18.6a4.4 4.4 0 0 1-.6-8.8 5.8 5.8 0 0 1 11.2-1.2 4 4 0 0 1-.6 10z"/>',
+    search:     '<circle cx="10.8" cy="10.8" r="6.6"/><path d="M15.6 15.6l4.6 4.6"/>',
+    alert:      '<path d="M12 3.4l9 15.6H3z"/><path d="M12 9.6v4M12 16.4h.01"/>',
+    inbox:      '<path d="M3.2 13.2h4.2l1.4 2.6h6.4l1.4-2.6h4.2"/><path d="M6 4.6h12l3 8.6v4.2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4.2z"/>',
+    receipt:    '<path d="M5.4 2.8h13.2v18.4l-2.2-1.4-2.2 1.4-2.2-1.4-2.2 1.4-2.2-1.4-2.2 1.4z"/><path d="M9 8h6M9 12h6"/>',
+    device:     '<rect x="5" y="2.6" width="14" height="18.8" rx="2.4"/><path d="M10.4 18.6h3.2"/>',
+    /* 로고의 'W + 고래 꼬리' 를 한 획으로 옮긴 마크입니다. */
+    whale:      '<path d="M2.6 6.8l3.5 10.6L10.2 9l3.6 8.4 2.4-5.6"/><path d="M16.2 11.8c1.9-.2 3.4-1.3 4.4-3.2.3-.6 1.2-.4 1.2.3 0 2.4-1 4.5-2.9 5.9-.5.4-1.3.1-1.5-.5z"/>'
+  };
+
+  var FILLED = { flame: 1, moon: 1 };
+
+  function svg(name, size) {
+    var d = PATH[name];
+    if (!d) return '';
+    var s = size || 18;
+    return '<svg viewBox="0 0 24 24" width="' + s + '" height="' + s + '" ' +
+      'fill="' + (FILLED[name] ? 'currentColor' : 'none') + '" ' +
+      'stroke="' + (FILLED[name] ? 'none' : 'currentColor') + '" ' +
+      'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" ' +
+      'aria-hidden="true" focusable="false">' + d + '</svg>';
+  }
+
+  /** data-icon 이 붙은 자리를 모두 채웁니다. */
+  function paint(root) {
+    var host = root || document;
+    var list = host.querySelectorAll('[data-icon]');
+    for (var i = 0; i < list.length; i++) {
+      var el = list[i];
+      if (el.getAttribute('data-icon-done')) continue;
+      el.innerHTML = svg(el.getAttribute('data-icon'), Number(el.getAttribute('data-icon-size')) || 18);
+      el.setAttribute('data-icon-done', '1');
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () { paint(); });
+  } else {
+    paint();
+  }
+
+  return { svg: svg, paint: paint, has: function (n) { return !!PATH[n]; } };
+})();
+
+</script>
 <script>
 /* ===== 공통 유틸 ===== */
 var U = (function () {
@@ -680,7 +832,23 @@ var U = (function () {
     });
   }
 
+  /**
+   * 학부모에게 보내는 공개 링크(리포트·납부확인서)의 기준 주소입니다.
+   *
+   * 대시보드를 비밀번호로 잠가 두면(클라우드플레어 워커) 학부모가 링크를 열 때도
+   * 비밀번호 창이 뜹니다. 그래서 설정에 '공개 링크 주소'(academy.publicBase)를 넣어 두면
+   * 그 주소로 링크를 만듭니다. 비어 있으면 지금 보고 있는 주소를 그대로 씁니다.
+   */
+  function publicBase() {
+    var here = location.href.split('#')[0];
+    var set = '';
+    try { set = String((Store.get().academy || {}).publicBase || '').trim(); } catch (e) { set = ''; }
+    if (!set) return here;
+    return set.charAt(set.length - 1) === '/' ? set : set + '/';
+  }
+
   return {
+    publicBase: publicBase,
     DAYS: DAYS, pad: pad, ymd: ymd, ym: ym, parseYmd: parseYmd, dayOf: dayOf,
     human: human, shortDate: shortDate, hhmm: hhmm, nowLocalInput: nowLocalInput,
     daysInMonth: daysInMonth, daysAgo: daysAgo, uid: uid, esc: esc, pct: pct,
@@ -707,12 +875,13 @@ var Store = (function () {
   var GRADES = ['1학년', '2학년', '3학년', '4학년', '5학년', '6학년', '중1', '중2', '중3'];
   var FLAGS = ['지각', '외출', '조퇴'];
   // 수업 태도 (예전 '순회 점검 기록'을 일일학습 안으로 합쳤습니다)
-  var ATTITUDES = ['🟢 집중', '💤 졸음', '🏃 이탈/부재', '📱 휴대폰 사용', '💬 잡담/소란'];
+  // 이모지를 뺀 글자만 씁니다. 예전에 이모지가 붙어 저장된 기록은 migrateAttitudes() 가 옮깁니다.
+  var ATTITUDES = ['집중', '졸음', '이탈/부재', '휴대폰 사용', '잡담/소란'];
   var HOMEWORK_TYPES = ['단어', '원서 읽기', '워크북', '녹음', '기타'];
   var SUBMIT_STATUS = ['미제출', '제출', '확인'];
   var BOOK_CATEGORIES = ['리더스', '챕터북', '노블', '논픽션', '그림책', '워크북'];
   var LOAN_DAYS = 7;
-  var CLASS_COLORS = ['#1a7fd4', '#17b7a6', '#d98218', '#8a6ad4', '#d5453f', '#12a05c', '#c2557f', '#4a7a99'];
+  var CLASS_COLORS = ['#215a86', '#357f73', '#a8894f', '#6b5f96', '#a8453f', '#2e7a57', '#96607a', '#4a6577'];
   var WEEKDAYS = ['월', '화', '수', '목', '금', '토'];
   var PAY_METHODS = ['계좌이체', '현금', '카드', '기타'];
 
@@ -725,6 +894,7 @@ var Store = (function () {
       address: '경남 진주시 초전동 1639-2',
       phone: '010-3803-8335',
       site: 'https://whalejinju.kr',
+      publicBase: '',           // 학부모 공개 링크의 기준 주소 (비우면 지금 주소)
       seatCount: 20,
       times: ['1시', '2시', '3시', '4시', '5시', '6시', '7시', '8시'],
       defaultFee: 250000,
@@ -1026,8 +1196,11 @@ var Store = (function () {
   }
   /** 수업 태도 항목 켜고 끄기 */
   function toggleAttitude(studentId, date, state) {
+    state = ATTITUDE_ALIAS[state] || state;
     var rec = attendanceFor(studentId, date);
-    var list = rec && rec.attitude ? rec.attitude.slice() : [];
+    var list = (rec && rec.attitude ? rec.attitude : []).map(function (a) {
+      return ATTITUDE_ALIAS[a] || a;
+    });
     var i = list.indexOf(state);
     if (i >= 0) list.splice(i, 1); else list.push(state);
     return setAttendance(studentId, date, { attitude: list });
@@ -1071,7 +1244,11 @@ var Store = (function () {
 
   /* ---------- 예전 순회 점검 기록 옮기기 ---------- */
   /** 예전 상태 이름 -> 지금 수업 태도 이름 */
-  var ATTITUDE_ALIAS = { '🟢 학습중': '🟢 집중' };
+  var ATTITUDE_ALIAS = {
+    '🟢 학습중': '집중',  '🟢 집중': '집중',
+    '💤 졸음': '졸음',    '🏃 이탈/부재': '이탈/부재',
+    '📱 휴대폰 사용': '휴대폰 사용', '💬 잡담/소란': '잡담/소란'
+  };
 
   /**
    * 예전에 따로 쌓아 둔 순회 점검 기록을 그날의 일일학습 기록 안으로 합칩니다.
@@ -1694,9 +1871,39 @@ var Store = (function () {
     save({ kind: 'academy', id: 'main' });
   }
 
+  /**
+   * 수업 태도 이름에서 이모지를 뺀 뒤, 이미 저장된 기록의 이름도 새 이름으로 맞춥니다.
+   * 한 번만 실행됩니다. 이 과정이 없으면 예전 기록이 통계에서 빠집니다.
+   */
+  function migrateAttitudes() {
+    var d = get();
+    if (!d.meta) d.meta = {};
+    if (d.meta.attitudesRenamed) return 0;
+
+    var moved = 0;
+    (d.attendance || []).forEach(function (r) {
+      if (!r.attitude || !r.attitude.length) return;
+      var next = [], changed = false;
+      r.attitude.forEach(function (a) {
+        var name = ATTITUDE_ALIAS[a] || a;
+        if (name !== a) changed = true;
+        if (next.indexOf(name) < 0) next.push(name);
+      });
+      if (!changed) return;
+      r.attitude = next;
+      stamp(r);
+      save({ kind: 'attendance', id: r.id });
+      moved++;
+    });
+    d.meta.attitudesRenamed = true;
+    if (!moved) save();   // 옮길 것이 없어도 '끝냈다' 표시는 남겨 둡니다
+    return moved;
+  }
+
   load();
   migratePatrols();
   migrateSite();
+  migrateAttitudes();
 
   return {
     STATUS: STATUS, GRADES: GRADES, FLAGS: FLAGS,
@@ -1731,7 +1938,8 @@ var Store = (function () {
     ensureCode: ensureCode, studentByCode: studentByCode, findStudent: findStudent,
     summarize: summarize, dayOverview: dayOverview,
     exportJson: exportJson, importJson: importJson, resetAll: resetAll, saveAcademy: saveAcademy,
-    migratePatrols: migratePatrols, migrateSite: migrateSite
+    migratePatrols: migratePatrols, migrateSite: migrateSite,
+    migrateAttitudes: migrateAttitudes
   };
 })();
 
@@ -1820,8 +2028,11 @@ var UI = (function () {
     return '<span class="tag ok">출석</span>';
   }
 
+  /** icon 은 Icon 에 등록된 이름('book' 등)이거나, 그대로 찍을 문자열입니다. */
   function emptyBox(msg, icon) {
-    return '<div class="empty"><span class="big">' + (icon || '🐋') + '</span>' + U.esc(msg) + '</div>';
+    var name = icon || 'whale';
+    var mark = (window.Icon && Icon.has(name)) ? Icon.svg(name, 30) : name;
+    return '<div class="empty"><span class="big">' + mark + '</span>' + U.esc(msg) + '</div>';
   }
 
   function bar(name, value, max, suffix) {
@@ -2262,7 +2473,8 @@ var AuthUI = (function () {
     gateEl.className = 'gate';
     gateEl.innerHTML =
       '<div class="gate-card">' +
-        '<div class="gate-brand">🐋 ' + U.esc(ac.name) + ' <span>' + U.esc(ac.campus || '') + '</span></div>' +
+        '<div class="gate-brand">' + Icon.svg('whale', 22) + '<span class="gate-brand-nm">' + U.esc(ac.name) + '</span>' +
+          '<span>' + U.esc(ac.campus || '') + '</span></div>' +
         '<h1>선생님 로그인</h1>' +
         '<p class="gate-sub">학원 계정으로 로그인하면 다른 선생님이 입력한 기록까지 함께 보입니다.</p>' +
         (message ? '<div class="gate-msg">' + U.esc(message) + '</div>' : '') +
@@ -2305,7 +2517,7 @@ var AuthUI = (function () {
     gateEl.querySelector('#g-local').addEventListener('click', function () {
       UI.confirm(
         '이 기기에만 저장하는 모드로 바꿀까요?<br>' +
-        '<span style="font-size:13px;color:#63778a">클라우드 연결이 끊기고, 이 기기에 남아 있는 기록만 보입니다. ' +
+        '<span style="font-size:13px;color:#6b7b8a">클라우드 연결이 끊기고, 이 기기에 남아 있는 기록만 보입니다. ' +
         '설정 화면에서 언제든 다시 연결할 수 있습니다.</span>',
         function () {
           Sync.disableCloud();
@@ -2366,8 +2578,8 @@ var AuthUI = (function () {
       var meta = LABEL[s] || LABEL.off;
       var pending = Sync.pendingCount();
       chip.className = 'sync-chip ' + meta.cls;
-      chip.textContent = (s === 'off' ? '💾 ' : '☁️ ') + meta.text +
-        (pending ? ' (' + pending + ')' : '');
+      chip.innerHTML = Icon.svg(s === 'off' ? 'device' : 'cloud', 13) +
+        '<span>' + U.esc(meta.text + (pending ? ' (' + pending + ')' : '')) + '</span>';
       chip.hidden = false;
     });
   }
@@ -2536,7 +2748,7 @@ var VocabImport = (function () {
           '<thead><tr><th>학생</th><th>날짜</th><th>단어장</th><th class="num">정답</th><th class="num">정답률</th></tr></thead>' +
           '<tbody>' + rows + '</tbody></table></div>' +
           (res.ready.length > 12 ? '<div class="hint" style="margin-top:6px">외 ' + (res.ready.length - 12) + '건</div>' : '')
-        : UI.emptyBox('가져올 기록이 없습니다.', '📥')) +
+        : UI.emptyBox('가져올 기록이 없습니다.', 'inbox')) +
       (res.unknown.length
         ? '<div class="section-title">학생을 찾지 못한 줄 (' + res.unknown.length + '건)</div>' +
           '<p class="hint" style="margin-top:0">아래 값과 일치하는 학생 코드나 이름이 명부에 없습니다. ' +
@@ -2889,10 +3101,10 @@ Views.dashboard = (function () {
       return !r || !r.status;
     });
     if (!o.expected.length) {
-      return UI.emptyBox('오늘(' + o.day + '요일)은 예정된 수업이 없습니다.', '🗓️');
+      return UI.emptyBox('오늘(' + o.day + '요일)은 예정된 수업이 없습니다.', 'calendar');
     }
     if (!pending.length) {
-      return '<div class="empty"><span class="big">✅</span>오늘 출결 체크를 모두 마쳤습니다.<br>' +
+      return '<div class="empty"><span class="big">' + Icon.svg('check', 30) + '</span>오늘 출결 체크를 모두 마쳤습니다.<br>' +
         '<span style="font-size:12.5px">출석 ' + o.present + '명 · 결석 ' + o.absent + '명</span></div>';
     }
     return pending.map(function (s) {
@@ -2916,7 +3128,7 @@ Views.dashboard = (function () {
   /** 오늘 기록된 수업 태도 */
   function attitudeToday() {
     var list = Store.attendanceOn(U.ymd()).filter(function (r) { return (r.attitude || []).length; });
-    if (!list.length) return UI.emptyBox('오늘 기록된 수업 태도가 없습니다.', '🙂');
+    if (!list.length) return UI.emptyBox('오늘 기록된 수업 태도가 없습니다.', 'smile');
     // 주의가 필요한 학생을 위로 올립니다.
     list.sort(function (a, b) {
       return ((b.attitude || []).some(Store.isIssue) ? 1 : 0) - ((a.attitude || []).some(Store.isIssue) ? 1 : 0);
@@ -2927,7 +3139,7 @@ Views.dashboard = (function () {
       return '<div class="memo-item">' +
         '<div class="txt"><b>' + U.esc(s ? s.name : '(삭제된 학생)') + '</b> ' +
           '<span class="tag ' + (issue ? 'warn' : 'ok') + '">' + U.esc((r.attitude || []).join(' ')) + '</span>' +
-          (r.attitudeNote ? '<br><span style="font-size:12.5px;color:#63778a">' + U.esc(r.attitudeNote) + '</span>' : '') +
+          (r.attitudeNote ? '<br><span style="font-size:12.5px;color:#6b7b8a">' + U.esc(r.attitudeNote) + '</span>' : '') +
         '</div></div>';
     }).join('');
   }
@@ -2952,10 +3164,10 @@ Views.dashboard = (function () {
       return Store.paymentStatus(b).overdue - Store.paymentStatus(a).overdue;
     });
     if (!pay.list.length) {
-      return '<div class="hint">이번 달 청구서가 아직 없습니다. <a href="#/tuition" style="color:#1a7fd4;font-weight:600">청구서를 생성</a>해 주세요.</div>';
+      return '<div class="hint">이번 달 청구서가 아직 없습니다. <a href="#/tuition" style="color:#215a86;font-weight:600">청구서를 생성</a>해 주세요.</div>';
     }
     if (!list.length) {
-      return '<div class="empty" style="padding:26px 12px"><span class="big">💰</span>이번 달 수강료를 모두 받았습니다.</div>';
+      return '<div class="empty" style="padding:26px 12px"><span class="big">' + Icon.svg('coin', 30) + '</span>이번 달 수강료를 모두 받았습니다.</div>';
     }
     return list.slice(0, 6).map(function (p) {
       var s = Store.student(p.studentId);
@@ -2963,19 +3175,19 @@ Views.dashboard = (function () {
       var remain = (Number(p.amount) || 0) - (Number(p.paidAmount) || 0);
       return '<div class="memo-item"><div class="txt"><b>' + U.esc(s ? s.name : '') + '</b> ' +
         '<span class="tag ' + st.tag + '">' + U.esc(st.label) + '</span>' +
-        '<br><span style="font-size:12px;color:#63778a">' + U.won(remain) + ' · 기한 ' + U.esc(p.dueDate || '-') + '</span></div></div>';
+        '<br><span style="font-size:12px;color:#6b7b8a">' + U.won(remain) + ' · 기한 ' + U.esc(p.dueDate || '-') + '</span></div></div>';
     }).join('') + (list.length > 6 ? '<div class="hint" style="margin-top:8px">외 ' + (list.length - 6) + '명</div>' : '');
   }
 
   /** 진행 중 숙제의 제출 현황 */
   function homeworkBox() {
     var open = Store.homeworks({ open: true });
-    if (!open.length) return '<div class="hint">진행 중인 숙제가 없습니다. <a href="#/homework" style="color:#1a7fd4;font-weight:600">숙제 내기</a></div>';
+    if (!open.length) return '<div class="hint">진행 중인 숙제가 없습니다. <a href="#/homework" style="color:#215a86;font-weight:600">숙제 내기</a></div>';
     return open.slice(0, 5).map(function (h) {
       var pr = Store.homeworkProgress(h.id);
       return '<div class="memo-item"><div class="txt"><b>' + U.esc(h.title) + '</b> ' +
         '<span class="tag ' + (pr.rate === 100 ? 'ok' : pr.rate >= 60 ? 'warn' : 'bad') + '">' + pr.rate + '%</span>' +
-        '<br><span style="font-size:12px;color:#63778a">제출 ' + pr.done + '/' + pr.total + '명' +
+        '<br><span style="font-size:12px;color:#6b7b8a">제출 ' + pr.done + '/' + pr.total + '명' +
         (h.dueDate ? ' · 마감 ' + U.esc(h.dueDate) : '') + '</span></div></div>';
     }).join('') + (open.length > 5 ? '<div class="hint" style="margin-top:8px">외 ' + (open.length - 5) + '건</div>' : '');
   }
@@ -2985,9 +3197,9 @@ Views.dashboard = (function () {
     var over = Store.overdueLoans();
     var open = Store.loans({ open: true });
     if (!Store.books().length) {
-      return '<div class="hint">등록된 도서가 없습니다. <a href="#/library" style="color:#1a7fd4;font-weight:600">도서 등록</a></div>';
+      return '<div class="hint">등록된 도서가 없습니다. <a href="#/library" style="color:#215a86;font-weight:600">도서 등록</a></div>';
     }
-    if (!open.length) return '<div class="empty" style="padding:26px 12px"><span class="big">📖</span>대출 중인 책이 없습니다.</div>';
+    if (!open.length) return '<div class="empty" style="padding:26px 12px"><span class="big">' + Icon.svg('book', 30) + '</span>대출 중인 책이 없습니다.</div>';
     var soon = open.slice().sort(function (a, b) {
       return String(a.dueDate || '').localeCompare(String(b.dueDate || ''));
     });
@@ -2997,7 +3209,7 @@ Views.dashboard = (function () {
       return '<div class="memo-item"><div class="txt"><b>' + U.esc(st ? st.name : '') + '</b> ' +
         '<span class="tag ' + (late ? 'bad' : 'blue') + '">' +
           (late ? U.dayDiff(l.dueDate, U.ymd()) + '일 연체' : '~' + U.esc(l.dueDate || '')) + '</span>' +
-        '<br><span style="font-size:12px;color:#63778a">' + U.esc(b ? b.title : '(삭제된 책)') + '</span></div></div>';
+        '<br><span style="font-size:12px;color:#6b7b8a">' + U.esc(b ? b.title : '(삭제된 책)') + '</span></div></div>';
     }).join('') + (over.length ? '<div class="hint" style="margin-top:8px">연체 ' + over.length + '권</div>' : '');
   }
 
@@ -3047,9 +3259,9 @@ Views.dashboard = (function () {
             '<button class="btn primary" id="task-add">추가</button>' +
           '</div>' +
           '<div class="grid g-3">' +
-            '<div><div class="section-title">🔥 오늘</div>' + taskList('today') + '</div>' +
-            '<div><div class="section-title">📅 이번주</div>' + taskList('week') + '</div>' +
-            '<div><div class="section-title">💤 미뤄두기</div>' + taskList('later') + '</div>' +
+            '<div><div class="section-title">' + Icon.svg('flame', 13) + ' 오늘</div>' + taskList('today') + '</div>' +
+            '<div><div class="section-title">' + Icon.svg('calendar', 13) + ' 이번주</div>' + taskList('week') + '</div>' +
+            '<div><div class="section-title">' + Icon.svg('moon', 13) + ' 미뤄두기</div>' + taskList('later') + '</div>' +
           '</div>' +
         '</div></div>' +
 
@@ -3139,7 +3351,7 @@ Views.students = (function () {
 
   function rows() {
     var list = Store.students().filter(matches);
-    if (!list.length) return '<tr><td colspan="8">' + UI.emptyBox('조건에 맞는 학생이 없습니다.', '🔎') + '</td></tr>';
+    if (!list.length) return '<tr><td colspan="8">' + UI.emptyBox('조건에 맞는 학생이 없습니다.', 'search') + '</td></tr>';
     var today = U.ymd();
     return list.map(function (s) {
       var rec = Store.attendanceFor(s.id, today);
@@ -3240,7 +3452,7 @@ Views.students = (function () {
             UI.close();
             UI.confirm(
               '<b>' + U.esc(s.name) + '</b> 학생을 삭제할까요?<br>' +
-              '<span style="color:#63778a;font-size:13px">출결 · 수강료 · 메모 기록이 모두 함께 삭제되며 되돌릴 수 없습니다.<br>' +
+              '<span style="color:#6b7b8a;font-size:13px">출결 · 수강료 · 메모 기록이 모두 함께 삭제되며 되돌릴 수 없습니다.<br>' +
               '기록을 남기려면 대신 등록 여부를 <b>퇴원생</b>으로 바꿔 주세요.</span>',
               function () {
                 Store.deleteStudent(s.id);
@@ -3309,8 +3521,8 @@ Views.students = (function () {
             '<td>' + (att.length
               ? '<span class="tag ' + (att.some(Store.isIssue) ? 'warn' : 'ok') + '">' + U.esc(att.join(' ')) + '</span>'
               : '–') + '</td>' +
-            '<td>' + (r.planner ? '✅' : '–') + '</td><td>' + (r.planDone ? '✅' : '–') + '</td>' +
-            '<td>' + (r.homework ? '✅' : '–') + '</td><td>' + U.esc(r.note || '') + '</td></tr>';
+            '<td>' + (r.planner ? '○' : '–') + '</td><td>' + (r.planDone ? '○' : '–') + '</td>' +
+            '<td>' + (r.homework ? '○' : '–') + '</td><td>' + U.esc(r.note || '') + '</td></tr>';
         }).join('') + '</tbody></table></div>'
         : '<div class="hint">기록이 없습니다.</div>') +
 
@@ -3521,7 +3733,7 @@ Views.attendance = (function () {
     if (!list.length) {
       return UI.emptyBox(scope === 'day'
         ? U.dayOf(date) + '요일에 수업이 있는 학생이 없습니다. 오른쪽 위에서 [전체 등록생]으로 바꿔보세요.'
-        : '등록생이 없습니다. 학생 명부에서 먼저 등록해 주세요.', '🗓️');
+        : '등록생이 없습니다. 학생 명부에서 먼저 등록해 주세요.', 'calendar');
     }
     return list.map(row).join('');
   }
@@ -3669,7 +3881,7 @@ Views.homework = (function () {
       .map(function (x) { return Store.student(x.studentId); })
       .filter(Boolean);
 
-    return '<div class="hw-card" style="--klass:' + U.esc(c && c.color ? c.color : '#1a7fd4') + '">' +
+    return '<div class="hw-card" style="--klass:' + U.esc(c && c.color ? c.color : '#215a86') + '">' +
       '<div class="hw-top">' +
         '<div>' +
           '<div class="hw-title">' + U.esc(h.title) + '</div>' +
@@ -3781,7 +3993,7 @@ Views.homework = (function () {
     UI.modal({
       title: h.title, wide: true,
       body: '<div id="sub-rows">' + (Store.submissions({ homeworkId: id }).length
-        ? rows() : UI.emptyBox('대상 학생이 없습니다.', '🧒')) + '</div>',
+        ? rows() : UI.emptyBox('대상 학생이 없습니다.', 'students')) + '</div>',
       footer: '<button class="btn" id="sc-all">전원 제출 처리</button><div class="sp"></div>' +
               '<button class="btn primary" data-close>닫기</button>',
       onMount: function (w) {
@@ -3830,7 +4042,7 @@ Views.homework = (function () {
           '<div class="sub">전체 ' + all.length + '건</div></div>' +
         '<div class="stat"><div class="lbl">제출률</div><div class="val">' + U.pct(totalTargets - totalPending, totalTargets) + '<small>%</small></div>' +
           '<div class="sub">진행 중 숙제 기준</div></div>' +
-        '<div class="stat"><div class="lbl">미제출</div><div class="val" style="color:' + (totalPending ? '#d5453f' : 'inherit') + '">' +
+        '<div class="stat"><div class="lbl">미제출</div><div class="val" style="color:' + (totalPending ? '#a8453f' : 'inherit') + '">' +
           totalPending + '<small>건</small></div><div class="sub">학생 × 숙제</div></div>' +
       '</div>' +
 
@@ -3846,7 +4058,7 @@ Views.homework = (function () {
             ? '<div class="class-grid">' + list().map(card).join('') + '</div>'
             : UI.emptyBox(scope === 'open'
                 ? '진행 중인 숙제가 없습니다. [+ 숙제 내기]로 시작하세요.'
-                : '아직 낸 숙제가 없습니다.', '📚')) +
+                : '아직 낸 숙제가 없습니다.', 'homework')) +
         '</div>' +
       '</div>';
 
@@ -3983,7 +4195,7 @@ Views.vocab = (function () {
   }
 
   function codeTable(list) {
-    if (!list.length) return UI.emptyBox('등록생이 없습니다.', '🧒');
+    if (!list.length) return UI.emptyBox('등록생이 없습니다.', 'students');
     return '<div class="table-wrap"><table class="tbl" style="min-width:auto">' +
       '<thead><tr><th>학생</th><th>학년</th><th>반</th><th>코드</th></tr></thead><tbody>' +
       list.map(function (s) {
@@ -4034,7 +4246,7 @@ Views.vocab = (function () {
 
       (Store.vocabLogs().length ? '' :
         '<div class="card" style="margin-bottom:16px"><div class="card-b">' +
-          '<p class="hint" style="margin:0">📱 아직 들어온 기록이 없습니다. 단어학습앱에서 결과를 내보내 ' +
+          '<p class="hint" style="margin:0">아직 들어온 기록이 없습니다. 단어학습앱에서 결과를 내보내 ' +
           '<b>[기록 가져오기]</b>로 넣거나, 앱이 <code>#/import?d=...</code> 링크를 열도록 만들면 자동으로 쌓입니다. ' +
           '형식은 <b>docs/단어학습앱-연동.md</b>에 정리해 두었습니다.</p>' +
         '</div></div>') +
@@ -4044,7 +4256,7 @@ Views.vocab = (function () {
           (studied.length
             ? studied.slice().sort(function (a, b) { return b.sum.accuracy - a.sum.accuracy; })
                 .map(function (d) { return UI.bar(d.s.name, d.sum.accuracy, 100, '%'); }).join('')
-            : UI.emptyBox('기간 내 학습 기록이 없습니다.', '📱')) +
+            : UI.emptyBox('기간 내 학습 기록이 없습니다.', 'device')) +
         '</div></div>' +
 
         '<div class="card"><div class="card-h"><h2>최근 학습</h2></div><div class="card-b">' +
@@ -4058,7 +4270,7 @@ Views.vocab = (function () {
               return '<div class="memo-item"><span class="dt">' + U.shortDate(v.date) + '</span>' +
                 '<div class="txt"><b>' + U.esc(s ? s.name : '(삭제됨)') + '</b> ' +
                   '<span class="tag ' + (rate >= 80 ? 'ok' : rate >= 60 ? 'warn' : 'bad') + '">' + rate + '%</span>' +
-                  '<br><span style="font-size:12px;color:#63778a">' + U.esc(v.setName || '') +
+                  '<br><span style="font-size:12px;color:#6b7b8a">' + U.esc(v.setName || '') +
                   ' · ' + v.correct + '/' + v.total + '개</span></div></div>';
             }).join('');
           })() +
@@ -4080,7 +4292,7 @@ Views.vocab = (function () {
               '<td class="num">' + (d.sum.total ? d.sum.accuracy + '%' : '-') + '</td>' +
               '<td class="num">' + d.sum.minutes + '분</td>' +
               '<td>' + (d.sum.lastDate ? U.shortDate(d.sum.lastDate) : '-') + '</td></tr>';
-          }).join('') : '<tr><td colspan="8">' + UI.emptyBox('등록생이 없습니다.', '🧒') + '</td></tr>') +
+          }).join('') : '<tr><td colspan="8">' + UI.emptyBox('등록생이 없습니다.', 'students') + '</td></tr>') +
         '</tbody></table></div></div>';
 
     UI.on(el, '[data-period]', 'click', function (e, b) {
@@ -4110,7 +4322,7 @@ Views.vocab = (function () {
     el.innerHTML = '<div class="card"><div class="card-b">' +
       (payload
         ? '<p class="hint" style="margin-top:0">단어학습앱이 보낸 기록입니다. 확인 후 가져오기를 눌러 주세요.</p>'
-        : UI.emptyBox('링크에서 기록을 읽지 못했습니다. 링크가 잘리지 않았는지 확인해 주세요.', '⚠️')) +
+        : UI.emptyBox('링크에서 기록을 읽지 못했습니다. 링크가 잘리지 않았는지 확인해 주세요.', 'alert')) +
       '</div></div>';
     if (payload) openImport(text);
   }
@@ -4149,7 +4361,7 @@ Views.library = (function () {
     if (!list.length) {
       return '<tr><td colspan="7">' + UI.emptyBox(
         Store.books().length ? '조건에 맞는 책이 없습니다.' : '등록된 도서가 없습니다. [+ 도서 등록] 또는 [CSV 일괄 등록]으로 시작하세요.',
-        '📚') + '</td></tr>';
+        'book') + '</td></tr>';
     }
     return list.slice(0, 300).map(function (b) {
       var st = Store.bookStatus(b);
@@ -4289,7 +4501,7 @@ Views.library = (function () {
           w.querySelector('#b-del').addEventListener('click', function () {
             UI.close();
             UI.confirm('<b>' + U.esc(b.title) + '</b> 를 목록에서 지울까요?<br>' +
-              '<span style="font-size:13px;color:#63778a">지난 대여 기록은 남습니다.</span>',
+              '<span style="font-size:13px;color:#6b7b8a">지난 대여 기록은 남습니다.</span>',
               function () {
                 Store.deleteBook(b.id);
                 UI.toast('삭제했습니다.');
@@ -4524,7 +4736,7 @@ Views.library = (function () {
         '<div class="stat accent"><div class="lbl">보유 도서</div><div class="val">' + U.num(all.length) + '<small>권</small></div>' +
           '<div class="sub">대출 가능 ' + (all.length - open.length) + '권</div></div>' +
         '<div class="stat"><div class="lbl">대출 중</div><div class="val">' + open.length + '<small>권</small></div></div>' +
-        '<div class="stat"><div class="lbl">연체</div><div class="val" style="color:' + (over.length ? '#d5453f' : 'inherit') + '">' +
+        '<div class="stat"><div class="lbl">연체</div><div class="val" style="color:' + (over.length ? '#a8453f' : 'inherit') + '">' +
           over.length + '<small>권</small></div>' +
           '<div class="sub">' + (over.length ? '반납 안내가 필요합니다' : '연체 없음') + '</div></div>' +
         '<div class="stat"><div class="lbl">이달 대출</div><div class="val">' +
@@ -4539,7 +4751,7 @@ Views.library = (function () {
             var b = Store.book(l.bookId), s = Store.student(l.studentId);
             return '<div class="memo-item"><div class="txt"><b>' + U.esc(s ? s.name : '') + '</b> · ' +
               U.esc(b ? b.title : '(삭제된 책)') +
-              '<br><span style="font-size:12px;color:#63778a">반납 예정 ' + U.esc(l.dueDate) +
+              '<br><span style="font-size:12px;color:#6b7b8a">반납 예정 ' + U.esc(l.dueDate) +
               ' · ' + U.dayDiff(l.dueDate, U.ymd()) + '일 지남</span></div>' +
               '<button class="btn sm" data-return="' + l.id + '">반납</button></div>';
           }).join('') +
@@ -4636,7 +4848,7 @@ Views.classes = (function () {
   function classCard(c) {
     var members = Store.studentsInClass(c.id);
     var full = c.capacity && members.length >= c.capacity;
-    return '<div class="class-card" style="--klass:' + U.esc(c.color || '#1a7fd4') + '">' +
+    return '<div class="class-card" style="--klass:' + U.esc(c.color || '#215a86') + '">' +
       '<div class="class-top">' +
         '<div>' +
           '<div class="class-name">' + U.esc(c.name) + '</div>' +
@@ -4684,7 +4896,7 @@ Views.classes = (function () {
         out += '<div class="cell">' + here.map(function (c) {
           var n = Store.studentsInClass(c.id).length;
           return '<button class="tt-block" data-edit="' + c.id + '" ' +
-            'style="--klass:' + U.esc(c.color || '#1a7fd4') + '">' +
+            'style="--klass:' + U.esc(c.color || '#215a86') + '">' +
             '<b>' + U.esc(c.name) + '</b><span>' + n + '명' +
             (c.teacher ? ' · ' + U.esc(c.teacher) : '') + '</span></button>';
         }).join('') + '</div>';
@@ -4760,7 +4972,7 @@ Views.classes = (function () {
             var n = Store.studentsInClass(c.id).length;
             UI.close();
             UI.confirm('<b>' + U.esc(c.name) + '</b> 반을 삭제할까요?<br>' +
-              '<span style="font-size:13px;color:#63778a">' +
+              '<span style="font-size:13px;color:#6b7b8a">' +
               (n ? '소속 학생 ' + n + '명은 반 미배정 상태가 되고, 출결·수강료 기록은 그대로 남습니다.'
                  : '소속 학생이 없어 다른 기록에는 영향이 없습니다.') + '</span>',
               function () {
@@ -4794,7 +5006,7 @@ Views.classes = (function () {
               '<span class="hint">' + U.esc(s.grade || '') + '</span>' +
               (other ? '<span class="tag gray">' + U.esc(other.name) + '</span>' : '') +
             '</label>';
-          }).join('') : UI.emptyBox('등록생이 없습니다.', '🧒')) +
+          }).join('') : UI.emptyBox('등록생이 없습니다.', 'students')) +
         '</div>',
       footer: '<span class="hint" id="m-count"></span><div class="sp"></div>' +
               '<button class="btn" data-close>취소</button><button class="btn primary" id="m-save">저장</button>',
@@ -4840,7 +5052,7 @@ Views.classes = (function () {
     }
     UI.confirm(
       '지금 학생들의 요일·시간을 묶어 반 ' + keys.length + '개를 만들까요?<br>' +
-      '<span style="font-size:13px;color:#63778a">' +
+      '<span style="font-size:13px;color:#6b7b8a">' +
       keys.map(function (k) {
         var g = groups[k];
         return '· ' + (g.days.join('·') || '요일없음') + ' ' + (g.time || '') + ' — ' + g.members.length + '명';
@@ -4873,7 +5085,7 @@ Views.classes = (function () {
           '<div class="card-b">' +
             (cs.length
               ? '<div class="class-grid">' + cs.map(classCard).join('') + '</div>'
-              : UI.emptyBox('아직 만든 반이 없습니다. [+ 반 만들기]로 시작하세요.', '🗓️')) +
+              : UI.emptyBox('아직 만든 반이 없습니다. [+ 반 만들기]로 시작하세요.', 'calendar')) +
           '</div>' +
         '</div>' +
 
@@ -4946,7 +5158,7 @@ Views.tuition = (function () {
       return '<tr><td colspan="8">' + UI.emptyBox(
         Store.payments({ month: month }).length
           ? '조건에 맞는 청구 건이 없습니다.'
-          : U.humanMonth(month) + ' 청구서가 아직 없습니다. 위의 [청구서 일괄 생성]을 눌러 주세요.', '🧾') + '</td></tr>';
+          : U.humanMonth(month) + ' 청구서가 아직 없습니다. 위의 [청구서 일괄 생성]을 눌러 주세요.', 'receipt') + '</td></tr>';
     }
     return list.map(function (p) {
       var s = Store.student(p.studentId);
@@ -5060,7 +5272,7 @@ Views.tuition = (function () {
             (s && s.parentPhone ? '<a class="btn sm" href="sms:' + U.esc(s.parentPhone) + '?body=' +
               encodeURIComponent(noticeText(p, s)) + '">문자 앱으로</a>' : '') +
           '</div>' +
-          '<pre style="margin:0;font-family:inherit;font-size:12.5px;color:#63778a;white-space:pre-wrap;line-height:1.6">' +
+          '<pre style="margin:0;font-family:inherit;font-size:12.5px;color:#6b7b8a;white-space:pre-wrap;line-height:1.6">' +
             U.esc(noticeText(p, s)) + '</pre>' +
         '</div>';
       }).join(''),
@@ -5097,7 +5309,7 @@ Views.tuition = (function () {
     var remain = r.amount - r.paidAmount;
     return '<div class="report">' +
       '<div class="report-hd">' +
-        '<div style="font-size:12.5px;color:#c9e3f8">🐋 ' + U.esc(r.academy.name) + ' ' + U.esc(r.academy.campus) + '</div>' +
+        '<div style="font-size:12.5px;color:#a3b6c7">' + U.esc(r.academy.name) + ' ' + U.esc(r.academy.campus) + '</div>' +
         '<div class="who" style="margin-top:6px">수강료 납부 확인서</div>' +
         '<div class="sub">' + U.humanMonth(r.month) + ' 수강료</div>' +
       '</div>' +
@@ -5105,8 +5317,8 @@ Views.tuition = (function () {
         '<dl class="kv" style="grid-template-columns:110px 1fr;font-size:14px">' +
           '<dt>학생</dt><dd><b>' + U.esc(r.student.name) + '</b>' + (r.student.grade ? ' · ' + U.esc(r.student.grade) : '') + '</dd>' +
           '<dt>청구 금액</dt><dd>' + U.won(r.amount) + '</dd>' +
-          '<dt>납부 금액</dt><dd><b style="color:#12a05c">' + U.won(r.paidAmount) + '</b></dd>' +
-          (remain > 0 ? '<dt>잔액</dt><dd style="color:#d5453f">' + U.won(remain) + '</dd>' : '') +
+          '<dt>납부 금액</dt><dd><b style="color:#2e7a57">' + U.won(r.paidAmount) + '</b></dd>' +
+          (remain > 0 ? '<dt>잔액</dt><dd style="color:#a8453f">' + U.won(remain) + '</dd>' : '') +
           '<dt>납부일</dt><dd>' + (r.paidDate ? U.human(r.paidDate) : '-') + '</dd>' +
           '<dt>결제 수단</dt><dd>' + U.esc(r.method || '-') + '</dd>' +
           (r.note ? '<dt>비고</dt><dd>' + U.esc(r.note) + '</dd>' : '') +
@@ -5124,7 +5336,7 @@ Views.tuition = (function () {
     var p = Store.payments({}).filter(function (x) { return x.id === pid; })[0];
     if (!p) return;
     var r = receiptData(p);
-    var url = location.href.split('#')[0] + '#/receipt?d=' + U.encodeData(r);
+    var url = U.publicBase() + '#/receipt?d=' + U.encodeData(r);
     UI.modal({
       title: '납부 확인서',
       wide: true,
@@ -5150,7 +5362,7 @@ Views.tuition = (function () {
     document.body.classList.add('share-mode');
     if (!r || !r.student) {
       el.innerHTML = '<div class="share-view"><div class="card"><div class="card-b">' +
-        UI.emptyBox('확인서를 불러올 수 없습니다. 링크가 잘리지 않았는지 확인해 주세요.', '⚠️') + '</div></div></div>';
+        UI.emptyBox('확인서를 불러올 수 없습니다. 링크가 잘리지 않았는지 확인해 주세요.', 'alert') + '</div></div></div>';
       return;
     }
     document.title = r.student.name + ' 수강료 납부 확인서';
@@ -5187,16 +5399,16 @@ Views.tuition = (function () {
           '<div class="sub">' + U.humanMonth(month) + '</div></div>' +
         '<div class="stat"><div class="lbl">청구 총액</div><div class="val" style="font-size:22px">' + U.num(sum.billed) + '<small>원</small></div>' +
           '<div class="sub">청구 ' + sum.list.length + '건</div></div>' +
-        '<div class="stat"><div class="lbl">수납액</div><div class="val" style="font-size:22px;color:#12a05c">' + U.num(sum.collected) + '<small>원</small></div>' +
+        '<div class="stat"><div class="lbl">수납액</div><div class="val" style="font-size:22px;color:#2e7a57">' + U.num(sum.collected) + '<small>원</small></div>' +
           '<div class="sub">완납 ' + sum.counts.paid + '명 · 부분 ' + sum.counts.partial + '명</div></div>' +
-        '<div class="stat"><div class="lbl">미수납액</div><div class="val" style="font-size:22px;color:' + (sum.outstanding ? '#d5453f' : 'inherit') + '">' +
+        '<div class="stat"><div class="lbl">미수납액</div><div class="val" style="font-size:22px;color:' + (sum.outstanding ? '#a8453f' : 'inherit') + '">' +
           U.num(sum.outstanding) + '<small>원</small></div>' +
           '<div class="sub">미납 ' + sum.unpaidCount + '명 · 연체 ' + sum.counts.overdue + '명</div></div>' +
       '</div>' +
 
       (ac.bankAccount ? '' :
         '<div class="card" style="margin-bottom:16px"><div class="card-b" style="padding:12px 16px">' +
-        '<span class="hint">💡 <b>설정 · 백업</b>에서 입금 계좌를 등록하면 미납 안내 문자에 계좌번호가 자동으로 들어갑니다.</span>' +
+        '<span class="hint"><b>설정 · 백업</b>에서 입금 계좌를 등록하면 미납 안내 문자에 계좌번호가 자동으로 들어갑니다.</span>' +
         '</div></div>') +
 
       '<div class="card">' +
@@ -5225,7 +5437,7 @@ Views.tuition = (function () {
       var existing = Store.payments({ month: month }).length;
       UI.confirm(
         U.humanMonth(month) + ' 청구서를 등록생 전체에게 생성할까요?<br>' +
-        '<span style="font-size:13px;color:#63778a">이미 청구서가 있는 학생은 그대로 두고, 없는 학생만 추가합니다.' +
+        '<span style="font-size:13px;color:#6b7b8a">이미 청구서가 있는 학생은 그대로 두고, 없는 학생만 추가합니다.' +
         (existing ? ' (현재 ' + existing + '건)' : '') + '<br>' +
         '금액은 학생별 수강료가 없으면 학원 기본 수강료(' + U.won(ac.defaultFee) + ')로 들어갑니다.</span>',
         function () {
@@ -5308,7 +5520,7 @@ Views.stats = (function () {
       return { date: d, rate: o.rate, marked: o.present + o.absent };
     }).filter(function (r) { return r.marked > 0; });
 
-    if (!rows.length) return UI.emptyBox('이 달에 기록된 출결이 없습니다.', '📈');
+    if (!rows.length) return UI.emptyBox('이 달에 기록된 출결이 없습니다.', 'stats');
     return rows.map(function (r) {
       return UI.bar(U.shortDate(r.date), r.rate, 100, '%');
     }).join('');
@@ -5343,13 +5555,13 @@ Views.stats = (function () {
         '<div class="card"><div class="card-h"><h2>학생별 출석률</h2></div><div class="card-b">' +
           (data.length ? data.slice().sort(function (a, b) { return b.sum.rate - a.sum.rate; })
             .map(function (d) { return UI.bar(d.s.name, d.sum.total ? d.sum.rate : 0, 100, '%'); }).join('')
-            : UI.emptyBox('등록생이 없습니다.', '🧒')) +
+            : UI.emptyBox('등록생이 없습니다.', 'students')) +
         '</div></div>' +
 
         '<div class="card"><div class="card-h"><h2>관심이 필요한 학생</h2></div><div class="card-b">' +
           (lowest.length ? lowest.map(function (d) {
             return '<div class="memo-item"><div class="txt"><b>' + U.esc(d.s.name) + '</b>' +
-              '<br><span style="font-size:12px;color:#63778a">출석률 ' + d.sum.rate + '% · 결석 ' + d.sum.absent +
+              '<br><span style="font-size:12px;color:#6b7b8a">출석률 ' + d.sum.rate + '% · 결석 ' + d.sum.absent +
               '회 · 지각 ' + d.sum.flags['지각'] + '회 · 태도 주의 ' + d.sum.attitudeIssues + '일</span></div></div>';
           }).join('') : '<div class="hint">집계할 출결 기록이 없습니다.</div>') +
         '</div></div>' +
@@ -5371,7 +5583,7 @@ Views.stats = (function () {
               '<td class="num">' + d.sum.flags['지각'] + '</td><td class="num">' + d.sum.flags['외출'] + '</td>' +
               '<td class="num">' + d.sum.flags['조퇴'] + '</td><td class="num">' + d.sum.planner + '</td>' +
               '<td class="num">' + d.sum.homework + '</td><td class="num">' + d.sum.attitudeIssues + '</td></tr>';
-          }).join('') : '<tr><td colspan="12">' + UI.emptyBox('등록생이 없습니다.', '🧒') + '</td></tr>') +
+          }).join('') : '<tr><td colspan="12">' + UI.emptyBox('등록생이 없습니다.', 'students') + '</td></tr>') +
         '</tbody></table></div></div>';
 
     el.querySelector('#month').addEventListener('change', function (e) {
@@ -5449,14 +5661,14 @@ Views.share = (function () {
             : r.s === '결석' ? '<span class="tag bad">결석</span>'
             : (r.f.length ? '<span class="tag warn">출석 · ' + U.esc(r.f.join('/')) + '</span>' : '<span class="tag ok">출석</span>');
           return '<tr><td>' + U.shortDate(r.d) + '</td><td>' + tag + '</td>' +
-            '<td>' + (r.p ? '✅' : '–') + '</td><td>' + (r.c ? '✅' : '–') + '</td>' +
-            '<td>' + (r.h ? '✅' : '–') + '</td><td>' + U.esc(r.n) + '</td></tr>';
+            '<td>' + (r.p ? '○' : '–') + '</td><td>' + (r.c ? '○' : '–') + '</td>' +
+            '<td>' + (r.h ? '○' : '–') + '</td><td>' + U.esc(r.n) + '</td></tr>';
         }).join('') + '</tbody></table></div>'
       : '<div class="hint">이 기간에 기록된 출결이 없습니다.</div>';
 
     return '<div class="report">' +
       '<div class="report-hd">' +
-        '<div style="font-size:12.5px;color:#c9e3f8">🐋 ' + U.esc(rep.academy.name) + ' ' + U.esc(rep.academy.campus) + ' 학습 리포트</div>' +
+        '<div style="font-size:12.5px;color:#a3b6c7">' + U.esc(rep.academy.name) + ' ' + U.esc(rep.academy.campus) + ' 학습 리포트</div>' +
         '<div class="who" style="margin-top:6px">' + U.esc(rep.student.name) +
           (rep.student.grade ? ' <span style="font-size:14px;font-weight:500">· ' + U.esc(rep.student.grade) + '</span>' : '') +
           (rep.student.className ? ' <span style="font-size:13px;font-weight:500;opacity:.85">· ' + U.esc(rep.student.className) + '</span>' : '') + '</div>' +
@@ -5495,8 +5707,7 @@ Views.share = (function () {
 
   /* ---------- 공유 링크 ---------- */
   function linkFor(rep) {
-    var base = location.href.split('#')[0];
-    return base + '#/report?d=' + U.encodeData(rep);
+    return U.publicBase() + '#/report?d=' + U.encodeData(rep);
   }
 
   /* ---------- 관리자 화면 ---------- */
@@ -5550,7 +5761,7 @@ Views.share = (function () {
       var rep = currentReport();
       el.querySelector('#sh-preview').innerHTML = rep
         ? reportHtml(rep)
-        : '<div class="card"><div class="card-b">' + UI.emptyBox('학생을 먼저 등록해 주세요.', '🧒') + '</div></div>';
+        : '<div class="card"><div class="card-b">' + UI.emptyBox('학생을 먼저 등록해 주세요.', 'students') + '</div></div>';
     }
     preview();
 
@@ -5612,7 +5823,7 @@ Views.share = (function () {
     document.body.classList.add('share-mode');
     if (!rep || !rep.student) {
       el.innerHTML = '<div class="share-view"><div class="card"><div class="card-b">' +
-        UI.emptyBox('리포트를 불러올 수 없습니다. 링크가 잘리지 않았는지 확인해 주세요.', '⚠️') +
+        UI.emptyBox('리포트를 불러올 수 없습니다. 링크가 잘리지 않았는지 확인해 주세요.', 'alert') +
         '</div></div></div>';
       return;
     }
@@ -5802,7 +6013,7 @@ Views.settings = (function () {
           '<button class="btn primary" id="c-connect">클라우드 연결</button>' +
           '<a class="btn" href="https://github.com/a28008005-sketch/gorae-homepage/blob/main/docs/서버형-설치안내.md" target="_blank" rel="noopener">설치 안내 보기</a>' +
         '</div>' +
-        '<p class="hint" style="margin-top:12px">⚠️ 여기에는 반드시 <b>anon public</b> 키만 넣으세요. ' +
+        '<p class="hint" style="margin-top:12px">여기에는 반드시 <b>anon public</b> 키만 넣으세요. ' +
         'service_role 키는 브라우저에 넣으면 안 됩니다.</p>';
     }
     var u = Sync.currentUser();
@@ -5851,7 +6062,7 @@ Views.settings = (function () {
     if (upload) {
       upload.addEventListener('click', function () {
         UI.confirm('이 기기의 기록 전체를 클라우드로 올릴까요?<br>' +
-          '<span style="font-size:13px;color:#63778a">같은 기록이 클라우드에 이미 있다면 이 기기의 내용으로 덮어씁니다.</span>',
+          '<span style="font-size:13px;color:#6b7b8a">같은 기록이 클라우드에 이미 있다면 이 기기의 내용으로 덮어씁니다.</span>',
           function () {
             upload.disabled = true; upload.textContent = '올리는 중…';
             Sync.uploadAll().then(function (n) {
@@ -5874,7 +6085,7 @@ Views.settings = (function () {
     var off = el.querySelector('#c-off');
     if (off) off.addEventListener('click', function () {
       UI.confirm('클라우드 연결을 해제할까요?<br>' +
-        '<span style="font-size:13px;color:#63778a">이 기기의 기록은 그대로 남고, 이후 변경은 다른 선생님께 전달되지 않습니다.</span>',
+        '<span style="font-size:13px;color:#6b7b8a">이 기기의 기록은 그대로 남고, 이후 변경은 다른 선생님께 전달되지 않습니다.</span>',
         function () {
           Sync.disableCloud();
           UI.toast('연결을 해제했습니다.');
@@ -5899,6 +6110,12 @@ Views.settings = (function () {
             '<label class="fld full">주소<input type="text" id="a-addr" value="' + U.esc(ac.address) + '"></label>' +
             '<label class="fld">대표 연락처<input type="tel" id="a-phone" value="' + U.esc(ac.phone) + '"></label>' +
             '<label class="fld">홈페이지<input type="text" id="a-site" value="' + U.esc(ac.site) + '"></label>' +
+            '<label class="fld full">학부모 공개 링크 주소 ' +
+              '<span style="font-weight:400">(비워 두면 지금 보고 있는 주소를 씁니다)</span>' +
+              '<input type="text" id="a-pubbase" placeholder="https://staff.whalejinju.kr/p/" value="' + U.esc(ac.publicBase || '') + '"></label>' +
+            '<p class="hint full" style="margin:-4px 0 4px">' +
+              '대시보드를 비밀번호로 잠가 두었다면, 학부모에게 보내는 리포트·납부확인서 링크는 ' +
+              '비밀번호 없이 열리는 주소로 만들어야 합니다. 그 주소를 여기에 적어 주세요.</p>' +
             '<label class="fld full">수업 시간대 <span style="font-weight:400">(쉼표로 구분)</span>' +
               '<input type="text" id="a-times" value="' + U.esc(ac.times.join(', ')) + '"></label>' +
           '</div>' +
@@ -5971,6 +6188,7 @@ Views.settings = (function () {
         address: el.querySelector('#a-addr').value.trim(),
         phone: el.querySelector('#a-phone').value.trim(),
         site: el.querySelector('#a-site').value.trim(),
+        publicBase: el.querySelector('#a-pubbase').value.trim(),
         times: times.length ? times : ['1시', '2시', '3시', '4시'],
         defaultFee: Number(el.querySelector('#a-fee').value) || 0,
         billingDay: Math.min(Math.max(Number(el.querySelector('#a-bday').value) || 10, 1), 31),
@@ -6012,7 +6230,7 @@ Views.settings = (function () {
 
     el.querySelector('#b-sample').addEventListener('click', function () {
       UI.confirm('예시 학생 8명과 최근 3주치 출결 기록을 추가할까요?<br>' +
-        '<span style="font-size:13px;color:#63778a">기존 기록은 지워지지 않고 함께 남습니다.</span>', function () {
+        '<span style="font-size:13px;color:#6b7b8a">기존 기록은 지워지지 않고 함께 남습니다.</span>', function () {
         seedSample();
         UI.toast('예시 데이터를 넣었습니다.');
         render(el);
@@ -6021,7 +6239,7 @@ Views.settings = (function () {
 
     el.querySelector('#b-reset').addEventListener('click', function () {
       UI.confirm('저장된 <b>모든 기록이 삭제</b>됩니다. 되돌릴 수 없습니다.<br>' +
-        '<span style="font-size:13px;color:#63778a">먼저 백업 파일을 내려받아 두시길 권합니다.</span>', function () {
+        '<span style="font-size:13px;color:#6b7b8a">먼저 백업 파일을 내려받아 두시길 권합니다.</span>', function () {
         Store.resetAll();
         UI.toast('초기화했습니다.');
         App.refreshBrand();
@@ -6158,7 +6376,7 @@ var App = (function () {
       localStorage.setItem('__t', '1');
       localStorage.removeItem('__t');
     } catch (e) {
-      document.getElementById('storage-note').textContent = '⚠️ 저장 불가 (시크릿 모드)';
+      document.getElementById('storage-note').textContent = '저장 불가 (시크릿 모드)';
     }
 
     refreshBrand();

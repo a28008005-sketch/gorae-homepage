@@ -27,7 +27,7 @@ Views.tuition = (function () {
       return '<tr><td colspan="8">' + UI.emptyBox(
         Store.payments({ month: month }).length
           ? '조건에 맞는 청구 건이 없습니다.'
-          : U.humanMonth(month) + ' 청구서가 아직 없습니다. 위의 [청구서 일괄 생성]을 눌러 주세요.', '🧾') + '</td></tr>';
+          : U.humanMonth(month) + ' 청구서가 아직 없습니다. 위의 [청구서 일괄 생성]을 눌러 주세요.', 'receipt') + '</td></tr>';
     }
     return list.map(function (p) {
       var s = Store.student(p.studentId);
@@ -141,7 +141,7 @@ Views.tuition = (function () {
             (s && s.parentPhone ? '<a class="btn sm" href="sms:' + U.esc(s.parentPhone) + '?body=' +
               encodeURIComponent(noticeText(p, s)) + '">문자 앱으로</a>' : '') +
           '</div>' +
-          '<pre style="margin:0;font-family:inherit;font-size:12.5px;color:#63778a;white-space:pre-wrap;line-height:1.6">' +
+          '<pre style="margin:0;font-family:inherit;font-size:12.5px;color:#6b7b8a;white-space:pre-wrap;line-height:1.6">' +
             U.esc(noticeText(p, s)) + '</pre>' +
         '</div>';
       }).join(''),
@@ -178,7 +178,7 @@ Views.tuition = (function () {
     var remain = r.amount - r.paidAmount;
     return '<div class="report">' +
       '<div class="report-hd">' +
-        '<div style="font-size:12.5px;color:#c9e3f8">🐋 ' + U.esc(r.academy.name) + ' ' + U.esc(r.academy.campus) + '</div>' +
+        '<div style="font-size:12.5px;color:#a3b6c7">' + U.esc(r.academy.name) + ' ' + U.esc(r.academy.campus) + '</div>' +
         '<div class="who" style="margin-top:6px">수강료 납부 확인서</div>' +
         '<div class="sub">' + U.humanMonth(r.month) + ' 수강료</div>' +
       '</div>' +
@@ -186,8 +186,8 @@ Views.tuition = (function () {
         '<dl class="kv" style="grid-template-columns:110px 1fr;font-size:14px">' +
           '<dt>학생</dt><dd><b>' + U.esc(r.student.name) + '</b>' + (r.student.grade ? ' · ' + U.esc(r.student.grade) : '') + '</dd>' +
           '<dt>청구 금액</dt><dd>' + U.won(r.amount) + '</dd>' +
-          '<dt>납부 금액</dt><dd><b style="color:#12a05c">' + U.won(r.paidAmount) + '</b></dd>' +
-          (remain > 0 ? '<dt>잔액</dt><dd style="color:#d5453f">' + U.won(remain) + '</dd>' : '') +
+          '<dt>납부 금액</dt><dd><b style="color:#2e7a57">' + U.won(r.paidAmount) + '</b></dd>' +
+          (remain > 0 ? '<dt>잔액</dt><dd style="color:#a8453f">' + U.won(remain) + '</dd>' : '') +
           '<dt>납부일</dt><dd>' + (r.paidDate ? U.human(r.paidDate) : '-') + '</dd>' +
           '<dt>결제 수단</dt><dd>' + U.esc(r.method || '-') + '</dd>' +
           (r.note ? '<dt>비고</dt><dd>' + U.esc(r.note) + '</dd>' : '') +
@@ -205,7 +205,7 @@ Views.tuition = (function () {
     var p = Store.payments({}).filter(function (x) { return x.id === pid; })[0];
     if (!p) return;
     var r = receiptData(p);
-    var url = location.href.split('#')[0] + '#/receipt?d=' + U.encodeData(r);
+    var url = U.publicBase() + '#/receipt?d=' + U.encodeData(r);
     UI.modal({
       title: '납부 확인서',
       wide: true,
@@ -231,7 +231,7 @@ Views.tuition = (function () {
     document.body.classList.add('share-mode');
     if (!r || !r.student) {
       el.innerHTML = '<div class="share-view"><div class="card"><div class="card-b">' +
-        UI.emptyBox('확인서를 불러올 수 없습니다. 링크가 잘리지 않았는지 확인해 주세요.', '⚠️') + '</div></div></div>';
+        UI.emptyBox('확인서를 불러올 수 없습니다. 링크가 잘리지 않았는지 확인해 주세요.', 'alert') + '</div></div></div>';
       return;
     }
     document.title = r.student.name + ' 수강료 납부 확인서';
@@ -268,16 +268,16 @@ Views.tuition = (function () {
           '<div class="sub">' + U.humanMonth(month) + '</div></div>' +
         '<div class="stat"><div class="lbl">청구 총액</div><div class="val" style="font-size:22px">' + U.num(sum.billed) + '<small>원</small></div>' +
           '<div class="sub">청구 ' + sum.list.length + '건</div></div>' +
-        '<div class="stat"><div class="lbl">수납액</div><div class="val" style="font-size:22px;color:#12a05c">' + U.num(sum.collected) + '<small>원</small></div>' +
+        '<div class="stat"><div class="lbl">수납액</div><div class="val" style="font-size:22px;color:#2e7a57">' + U.num(sum.collected) + '<small>원</small></div>' +
           '<div class="sub">완납 ' + sum.counts.paid + '명 · 부분 ' + sum.counts.partial + '명</div></div>' +
-        '<div class="stat"><div class="lbl">미수납액</div><div class="val" style="font-size:22px;color:' + (sum.outstanding ? '#d5453f' : 'inherit') + '">' +
+        '<div class="stat"><div class="lbl">미수납액</div><div class="val" style="font-size:22px;color:' + (sum.outstanding ? '#a8453f' : 'inherit') + '">' +
           U.num(sum.outstanding) + '<small>원</small></div>' +
           '<div class="sub">미납 ' + sum.unpaidCount + '명 · 연체 ' + sum.counts.overdue + '명</div></div>' +
       '</div>' +
 
       (ac.bankAccount ? '' :
         '<div class="card" style="margin-bottom:16px"><div class="card-b" style="padding:12px 16px">' +
-        '<span class="hint">💡 <b>설정 · 백업</b>에서 입금 계좌를 등록하면 미납 안내 문자에 계좌번호가 자동으로 들어갑니다.</span>' +
+        '<span class="hint"><b>설정 · 백업</b>에서 입금 계좌를 등록하면 미납 안내 문자에 계좌번호가 자동으로 들어갑니다.</span>' +
         '</div></div>') +
 
       '<div class="card">' +
@@ -306,7 +306,7 @@ Views.tuition = (function () {
       var existing = Store.payments({ month: month }).length;
       UI.confirm(
         U.humanMonth(month) + ' 청구서를 등록생 전체에게 생성할까요?<br>' +
-        '<span style="font-size:13px;color:#63778a">이미 청구서가 있는 학생은 그대로 두고, 없는 학생만 추가합니다.' +
+        '<span style="font-size:13px;color:#6b7b8a">이미 청구서가 있는 학생은 그대로 두고, 없는 학생만 추가합니다.' +
         (existing ? ' (현재 ' + existing + '건)' : '') + '<br>' +
         '금액은 학생별 수강료가 없으면 학원 기본 수강료(' + U.won(ac.defaultFee) + ')로 들어갑니다.</span>',
         function () {

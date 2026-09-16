@@ -23,7 +23,7 @@ Views.homework = (function () {
       .map(function (x) { return Store.student(x.studentId); })
       .filter(Boolean);
 
-    return '<div class="hw-card" style="--klass:' + U.esc(c && c.color ? c.color : '#1a7fd4') + '">' +
+    return '<div class="hw-card" style="--klass:' + U.esc(c && c.color ? c.color : '#215a86') + '">' +
       '<div class="hw-top">' +
         '<div>' +
           '<div class="hw-title">' + U.esc(h.title) + '</div>' +
@@ -135,7 +135,7 @@ Views.homework = (function () {
     UI.modal({
       title: h.title, wide: true,
       body: '<div id="sub-rows">' + (Store.submissions({ homeworkId: id }).length
-        ? rows() : UI.emptyBox('대상 학생이 없습니다.', '🧒')) + '</div>',
+        ? rows() : UI.emptyBox('대상 학생이 없습니다.', 'students')) + '</div>',
       footer: '<button class="btn" id="sc-all">전원 제출 처리</button><div class="sp"></div>' +
               '<button class="btn primary" data-close>닫기</button>',
       onMount: function (w) {
@@ -184,7 +184,7 @@ Views.homework = (function () {
           '<div class="sub">전체 ' + all.length + '건</div></div>' +
         '<div class="stat"><div class="lbl">제출률</div><div class="val">' + U.pct(totalTargets - totalPending, totalTargets) + '<small>%</small></div>' +
           '<div class="sub">진행 중 숙제 기준</div></div>' +
-        '<div class="stat"><div class="lbl">미제출</div><div class="val" style="color:' + (totalPending ? '#d5453f' : 'inherit') + '">' +
+        '<div class="stat"><div class="lbl">미제출</div><div class="val" style="color:' + (totalPending ? '#a8453f' : 'inherit') + '">' +
           totalPending + '<small>건</small></div><div class="sub">학생 × 숙제</div></div>' +
       '</div>' +
 
@@ -200,7 +200,7 @@ Views.homework = (function () {
             ? '<div class="class-grid">' + list().map(card).join('') + '</div>'
             : UI.emptyBox(scope === 'open'
                 ? '진행 중인 숙제가 없습니다. [+ 숙제 내기]로 시작하세요.'
-                : '아직 낸 숙제가 없습니다.', '📚')) +
+                : '아직 낸 숙제가 없습니다.', 'homework')) +
         '</div>' +
       '</div>';
 

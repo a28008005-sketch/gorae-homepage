@@ -121,7 +121,7 @@ var App = (function () {
       localStorage.setItem('__t', '1');
       localStorage.removeItem('__t');
     } catch (e) {
-      document.getElementById('storage-note').textContent = '⚠️ 저장 불가 (시크릿 모드)';
+      document.getElementById('storage-note').textContent = '저장 불가 (시크릿 모드)';
     }
 
     refreshBrand();
