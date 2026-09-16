@@ -1,7 +1,7 @@
 /* ===== 고래영어 원생관리 · 스타일 ===== */
 :root{
-  --navy:#003d99;
-  --navy-light:#0052cc;
+  --navy:#002060;
+  --navy-light:#003d99;
   --mint:#17b7a6;
   --mint-light:#a8e6e1;
   --ink:#16232e;
@@ -16,6 +16,10 @@
   --radius:12px;
   --shadow:0 1px 3px rgba(0,0,0,.08);
   --sidebar-w:240px;
+  --blue:#1a7fd4;
+  --blue-soft:#bfdcf5;
+  --ok-soft:#dcfce7;
+  --mint-soft:#a8e6e1;
 }
 
 *{box-sizing:border-box}
@@ -73,6 +77,8 @@ button{font-family:inherit}
 .topbar-title{flex:1;min-width:0}
 .topbar-title h1{margin:0;font-size:19px;letter-spacing:-.3px}
 .topbar-title p{margin:2px 0 0;font-size:12.5px;color:var(--muted)}
+.topbar-right{display:flex;align-items:center;gap:12px}
+.topbar-logo{font-size:24px;line-height:1;opacity:.85}
 .today-chip{
   background:var(--blue-soft);color:#14588f;border-radius:999px;
   padding:6px 13px;font-size:12.5px;font-weight:600;white-space:nowrap;
