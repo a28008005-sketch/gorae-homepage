@@ -139,14 +139,14 @@ Views.dashboard = (function () {
       '<div class="stack">' +
 
       '<div class="grid g-4">' +
-        '<div class="stat accent"><div class="lbl">오늘 출석률</div>' +
+        '<div class="stat accent"><div class="lbl">📊 오늘 출석률</div>' +
           '<div class="val">' + o.rate + '<small>%</small></div>' +
-          '<div class="sub">출석 ' + o.present + ' · 결석 ' + o.absent + ' · 미체크 ' + o.unmarked + '</div></div>' +
-        '<div class="stat"><div class="lbl">등록생</div><div class="val">' + active.length + '<small>명</small></div>' +
+          '<div class="sub">출석 ' + o.present + '명 · 결석 ' + o.absent + '명 · 미체크 ' + o.unmarked + '명</div></div>' +
+        '<div class="stat green"><div class="lbl">👥 등록생</div><div class="val">' + active.length + '<small>명</small></div>' +
           '<div class="sub">대기 ' + waiting.length + ' · 휴원 ' + resting.length + ' · 반 ' + classCount + '개</div></div>' +
-        '<div class="stat"><div class="lbl">오늘 수업</div><div class="val">' + o.expected.length + '<small>명</small></div>' +
-          '<div class="sub">' + o.day + '요일 수업 예정</div></div>' +
-        '<div class="stat"><div class="lbl">이달 수강료 수납률</div><div class="val">' + pay.rate + '<small>%</small></div>' +
+        '<div class="stat purple"><div class="lbl">🗓️ 오늘 수업</div><div class="val">' + o.expected.length + '<small>명</small></div>' +
+          '<div class="sub">' + o.day + '요일 예정 수업</div></div>' +
+        '<div class="stat orange"><div class="lbl">💳 수강료 수납률</div><div class="val">' + pay.rate + '<small>%</small></div>' +
           '<div class="sub">' + (pay.outstanding ? '미수납 ' + U.num(pay.outstanding) + '원 · ' + pay.unpaidCount + '명' : '미수납 없음') + '</div></div>' +
       '</div>' +
 

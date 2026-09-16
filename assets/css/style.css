@@ -109,14 +109,24 @@ button{font-family:inherit}
 .sp{flex:1}
 
 /* stat tiles */
-.stat{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow)}
-.stat .lbl{font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:6px}
-.stat .val{font-size:27px;font-weight:700;letter-spacing:-.6px;margin-top:6px;line-height:1.15}
-.stat .val small{font-size:14px;font-weight:600;color:var(--muted);margin-left:3px}
-.stat .sub{font-size:12px;color:var(--muted);margin-top:4px}
-.stat.accent{background:linear-gradient(160deg,#155f9f,#1a7fd4);border-color:transparent;color:#fff}
+.stat{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.stat::before{content:'';position:absolute;top:0;right:0;width:120px;height:120px;background:radial-gradient(circle,rgba(255,255,255,.1),transparent);border-radius:50%;pointer-events:none}
+.stat .lbl{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;font-weight:700;letter-spacing:.5px}
+.stat .val{font-size:36px;font-weight:800;letter-spacing:-.8px;margin-top:12px;line-height:1}
+.stat .val small{font-size:16px;font-weight:700;color:var(--muted);margin-left:4px;font-weight:600}
+.stat .sub{font-size:12px;color:var(--muted);margin-top:10px;line-height:1.5}
+.stat.accent{background:linear-gradient(135deg,#155f9f 0%,#1a7fd4 100%);border-color:transparent;color:#fff}
 .stat.accent .lbl,.stat.accent .sub{color:#cbe4f8}
 .stat.accent .val small{color:#cbe4f8}
+.stat.green{background:linear-gradient(135deg,#12a05c 0%,#15c073 100%);border-color:transparent;color:#fff}
+.stat.green .lbl,.stat.green .sub{color:#d4f5e0}
+.stat.green .val small{color:#d4f5e0}
+.stat.purple{background:linear-gradient(135deg,#7c3aed 0%,#a855f7 100%);border-color:transparent;color:#fff}
+.stat.purple .lbl,.stat.purple .sub{color:#e9d5ff}
+.stat.purple .val small{color:#e9d5ff}
+.stat.orange{background:linear-gradient(135deg,#d98218 0%,#f59e0b 100%);border-color:transparent;color:#fff}
+.stat.orange .lbl,.stat.orange .sub{color:#fef3c7}
+.stat.orange .val small{color:#fef3c7}
 
 /* ---------- Controls ---------- */
 .btn{
