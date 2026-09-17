@@ -7,8 +7,8 @@ window.NEWSLETTER_DATA = [
     "topic": "Animals",
     "status": "완성",
     "sourceUrl": "https://www.timeforkids.com/k1/meet-sea-turtles-k1/",
-    "worksheetUrl": "",
-    "answersUrl": "",
+    "worksheetUrl": "/assets/pdf/meet-sea-turtles-k1-worksheet.pdf",
+    "answersUrl": "/assets/pdf/meet-sea-turtles-k1-answers.pdf",
     "memo": "7종류의 바다거북이를 소개하는 기사"
   },
   {
