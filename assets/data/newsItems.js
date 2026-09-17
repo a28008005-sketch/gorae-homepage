@@ -1,6 +1,5 @@
 window.NEWSLETTER_DATA = [
   {
-<<<<<<< HEAD
     "id": "meet-sea-turtles",
     "title": "Meet Sea Turtles",
     "date": "2026-04-30",
@@ -83,17 +82,5 @@ window.NEWSLETTER_DATA = [
     "worksheetUrl": "",
     "answersUrl": "",
     "memo": "비룽가 국립공원 마운틴고릴라 쌍둥이 출산 기사"
-=======
-    "id": "fierce-fish-k1",
-    "title": "Fierce Fish",
-    "level": "K1",
-    "topic": "Animals",
-    "status": "완성",
-    "date": "2026-09-17",
-    "sourceUrl": "https://www.timeforkids.com/k1/fierce-fish-k1/",
-    "worksheetUrl": "/assets/pdf/fierce-fish-k1-worksheet.pdf",
-    "answersUrl": "/assets/pdf/fierce-fish-k1-answers.pdf",
-    "memo": ""
->>>>>>> 6903419 (영자신문 워크시트 자동 동기화 지원)
   }
 ];
