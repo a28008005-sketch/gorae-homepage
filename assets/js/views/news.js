@@ -104,19 +104,35 @@ Views.news = (function () {
 
   function form(n) {
     n = n || {};
-    return '<div class="form-grid">' +
-      '<label class="fld full">기사 제목<input type="text" id="n-title" value="' + U.esc(n.title || '') + '" placeholder="Meet Sea Turtles"></label>' +
-      '<label class="fld">레벨<select id="n-level">' + UI.options(Store.NEWS_LEVELS, n.level || 'K1') + '</select></label>' +
-      '<label class="fld">주제<select id="n-topic">' + UI.options(Store.NEWS_TOPICS, n.topic || 'Animals') + '</select></label>' +
-      '<label class="fld">상태<select id="n-status">' + UI.options(Store.NEWS_STATUS, n.status || '계획') + '</select></label>' +
-      '<label class="fld">날짜<input type="date" id="n-date" value="' + U.esc(n.date || U.ymd()) + '"></label>' +
-      '<label class="fld full">원문 주소<input type="text" id="n-src" value="' + U.esc(n.sourceUrl || '') + '" placeholder="https://www.timeforkids.com/..."></label>' +
-      '<label class="fld full">워크시트 PDF 주소 <span style="font-weight:400">(Notion 공유 링크)</span>' +
-        '<input type="text" id="n-ws" value="' + U.esc(n.worksheetUrl || '') + '" placeholder="https://"></label>' +
-      '<label class="fld full">정답지 PDF 주소 <span style="font-weight:400">(Notion 공유 링크)</span>' +
-        '<input type="text" id="n-ans" value="' + U.esc(n.answersUrl || '') + '" placeholder="https://"></label>' +
-      '<label class="fld full">메모<textarea id="n-memo" placeholder="어떤 내용의 기사인지 적어 두세요">' + U.esc(n.memo || '') + '</textarea></label>' +
-    '</div>';
+    // 수정 모드는 상세 폼, 추가 모드는 간단한 폼
+    if (n && n.id) {
+      // 수정: 모든 필드 표시
+      return '<div class="form-grid">' +
+        '<label class="fld full">기사 제목<input type="text" id="n-title" value="' + U.esc(n.title || '') + '" placeholder="Meet Sea Turtles"></label>' +
+        '<label class="fld">레벨<select id="n-level">' + UI.options(Store.NEWS_LEVELS, n.level || 'K1') + '</select></label>' +
+        '<label class="fld">주제<select id="n-topic">' + UI.options(Store.NEWS_TOPICS, n.topic || 'Animals') + '</select></label>' +
+        '<label class="fld">상태<select id="n-status">' + UI.options(Store.NEWS_STATUS, n.status || '계획') + '</select></label>' +
+        '<label class="fld">날짜<input type="date" id="n-date" value="' + U.esc(n.date || U.ymd()) + '"></label>' +
+        '<label class="fld full">원문 주소<input type="text" id="n-src" value="' + U.esc(n.sourceUrl || '') + '" placeholder="https://www.timeforkids.com/..."></label>' +
+        '<label class="fld full">워크시트 PDF 주소 <span style="font-weight:400">(Notion 공유 링크)</span>' +
+          '<input type="text" id="n-ws" value="' + U.esc(n.worksheetUrl || '') + '" placeholder="https://"></label>' +
+        '<label class="fld full">정답지 PDF 주소 <span style="font-weight:400">(Notion 공유 링크)</span>' +
+          '<input type="text" id="n-ans" value="' + U.esc(n.answersUrl || '') + '" placeholder="https://"></label>' +
+        '<label class="fld full">메모<textarea id="n-memo" placeholder="어떤 내용의 기사인지 적어 두세요">' + U.esc(n.memo || '') + '</textarea></label>' +
+      '</div>';
+    } else {
+      // 추가: 최소 필드만 표시
+      return '<div class="form-grid">' +
+        '<label class="fld full" style="margin-bottom:8px">' +
+          '<div style="font-size:12px;color:#666;margin-bottom:4px">선택한 레벨의 기사에서 자동으로 선택됩니다</div>' +
+          '레벨' +
+          '<select id="n-level">' + UI.options(Store.NEWS_LEVELS, 'K1') + '</select>' +
+        '</label>' +
+        '<label class="fld full">기사 제목 (선택사항)<input type="text" id="n-title" value="" placeholder="자동으로 선택됨"></label>' +
+        '<label class="fld full" style="font-size:12px;color:#999">기사 선택이 어렵다면 Notion 에서 요청하세요. ' +
+          '<a href="' + NOTION_REQUEST + '" target="_blank" rel="noopener" style="color:#0066cc">요청하러 가기 →</a></label>' +
+      '</div>';
+    }
   }
 
   function openForm(id) {
@@ -127,26 +143,50 @@ Views.news = (function () {
       footer:
         (n ? '<button class="btn danger" id="n-del">삭제</button>' : '') +
         '<div class="sp"></div><button class="btn" data-close>취소</button>' +
-        '<button class="btn primary" id="n-save">저장</button>',
+        '<button class="btn primary" id="n-save">' + (n ? '수정' : '추가') + '</button>',
       onMount: function (w) {
         w.querySelector('#n-save').addEventListener('click', function () {
-          var t = w.querySelector('#n-title').value.trim();
-          if (!t) { UI.toast('기사 제목을 입력해 주세요.', true); return; }
-          Store.saveNewsItem({
-            id: n ? n.id : undefined,
-            title: t,
-            level: w.querySelector('#n-level').value,
-            topic: w.querySelector('#n-topic').value,
-            status: w.querySelector('#n-status').value,
-            date: w.querySelector('#n-date').value,
-            sourceUrl: w.querySelector('#n-src').value.trim(),
-            worksheetUrl: w.querySelector('#n-ws').value.trim(),
-            answersUrl: w.querySelector('#n-ans').value.trim(),
-            memo: w.querySelector('#n-memo').value.trim()
-          });
-          UI.close();
-          UI.toast(n ? '수정했습니다.' : '추가했습니다.');
-          App.rerender();
+          if (n) {
+            // 수정 모드
+            var t = w.querySelector('#n-title').value.trim();
+            if (!t) { UI.toast('기사 제목을 입력해 주세요.', true); return; }
+            Store.saveNewsItem({
+              id: n.id,
+              title: t,
+              level: w.querySelector('#n-level').value,
+              topic: w.querySelector('#n-topic').value,
+              status: w.querySelector('#n-status').value,
+              date: w.querySelector('#n-date').value,
+              sourceUrl: w.querySelector('#n-src').value.trim(),
+              worksheetUrl: w.querySelector('#n-ws').value.trim(),
+              answersUrl: w.querySelector('#n-ans').value.trim(),
+              memo: w.querySelector('#n-memo').value.trim()
+            });
+            UI.close();
+            UI.toast('수정했습니다.');
+            App.rerender();
+          } else {
+            // 추가 모드 (간단한 형태)
+            var level = w.querySelector('#n-level').value;
+            var titleInput = w.querySelector('#n-title').value.trim();
+            var title = titleInput || '[' + level + ' 레벨 기사]';
+
+            Store.saveNewsItem({
+              id: undefined,
+              title: title,
+              level: level,
+              topic: 'Animals',  // 기본값
+              status: '계획',
+              date: U.ymd(),
+              sourceUrl: '',
+              worksheetUrl: '',
+              answersUrl: '',
+              memo: '클릭해서 Notion 에서 요청하거나 정보를 입력해 주세요.'
+            });
+            UI.close();
+            UI.toast('추가했습니다. 수정 버튼으로 상세 정보를 입력해 주세요.');
+            App.rerender();
+          }
         });
         var del = w.querySelector('#n-del');
         if (del) del.addEventListener('click', function () {

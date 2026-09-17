@@ -127,7 +127,29 @@ var Store = (function () {
     } catch (e) {
       data = clone(DEFAULTS);
     }
+    // newsItems.js 에서 온 최신 데이터로 동기화 (URL 업데이트 등)
+    syncNewsItems();
     return data;
+  }
+
+  /** newsItems.js 의 최신 데이터를 localStorage 에 병합합니다 */
+  function syncNewsItems() {
+    if (!window.NEWSLETTER_DATA || !window.NEWSLETTER_DATA.length) return;
+
+    var newsMap = {};
+    data.newsItems.forEach(function (n) { newsMap[n.id] = n; });
+
+    // newsItems.js 데이터로 업데이트
+    window.NEWSLETTER_DATA.forEach(function (remote) {
+      if (newsMap[remote.id]) {
+        // 기존 항목: URL 업데이트
+        if (remote.worksheetUrl) newsMap[remote.id].worksheetUrl = remote.worksheetUrl;
+        if (remote.answersUrl) newsMap[remote.id].answersUrl = remote.answersUrl;
+      } else {
+        // 새 항목: 추가
+        data.newsItems.push(clone(remote));
+      }
+    });
   }
 
   /**
