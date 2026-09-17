@@ -16,43 +16,11 @@ Views.news = (function () {
 
   function title() { return '영자신문 워크시트'; }
   function sub() {
-    seedOnce();
     var all = Store.newsItems();
     var done = all.filter(function (n) { return n.status === '완성'; }).length;
     return all.length
       ? '전체 ' + all.length + '건 · 완성 ' + done + '건'
       : 'Time for Kids 기사로 만드는 레벨별 워크시트';
-  }
-
-  /** 노션 마스터 목록에 있던 워크시트. 처음 한 번만 넣습니다. */
-  var SEED = [
-    { title: 'Meet Sea Turtles', date: '2026-04-30', level: 'K1', topic: 'Animals', status: '완성',
-      sourceUrl: 'https://www.timeforkids.com/k1/meet-sea-turtles-k1/',
-      memo: '7종류의 바다거북이를 소개하는 기사' },
-    { title: 'Saving Sea Turtles', date: '2026-04-30', level: 'K1', topic: 'Animals', status: '완성',
-      sourceUrl: 'https://www.timeforkids.com/k1/saving-sea-turtles/',
-      memo: 'Grace Buschiazzo - South Carolina Aquarium, Sea Turtle Care Center' },
-    { title: 'A Secret World', date: '2026-09-09', level: 'K1', topic: 'Environment', status: '완성',
-      sourceUrl: 'https://www.timeforkids.com/k1/a-secret-world-k1/',
-      memo: '산호초를 바닷속 도시에 비유해 소개하는 K1 기사' },
-    { title: 'Fierce Fish', date: '2026-09-09', level: 'K1', topic: 'Animals', status: '완성',
-      sourceUrl: 'https://www.timeforkids.com/k1/fierce-fish-k1/',
-      memo: '상어의 크기, 먹이, 종류를 사진과 함께 소개하는 K1 기사' },
-    { title: 'Tons of Teeth', date: '2026-09-12', level: 'K1', topic: 'Animals', status: '완성',
-      sourceUrl: 'https://www.timeforkids.com/k1/tons-of-teeth-k1/',
-      memo: '상어 종류별 이빨 모양과 먹이 방식을 사진으로 비교하는 K1 기사' },
-    { title: 'NASA Newcomers', date: '2026-09-09', level: 'G2', topic: 'Space', status: '완성',
-      sourceUrl: 'https://www.timeforkids.com/g2/nasa-newcomers-g2/',
-      memo: '우주비행사 후보자 프로그램에 대한 기사' },
-    { title: 'Gorilla Multiples', date: '2026-09-09', level: 'G2', topic: 'Animals', status: '완성',
-      sourceUrl: 'https://www.timeforkids.com/g2/gorilla-multiples-g2/',
-      memo: '비룽가 국립공원 마운틴고릴라 쌍둥이 출산 기사' }
-  ];
-
-  function seedOnce() {
-    if (!Store.markOnce('newsSeeded')) return;
-    if (Store.newsItems().length) return;
-    SEED.forEach(function (n) { Store.saveNewsItem(JSON.parse(JSON.stringify(n))); });
   }
 
   function statusTag(st) {
@@ -200,8 +168,6 @@ Views.news = (function () {
   }
 
   function render(el) {
-    seedOnce();
-
     el.innerHTML =
       '<div class="stack">' +
         levelTiles() +

@@ -132,23 +132,35 @@ var Store = (function () {
     return data;
   }
 
-  /** newsItems.js 의 최신 데이터를 localStorage 에 병합합니다 */
+  /**
+   * newsItems.js 의 워크시트 목록을 이 브라우저의 기록에 맞춰 넣습니다.
+   * 기사 제목을 기준으로 찾습니다. id 는 자동화 쪽에서 바뀔 수 있어 기준으로 쓰지 않습니다.
+   */
   function syncNewsItems() {
-    if (!window.NEWSLETTER_DATA || !window.NEWSLETTER_DATA.length) return;
+    var remote = window.NEWSLETTER_DATA;
+    if (!remote || !remote.length) return;
 
-    var newsMap = {};
-    data.newsItems.forEach(function (n) { newsMap[n.id] = n; });
+    // 같은 기사가 두 줄로 들어가 있으면 하나만 남깁니다.
+    var seen = {};
+    data.newsItems = data.newsItems.filter(function (n) {
+      if (seen[n.title]) return false;
+      seen[n.title] = n;
+      return true;
+    });
 
-    // newsItems.js 데이터로 업데이트
-    window.NEWSLETTER_DATA.forEach(function (remote) {
-      if (newsMap[remote.id]) {
-        // 기존 항목: URL 업데이트
-        if (remote.worksheetUrl) newsMap[remote.id].worksheetUrl = remote.worksheetUrl;
-        if (remote.answersUrl) newsMap[remote.id].answersUrl = remote.answersUrl;
-      } else {
-        // 새 항목: 추가
-        data.newsItems.push(clone(remote));
-      }
+    remote.forEach(function (r) {
+      var local = seen[r.title];
+      if (!local) { data.newsItems.push(clone(r)); return; }
+      // 자동화가 채우는 값만 맞춥니다. 메모는 선생님이 고칠 수 있어 비어 있을 때만 넣습니다.
+      local.id = r.id;
+      local.level = r.level;
+      local.topic = r.topic;
+      local.date = r.date;
+      local.status = r.status;
+      local.sourceUrl = r.sourceUrl;
+      local.worksheetUrl = r.worksheetUrl;
+      local.answersUrl = r.answersUrl;
+      if (!local.memo) local.memo = r.memo;
     });
   }
 
