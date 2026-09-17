@@ -89,5 +89,18 @@ window.NEWSLETTER_DATA = [
     "answersUrl": "/assets/pdf/gorilla-multiples-g2-answers.pdf",
     "memo": "비룽가 국립공원 마운틴고릴라 쌍둥이 출산 기사",
     "articleUrl": "/assets/pdf/gorilla-multiples-g2-article.pdf"
+  },
+  {
+    "id": "play-your-part-k1",
+    "title": "Play Your Part",
+    "level": "K1",
+    "topic": "Culture",
+    "status": "완성",
+    "date": "2026-09-17",
+    "sourceUrl": "https://www.timeforkids.com/k1/play-your-part-k1-2/",
+    "articleUrl": "/assets/pdf/play-your-part-k1-article.pdf",
+    "worksheetUrl": "/assets/pdf/play-your-part-k1-worksheet.pdf",
+    "answersUrl": "/assets/pdf/play-your-part-k1-answers.pdf",
+    "memo": "공동체를 돕는 네 가지 방법(청소·기부·봉사·친절)을 소개하는 K1 기사"
   }
 ];
