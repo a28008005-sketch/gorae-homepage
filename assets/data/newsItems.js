@@ -102,5 +102,18 @@ window.NEWSLETTER_DATA = [
     "worksheetUrl": "/assets/pdf/play-your-part-k1-worksheet.pdf",
     "answersUrl": "/assets/pdf/play-your-part-k1-answers.pdf",
     "memo": "공동체를 돕는 네 가지 방법(청소·기부·봉사·친절)을 소개하는 K1 기사"
+  },
+  {
+    "id": "a-kind-community-k1",
+    "title": "A Kind Community",
+    "level": "K1",
+    "topic": "Culture",
+    "status": "완성",
+    "date": "2026-09-17",
+    "sourceUrl": "https://www.timeforkids.com/k1/a-kind-community-k1/",
+    "articleUrl": "/assets/pdf/a-kind-community-k1-article.pdf",
+    "worksheetUrl": "/assets/pdf/a-kind-community-k1-worksheet.pdf",
+    "answersUrl": "/assets/pdf/a-kind-community-k1-answers.pdf",
+    "memo": "친절을 나누는 세 가지 방법(인사·예의·감사)을 소개하는 K1 기사"
   }
 ];
