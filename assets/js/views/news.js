@@ -23,6 +23,12 @@ Views.news = (function () {
       : 'Time for Kids 기사로 만드는 레벨별 워크시트';
   }
 
+  /** 주소가 있을 때만 버튼을 내놓습니다. */
+  function linkBtn(url, label) {
+    if (!url) return '';
+    return '<a class="btn sm" href="' + U.esc(url) + '" target="_blank" rel="noopener">' + label + '</a> ';
+  }
+
   function statusTag(st) {
     var map = { '완성': 'ok', '진행중': 'warn', '계획': 'gray' };
     return '<span class="tag ' + (map[st] || 'gray') + '">' + U.esc(st || '계획') + '</span>';
@@ -55,18 +61,12 @@ Views.news = (function () {
         '<td>' + statusTag(n.status) + '</td>' +
         '<td>' + U.esc(n.date || '-') + '</td>' +
         '<td>' +
-          // 원문 PDF 에는 음원 QR 이 들어 있습니다. 없으면 기사 웹주소로 보냅니다.
-          (n.articleUrl
-            ? '<a class="btn sm" href="' + U.esc(n.articleUrl) + '" target="_blank" rel="noopener">원문</a> '
-            : n.sourceUrl
-            ? '<a class="btn sm" href="' + U.esc(n.sourceUrl) + '" target="_blank" rel="noopener">원문</a> '
-            : '') +
-          (n.worksheetUrl
-            ? '<a class="btn sm" href="' + U.esc(n.worksheetUrl) + '" target="_blank" rel="noopener">문제</a> '
-            : '') +
-          (n.answersUrl
-            ? '<a class="btn sm" href="' + U.esc(n.answersUrl) + '" target="_blank" rel="noopener">정답</a> '
-            : '') +
+          // 노션 마스터 목록과 같은 이름·차례로 둡니다.
+          // 원문은 음원 QR 이 들어간 인쇄용 PDF, 원문URL 은 기사 웹페이지입니다.
+          linkBtn(n.articleUrl, '원문') +
+          linkBtn(n.sourceUrl, '원문URL') +
+          linkBtn(n.worksheetUrl, '워크시트') +
+          linkBtn(n.answersUrl, '정답지') +
           '<button class="btn sm ghost" data-edit="' + n.id + '">수정</button>' +
         '</td>' +
       '</tr>';
@@ -84,13 +84,14 @@ Views.news = (function () {
         '<label class="fld">주제<select id="n-topic">' + UI.options(Store.NEWS_TOPICS, n.topic || 'Animals') + '</select></label>' +
         '<label class="fld">상태<select id="n-status">' + UI.options(Store.NEWS_STATUS, n.status || '계획') + '</select></label>' +
         '<label class="fld">날짜<input type="date" id="n-date" value="' + U.esc(n.date || U.ymd()) + '"></label>' +
-        '<label class="fld full">기사 웹주소<input type="text" id="n-src" value="' + U.esc(n.sourceUrl || '') + '" placeholder="https://www.timeforkids.com/..."></label>' +
-        '<label class="fld full">원문 PDF 주소 <span style="font-weight:400">(음원 QR 이 들어 있습니다)</span>' +
+        '<label class="fld full">원문 <span style="font-weight:400">(음원 QR 이 들어간 인쇄용 PDF)</span>' +
           '<input type="text" id="n-art" value="' + U.esc(n.articleUrl || '') + '" placeholder="/assets/pdf/..."></label>' +
-        '<label class="fld full">워크시트 PDF 주소 <span style="font-weight:400">(Notion 공유 링크)</span>' +
-          '<input type="text" id="n-ws" value="' + U.esc(n.worksheetUrl || '') + '" placeholder="https://"></label>' +
-        '<label class="fld full">정답지 PDF 주소 <span style="font-weight:400">(Notion 공유 링크)</span>' +
-          '<input type="text" id="n-ans" value="' + U.esc(n.answersUrl || '') + '" placeholder="https://"></label>' +
+        '<label class="fld full">원문URL <span style="font-weight:400">(기사 웹페이지)</span>' +
+          '<input type="text" id="n-src" value="' + U.esc(n.sourceUrl || '') + '" placeholder="https://www.timeforkids.com/..."></label>' +
+        '<label class="fld full">워크시트 <span style="font-weight:400">(문제지 PDF)</span>' +
+          '<input type="text" id="n-ws" value="' + U.esc(n.worksheetUrl || '') + '" placeholder="/assets/pdf/..."></label>' +
+        '<label class="fld full">정답지 <span style="font-weight:400">(채점용 PDF)</span>' +
+          '<input type="text" id="n-ans" value="' + U.esc(n.answersUrl || '') + '" placeholder="/assets/pdf/..."></label>' +
         '<label class="fld full">메모<textarea id="n-memo" placeholder="어떤 내용의 기사인지 적어 두세요">' + U.esc(n.memo || '') + '</textarea></label>' +
       '</div>';
     } else {
