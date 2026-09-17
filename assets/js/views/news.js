@@ -88,7 +88,13 @@ Views.news = (function () {
         '<td>' + U.esc(n.date || '-') + '</td>' +
         '<td>' +
           (n.sourceUrl
-            ? '<a class="btn sm" href="' + U.esc(n.sourceUrl) + '" target="_blank" rel="noopener">원문 →</a> '
+            ? '<a class="btn sm" href="' + U.esc(n.sourceUrl) + '" target="_blank" rel="noopener">원문</a> '
+            : '') +
+          (n.worksheetUrl
+            ? '<a class="btn sm" href="' + U.esc(n.worksheetUrl) + '" target="_blank" rel="noopener">문제</a> '
+            : '') +
+          (n.answersUrl
+            ? '<a class="btn sm" href="' + U.esc(n.answersUrl) + '" target="_blank" rel="noopener">정답</a> '
             : '') +
           '<button class="btn sm ghost" data-edit="' + n.id + '">수정</button>' +
         '</td>' +
@@ -105,8 +111,10 @@ Views.news = (function () {
       '<label class="fld">상태<select id="n-status">' + UI.options(Store.NEWS_STATUS, n.status || '계획') + '</select></label>' +
       '<label class="fld">날짜<input type="date" id="n-date" value="' + U.esc(n.date || U.ymd()) + '"></label>' +
       '<label class="fld full">원문 주소<input type="text" id="n-src" value="' + U.esc(n.sourceUrl || '') + '" placeholder="https://www.timeforkids.com/..."></label>' +
-      '<label class="fld full">워크시트 주소 <span style="font-weight:400">(노션에 올린 PDF 링크)</span>' +
+      '<label class="fld full">워크시트 PDF 주소 <span style="font-weight:400">(Notion 공유 링크)</span>' +
         '<input type="text" id="n-ws" value="' + U.esc(n.worksheetUrl || '') + '" placeholder="https://"></label>' +
+      '<label class="fld full">정답지 PDF 주소 <span style="font-weight:400">(Notion 공유 링크)</span>' +
+        '<input type="text" id="n-ans" value="' + U.esc(n.answersUrl || '') + '" placeholder="https://"></label>' +
       '<label class="fld full">메모<textarea id="n-memo" placeholder="어떤 내용의 기사인지 적어 두세요">' + U.esc(n.memo || '') + '</textarea></label>' +
     '</div>';
   }
@@ -133,6 +141,7 @@ Views.news = (function () {
             date: w.querySelector('#n-date').value,
             sourceUrl: w.querySelector('#n-src').value.trim(),
             worksheetUrl: w.querySelector('#n-ws').value.trim(),
+            answersUrl: w.querySelector('#n-ans').value.trim(),
             memo: w.querySelector('#n-memo').value.trim()
           });
           UI.close();

@@ -105,7 +105,14 @@ var Store = (function () {
   function load() {
     var raw = null;
     try { raw = localStorage.getItem(KEY); } catch (e) { /* 시크릿 모드 등 */ }
-    if (!raw) { data = clone(DEFAULTS); return data; }
+    if (!raw) {
+      data = clone(DEFAULTS);
+      // 처음 로드 시 newsItems.js 에서 온 데이터 사용
+      if (window.NEWSLETTER_DATA && window.NEWSLETTER_DATA.length) {
+        data.newsItems = window.NEWSLETTER_DATA;
+      }
+      return data;
+    }
     try {
       var parsed = JSON.parse(raw);
       data = clone(DEFAULTS);
