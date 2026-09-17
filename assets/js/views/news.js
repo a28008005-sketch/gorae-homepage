@@ -55,7 +55,10 @@ Views.news = (function () {
         '<td>' + statusTag(n.status) + '</td>' +
         '<td>' + U.esc(n.date || '-') + '</td>' +
         '<td>' +
-          (n.sourceUrl
+          // 원문 PDF 에는 음원 QR 이 들어 있습니다. 없으면 기사 웹주소로 보냅니다.
+          (n.articleUrl
+            ? '<a class="btn sm" href="' + U.esc(n.articleUrl) + '" target="_blank" rel="noopener">원문</a> '
+            : n.sourceUrl
             ? '<a class="btn sm" href="' + U.esc(n.sourceUrl) + '" target="_blank" rel="noopener">원문</a> '
             : '') +
           (n.worksheetUrl
@@ -81,7 +84,9 @@ Views.news = (function () {
         '<label class="fld">주제<select id="n-topic">' + UI.options(Store.NEWS_TOPICS, n.topic || 'Animals') + '</select></label>' +
         '<label class="fld">상태<select id="n-status">' + UI.options(Store.NEWS_STATUS, n.status || '계획') + '</select></label>' +
         '<label class="fld">날짜<input type="date" id="n-date" value="' + U.esc(n.date || U.ymd()) + '"></label>' +
-        '<label class="fld full">원문 주소<input type="text" id="n-src" value="' + U.esc(n.sourceUrl || '') + '" placeholder="https://www.timeforkids.com/..."></label>' +
+        '<label class="fld full">기사 웹주소<input type="text" id="n-src" value="' + U.esc(n.sourceUrl || '') + '" placeholder="https://www.timeforkids.com/..."></label>' +
+        '<label class="fld full">원문 PDF 주소 <span style="font-weight:400">(음원 QR 이 들어 있습니다)</span>' +
+          '<input type="text" id="n-art" value="' + U.esc(n.articleUrl || '') + '" placeholder="/assets/pdf/..."></label>' +
         '<label class="fld full">워크시트 PDF 주소 <span style="font-weight:400">(Notion 공유 링크)</span>' +
           '<input type="text" id="n-ws" value="' + U.esc(n.worksheetUrl || '') + '" placeholder="https://"></label>' +
         '<label class="fld full">정답지 PDF 주소 <span style="font-weight:400">(Notion 공유 링크)</span>' +
@@ -126,6 +131,7 @@ Views.news = (function () {
               status: w.querySelector('#n-status').value,
               date: w.querySelector('#n-date').value,
               sourceUrl: w.querySelector('#n-src').value.trim(),
+              articleUrl: w.querySelector('#n-art').value.trim(),
               worksheetUrl: w.querySelector('#n-ws').value.trim(),
               answersUrl: w.querySelector('#n-ans').value.trim(),
               memo: w.querySelector('#n-memo').value.trim()

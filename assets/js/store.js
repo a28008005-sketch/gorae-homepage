@@ -158,6 +158,7 @@ var Store = (function () {
       local.date = r.date;
       local.status = r.status;
       local.sourceUrl = r.sourceUrl;
+      local.articleUrl = r.articleUrl;
       local.worksheetUrl = r.worksheetUrl;
       local.answersUrl = r.answersUrl;
       if (!local.memo) local.memo = r.memo;

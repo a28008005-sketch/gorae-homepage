@@ -9,7 +9,8 @@ window.NEWSLETTER_DATA = [
     "sourceUrl": "https://www.timeforkids.com/k1/meet-sea-turtles-k1/",
     "worksheetUrl": "/assets/pdf/meet-sea-turtles-k1-worksheet.pdf",
     "answersUrl": "/assets/pdf/meet-sea-turtles-k1-answers.pdf",
-    "memo": "7종류의 바다거북이를 소개하는 기사"
+    "memo": "7종류의 바다거북이를 소개하는 기사",
+    "articleUrl": "/assets/pdf/meet-sea-turtles-k1-article.pdf"
   },
   {
     "id": "saving-sea-turtles",
@@ -21,7 +22,8 @@ window.NEWSLETTER_DATA = [
     "sourceUrl": "https://www.timeforkids.com/k1/saving-sea-turtles/",
     "worksheetUrl": "/assets/pdf/saving-sea-turtles-worksheet.pdf",
     "answersUrl": "/assets/pdf/saving-sea-turtles-answers.pdf",
-    "memo": "Grace Buschiazzo - South Carolina Aquarium, Sea Turtle Care Center"
+    "memo": "Grace Buschiazzo - South Carolina Aquarium, Sea Turtle Care Center",
+    "articleUrl": "/assets/pdf/saving-sea-turtles-article.pdf"
   },
   {
     "id": "a-secret-world-k1",
@@ -33,7 +35,8 @@ window.NEWSLETTER_DATA = [
     "sourceUrl": "https://www.timeforkids.com/k1/a-secret-world-k1/",
     "worksheetUrl": "/assets/pdf/a-secret-world-k1-worksheet.pdf",
     "answersUrl": "/assets/pdf/a-secret-world-k1-answers.pdf",
-    "memo": "산호초를 바닷속 도시에 비유해 소개하는 K1 기사"
+    "memo": "산호초를 바닷속 도시에 비유해 소개하는 K1 기사",
+    "articleUrl": "/assets/pdf/a-secret-world-k1-article.pdf"
   },
   {
     "id": "fierce-fish-k1",
@@ -45,7 +48,8 @@ window.NEWSLETTER_DATA = [
     "sourceUrl": "https://www.timeforkids.com/k1/fierce-fish-k1/",
     "worksheetUrl": "/assets/pdf/fierce-fish-k1-worksheet.pdf",
     "answersUrl": "/assets/pdf/fierce-fish-k1-answers.pdf",
-    "memo": "상어의 크기, 먹이, 종류를 사진과 함께 소개하는 K1 기사"
+    "memo": "상어의 크기, 먹이, 종류를 사진과 함께 소개하는 K1 기사",
+    "articleUrl": "/assets/pdf/fierce-fish-k1-article.pdf"
   },
   {
     "id": "tons-of-teeth-k1",
@@ -57,7 +61,8 @@ window.NEWSLETTER_DATA = [
     "sourceUrl": "https://www.timeforkids.com/k1/tons-of-teeth-k1/",
     "worksheetUrl": "/assets/pdf/tons-of-teeth-k1-worksheet.pdf",
     "answersUrl": "/assets/pdf/tons-of-teeth-k1-answers.pdf",
-    "memo": "상어 종류별 이빨 모양과 먹이 방식을 사진으로 비교하는 K1 기사"
+    "memo": "상어 종류별 이빨 모양과 먹이 방식을 사진으로 비교하는 K1 기사",
+    "articleUrl": "/assets/pdf/tons-of-teeth-k1-article.pdf"
   },
   {
     "id": "nasa-newcomers-g2",
@@ -69,7 +74,8 @@ window.NEWSLETTER_DATA = [
     "sourceUrl": "https://www.timeforkids.com/g2/nasa-newcomers-g2/",
     "worksheetUrl": "/assets/pdf/nasa-newcomers-g2-worksheet.pdf",
     "answersUrl": "/assets/pdf/nasa-newcomers-g2-answers.pdf",
-    "memo": "우주비행사 후보자 프로그램에 대한 기사"
+    "memo": "우주비행사 후보자 프로그램에 대한 기사",
+    "articleUrl": "/assets/pdf/nasa-newcomers-g2-article.pdf"
   },
   {
     "id": "gorilla-multiples-g2",
@@ -81,6 +87,7 @@ window.NEWSLETTER_DATA = [
     "sourceUrl": "https://www.timeforkids.com/g2/gorilla-multiples-g2/",
     "worksheetUrl": "/assets/pdf/gorilla-multiples-g2-worksheet.pdf",
     "answersUrl": "/assets/pdf/gorilla-multiples-g2-answers.pdf",
-    "memo": "비룽가 국립공원 마운틴고릴라 쌍둥이 출산 기사"
+    "memo": "비룽가 국립공원 마운틴고릴라 쌍둥이 출산 기사",
+    "articleUrl": "/assets/pdf/gorilla-multiples-g2-article.pdf"
   }
 ];
