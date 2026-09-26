@@ -1,5 +1,5 @@
 /**
- * 클라우드플레어 워커 확인 — 비밀번호 문지기 · 공개 통로 · 노션 창구
+ * 클라우드플레어 워커 확인 — 비밀번호 문지기 · 공개 통로 · 노션 창구 · 카카오 테스트 창구
  *
  *   node tests/worker.test.js
  *
@@ -143,6 +143,49 @@ t('없는 노션 경로는 404', r.status === 404, String(r.status));
 r = await worker.fetch(req('/api/notion/students', { headers: { cookie } }),
   { ...ENV, NOTION_TOKEN: '' }, {});
 t('토큰이 없으면 친절히 알려 줌', r.status === 503);
+
+/* ---------- 카카오 테스트 창구 ---------- */
+const KENV = { ...ENV, KAKAO_SKILL_KEY: 'kakao-key-123' };
+const kcall = (path, opts) => worker.fetch(req(path, opts), KENV, {});
+const kakaoBody = (extra) => ({
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({
+    intent: { name: '폴백 블록' },
+    userRequest: {
+      utterance: 'http://talk.kakaocdn.net/dna/abc/voice.m4a?credential=x',
+      user: { id: 'a1b2c3d4e5f6g7', properties: { plusfriendUserKey: 'pk', botUserKey: 'bk' } }
+    },
+    action: { params: {}, detailParams: {} },
+    ...extra
+  })
+});
+
+r = await kcall('/api/kakao/test/kakao-key-123', kakaoBody());
+const kj = await r.json();
+const ktext = kj.template && kj.template.outputs[0].simpleText.text;
+t('카카오 창구는 비밀번호 쿠키 없이 열림', r.status === 200, String(r.status));
+t('카카오 응답 규격 2.0', kj.version === '2.0' && typeof ktext === 'string');
+t('파일 주소와 종류를 찾아 답장', ktext.includes('파일 주소 1개') && ktext.includes('소리 m4a') &&
+  ktext.includes('userRequest.utterance'), ktext);
+t('보낸 사람 번호는 앞부분만', ktext.includes('a1b2c3…') && !ktext.includes('a1b2c3d4e5f6g7'));
+t('답장은 1000자 이하', ktext.length <= 1000);
+
+r = await kcall('/api/kakao/test/kakao-key-123', {
+  method: 'POST', headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({ userRequest: { utterance: '안녕하세요', user: { id: 'u1' } } })
+});
+t('글만 오면 파일 없음이라고 알려 줌', (await r.json()).template.outputs[0].simpleText.text
+  .includes('파일 주소는 들어오지 않았습니다'));
+
+r = await kcall('/api/kakao/test/틀린열쇠', kakaoBody());
+t('열쇠가 틀리면 404', r.status === 404, String(r.status));
+
+r = await call('/api/kakao/test/kakao-key-123', kakaoBody());
+t('열쇠를 설정하지 않으면 닫혀 있음', r.status === 503, String(r.status));
+
+r = await kcall('/api/kakao/test/kakao-key-123');
+t('주소를 브라우저로 열면 안내만', r.status === 200 && (await r.json()).ok === true);
 
 /* ---------- 결과 ---------- */
 console.log('\n통과 ' + ok.length + '건 · 실패 ' + errs.length + '건');

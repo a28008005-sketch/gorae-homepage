@@ -12,6 +12,7 @@ zone_name = "whalejinju.kr"
 #   npx wrangler secret put STAFF_PASSWORD     (선생님들이 쓰는 학원 비밀번호)
 #   npx wrangler secret put SESSION_SECRET     (쿠키 서명용 아무 긴 문자열)
 #   npx wrangler secret put NOTION_TOKEN       (노션 연동을 쓸 때만)
+#   npx wrangler secret put KAKAO_SKILL_KEY    (카카오 챗봇 창구 열쇠. 영문·숫자 20자 이상)
 #
 # 노션 학생 명부의 데이터베이스 ID 는 비밀이 아니라서 여기에 두어도 됩니다.
 [vars]

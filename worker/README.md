@@ -42,6 +42,7 @@ GitHub Pages 쪽 설정(`CNAME` 파일, Custom domain)은 **그대로 두시면 
    | `STAFF_PASSWORD` | Secret | 선생님들이 쓸 학원 비밀번호 |
    | `SESSION_SECRET` | Secret | 아무 긴 문자열 (쿠키 서명용) |
    | `NOTION_TOKEN` | Secret | 노션 연동을 쓸 때만 |
+   | `KAKAO_SKILL_KEY` | Secret | 카카오 챗봇 창구 열쇠. 영문·숫자 20자 이상 (`docs/카카오-숙제수집-테스트.md` 참고) |
    | `NOTION_STUDENT_DB` | Text | `2c3e4c50882081c2b2c5ded6f7a8ba5a` |
 
 ### 방법 B — 명령어로

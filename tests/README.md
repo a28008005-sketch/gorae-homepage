@@ -22,7 +22,7 @@ node tests/bundle-check.js                   # dist 단일 파일이 제대로 �
 클라우드플레어 워커는 브라우저 없이 확인합니다. 정적 서버도 필요 없습니다.
 
 ```bash
-node tests/worker.test.js                    # 비밀번호 문지기 · 공개 통로 · 노션 창구
+node tests/worker.test.js                    # 비밀번호 문지기 · 공개 통로 · 노션 창구 · 카카오 테스트 창구
 ```
 
 클라우드 동기화 확인은 가짜 백엔드를 먼저 띄웁니다.
