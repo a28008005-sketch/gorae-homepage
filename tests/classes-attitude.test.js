@@ -4,6 +4,7 @@ const ok = (l,c,e='') => console.log(`  ${c?'✓':'✗ 실패'}  ${l}${e?' — '
 (async () => {
   const b = await chromium.launch();
   const p = await b.newPage({ viewport: { width: 1440, height: 1000 } });
+  await p.addInitScript(() => { window.GORAE_LOCAL_ONLY = true; });   // 로컬 모드 화면만 확인합니다
   const errs = [];
   p.on('pageerror', e => errs.push('PAGEERROR: ' + e.message));
   p.on('console', m => { if (m.type() === 'error') errs.push('CONSOLE: ' + m.text()); });

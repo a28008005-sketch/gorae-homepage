@@ -124,6 +124,10 @@ var App = (function () {
       document.getElementById('storage-note').textContent = '저장 불가 (시크릿 모드)';
     }
 
+    if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && !window.GORAE_LOCAL_ONLY) {
+      navigator.serviceWorker.register('sw.js').catch(function () {});
+    }
+
     refreshBrand();
     window.addEventListener('hashchange', route);
     if (!location.hash) location.hash = '#/dashboard';

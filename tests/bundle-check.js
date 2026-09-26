@@ -2,6 +2,7 @@ const { chromium } = require('./playwright');
 (async () => {
   const b = await chromium.launch();
   const p = await b.newPage({ viewport: { width: 1400, height: 950 } });
+  await p.addInitScript(() => { window.GORAE_LOCAL_ONLY = true; });   // 로컬 모드 화면만 확인합니다
   const errs = [];
   p.on('pageerror', e => errs.push(e.message));
   await p.goto('file://' + process.cwd() + '/dist/고래영어-원생관리-미리보기.html', { waitUntil: 'networkidle' });

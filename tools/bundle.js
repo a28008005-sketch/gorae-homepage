@@ -46,6 +46,7 @@ if (demo) {
   html = insertBeforeBodyEnd(html, `
 <script>
 /* 미리보기 전용 — 처음 열었을 때 예시 학생과 기록을 넣어 화면을 보여줍니다. */
+window.GORAE_LOCAL_ONLY = true;   // 예시 데이터가 학원 클라우드로 올라가지 않도록
 (function () {
   function seed() {
     if (Store.students().length) return;      // 이미 쓰던 기록이 있으면 건드리지 않습니다

@@ -159,21 +159,22 @@ Views.settings = (function () {
   function cloudBox() {
     var cfg = Sync.config();
     if (!Sync.isCloud()) {
+      var def = Sync.defaults();
       return '<p class="hint" style="margin-top:0">지금은 <b>이 기기에만 저장</b>하는 모드입니다. ' +
         '선생님들이 각자 기기에서 같은 명부와 출결을 보려면 클라우드를 연결하세요. ' +
         '연결해도 기록은 이 기기에 그대로 남고, 인터넷이 끊겨도 계속 입력할 수 있습니다.</p>' +
         '<div class="form-grid" style="margin-top:14px">' +
           '<label class="fld full">Supabase 프로젝트 URL' +
-            '<input type="text" id="c-url" placeholder="https://xxxxxxxx.supabase.co"></label>' +
-          '<label class="fld full">공개 키 (anon public key)' +
-            '<textarea id="c-key" placeholder="eyJhbGciOi..." style="min-height:70px;font-size:12px"></textarea></label>' +
+            '<input type="text" id="c-url" placeholder="https://xxxxxxxx.supabase.co" value="' + U.esc(def.url) + '"></label>' +
+          '<label class="fld full">공개 키 (Publishable key 또는 anon public key)' +
+            '<textarea id="c-key" placeholder="sb_publishable_... 또는 eyJhbGciOi..." style="min-height:70px;font-size:12px">' + U.esc(def.anonKey) + '</textarea></label>' +
         '</div>' +
         '<div class="row" style="margin-top:12px">' +
           '<button class="btn primary" id="c-connect">클라우드 연결</button>' +
           '<a class="btn" href="docs/서버형-설치안내.md" target="_blank" rel="noopener">설치 안내 보기</a>' +
         '</div>' +
-        '<p class="hint" style="margin-top:12px">여기에는 반드시 <b>anon public</b> 키만 넣으세요. ' +
-        'service_role 키는 브라우저에 넣으면 안 됩니다.</p>';
+        '<p class="hint" style="margin-top:12px">여기에는 반드시 <b>Publishable</b>(예전 이름 anon public) 키만 넣으세요. ' +
+        '<b>Secret</b>(sb_secret_…, 예전 이름 service_role) 키는 브라우저에 넣으면 안 됩니다.</p>';
     }
     var u = Sync.currentUser();
     return '<div class="row" style="gap:6px;margin-bottom:12px">' +
@@ -192,6 +193,17 @@ Views.settings = (function () {
       '</div>';
   }
 
+  /** 예전 키는 JWT 라 글자 그대로는 'service_role' 이 보이지 않아 속을 풀어 봅니다. */
+  function isSecretKey(key) {
+    if (/^sb_secret_/.test(key) || /service_role/.test(key)) return true;
+    var parts = key.split('.');
+    if (parts.length !== 3) return false;
+    try {
+      var body = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      return JSON.parse(atob(body + '==='.slice((body.length + 3) % 4))).role === 'service_role';
+    } catch (e) { return false; }
+  }
+
   function bindCloud(el, rerenderBox) {
     var connect = el.querySelector('#c-connect');
     if (connect) {
@@ -201,8 +213,8 @@ Views.settings = (function () {
         if (!/^https?:\/\//.test(url) || !key) {
           UI.toast('프로젝트 URL과 공개 키를 모두 입력해 주세요.', true); return;
         }
-        if (/service_role/.test(key)) {
-          UI.toast('service_role 키는 사용할 수 없습니다. anon public 키를 넣어 주세요.', true); return;
+        if (isSecretKey(key)) {
+          UI.toast('Secret(service_role) 키는 사용할 수 없습니다. Publishable 키를 넣어 주세요.', true); return;
         }
         connect.disabled = true; connect.textContent = '연결 중…';
         Sync.enableCloud(url, key).then(function () {

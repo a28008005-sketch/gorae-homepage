@@ -12,7 +12,11 @@ var Sync = (function () {
   var PULL_MS = 15000;
   var PUSH_DEBOUNCE_MS = 800;
 
-  var cfg = { mode: 'local', url: '', anonKey: '', lastPulledAt: '', pending: [] };
+  // 학원 공용 클라우드. 공개용(publishable) 키라 코드에 있어도 됩니다 — 기록은 RLS 로 로그인한 계정만 봅니다.
+  var DEFAULT_URL = 'https://olzyfwiurfgaxctdemxa.supabase.co';
+  var DEFAULT_KEY = 'sb_publishable_Iox5QRLACYO6FEhTtneQHQ_dsmucgv_';
+
+  var cfg = { mode: 'local', url: '', anonKey: '', lastPulledAt: '', pending: [], lastUser: null };
   var transport = null;
   var user = null;
   var status = 'off';        // off | connecting | online | offline | error | signedout
@@ -21,6 +25,8 @@ var Sync = (function () {
   var pushTimer = null;
   var pullTimer = null;
   var busy = false;
+  var needConnect = false;   // 오프라인으로 시작해 아직 서버와 연결을 맺지 못한 상태
+  var listening = false;
 
   /* ---------- 설정 저장 ---------- */
   function loadCfg() {
@@ -29,6 +35,11 @@ var Sync = (function () {
       if (raw) {
         var p = JSON.parse(raw);
         Object.keys(cfg).forEach(function (k) { if (p[k] !== undefined) cfg[k] = p[k]; });
+      } else if (!window.GORAE_LOCAL_ONLY && !Cloud.getTransport()) {
+        // 처음 여는 기기는 학원 클라우드에 바로 연결합니다. 설정에서 해제하면 그 뒤로는 따르지 않습니다.
+        cfg.mode = 'cloud';
+        cfg.url = DEFAULT_URL;
+        cfg.anonKey = DEFAULT_KEY;
       }
     } catch (e) { /* 저장소를 못 읽으면 로컬 모드로 둡니다 */ }
     if (!Array.isArray(cfg.pending)) cfg.pending = [];
@@ -130,7 +141,45 @@ var Sync = (function () {
 
   /** 올리고 내려받기를 한 번에 */
   function syncNow() {
-    return push().then(function () { return pull(); });
+    return reconnect().then(function () { return push(); }).then(function () { return pull(); });
+  }
+
+  /** 오프라인으로 시작했다면, 인터넷이 돌아온 뒤 서버 연결을 다시 맺습니다. */
+  function reconnect() {
+    if (!needConnect || !transport) return Promise.resolve();
+    return transport.connect().then(function (u) {
+      if (!u) {
+        if (!navigator.onLine) return;
+        needConnect = false;
+        user = null; stopLoop(); setStatus('signedout', '다시 로그인해 주세요.');
+        return;
+      }
+      needConnect = false;
+      user = u;
+      rememberUser(u);
+    }).catch(function () { setStatus('offline', '인터넷 연결을 기다리는 중'); });
+  }
+
+  function rememberUser(u) {
+    cfg.lastUser = u ? { id: u.id, email: u.email } : null;
+    saveCfg();
+  }
+
+  function listen() {
+    if (listening) return;
+    listening = true;
+    window.addEventListener('focus', function () { if (signedIn()) syncNow(); });
+    window.addEventListener('online', function () { if (signedIn()) syncNow(); });
+  }
+
+  /** 인터넷 없이 열었을 때, 전에 로그인했던 기기라면 막지 않고 입력을 받습니다. */
+  function startOffline() {
+    user = cfg.lastUser;
+    needConnect = true;
+    setStatus('offline', '인터넷 연결을 기다리는 중');
+    startLoop();
+    listen();
+    return user;
   }
 
   function startLoop() {
@@ -162,12 +211,17 @@ var Sync = (function () {
     transport = makeTransport();
     return transport.connect().then(function (u) {
       user = u || null;
-      if (!user) { setStatus('signedout'); return null; }
+      if (!user) {
+        if (!navigator.onLine && cfg.lastUser) return startOffline();
+        setStatus('signedout'); return null;
+      }
+      rememberUser(user);
       setStatus('online');
       startLoop();
-      window.addEventListener('focus', function () { syncNow(); });
+      listen();
       return syncNow().then(function () { return user; });
     }).catch(function (err) {
+      if (cfg.lastUser) return startOffline();
       setStatus('error', err.message || '연결 실패');
       return null;
     });
@@ -180,8 +234,11 @@ var Sync = (function () {
       .then(function () { return transport.signIn(email, password); })
       .then(function (u) {
         user = u;
+        needConnect = false;
+        rememberUser(u);
         setStatus('online');
         startLoop();
+        listen();
         return syncNow().then(function () { return u; });
       });
   }
@@ -192,6 +249,7 @@ var Sync = (function () {
       .catch(function () {})
       .then(function () {
         user = null;
+        rememberUser(null);
         setStatus('signedout');
       });
   }
@@ -220,8 +278,10 @@ var Sync = (function () {
     cfg.mode = 'local';
     cfg.pending = [];
     cfg.lastPulledAt = '';
+    cfg.lastUser = null;
     saveCfg();
     user = null;
+    needConnect = false;
     transport = null;
     setStatus('off');
   }
@@ -252,6 +312,7 @@ var Sync = (function () {
     signIn: signIn, signOut: signOut, enableCloud: enableCloud, disableCloud: disableCloud,
     uploadAll: uploadAll, syncNow: syncNow, push: push, pull: pull,
     onStatus: onStatus, status: function () { return status; }, statusMessage: function () { return statusMsg; },
-    pendingCount: pendingCount, config: config
+    pendingCount: pendingCount, config: config,
+    defaults: function () { return { url: DEFAULT_URL, anonKey: DEFAULT_KEY }; }
   };
 })();
