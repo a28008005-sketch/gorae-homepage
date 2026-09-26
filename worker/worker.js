@@ -217,8 +217,16 @@ function text(prop) {
  */
 async function kakaoTest(request, env, path) {
   if (!env.KAKAO_SKILL_KEY) return json({ error: '카카오 열쇠(KAKAO_SKILL_KEY)가 설정되지 않았습니다.' }, 503);
-  const key = decodeURIComponent(path.slice('/api/kakao/test/'.length));
-  if (!timingSafeEqual(key, env.KAKAO_SKILL_KEY)) return json({ error: '없는 경로입니다.' }, 404);
+  // 주소를 붙여넣다 끝에 딸려 온 '/' 나 공백은 봐줍니다.
+  let key = path.slice('/api/kakao/test/'.length);
+  try { key = decodeURIComponent(key); } catch (e) { /* 그대로 비교 */ }
+  key = key.replace(/[\s/]+$/, '');
+  const keyOk = timingSafeEqual(key, String(env.KAKAO_SKILL_KEY).trim());
+
+  // 워커까지 왔는지부터 로그에 남깁니다. 여기 안 찍히면 워커 앞에서 막힌 것입니다.
+  console.log('[kakao-test] ' + request.method + ' 도착 · 열쇠 ' + (keyOk ? '맞음' : '틀림') +
+    ' · ' + (request.headers.get('user-agent') || '-'));
+  if (!keyOk) return json({ error: '없는 경로입니다.' }, 404);
   if (request.method !== 'POST') return json({ ok: true, message: '카카오 테스트 창구가 열려 있습니다. 오픈빌더 스킬 주소로 쓰세요.' });
 
   let body;

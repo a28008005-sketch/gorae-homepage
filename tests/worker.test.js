@@ -178,6 +178,15 @@ r = await kcall('/api/kakao/test/kakao-key-123', {
 t('글만 오면 파일 없음이라고 알려 줌', (await r.json()).template.outputs[0].simpleText.text
   .includes('파일 주소는 들어오지 않았습니다'));
 
+r = await kcall('/api/kakao/test/kakao-key-123/', kakaoBody());
+t('주소 끝에 / 가 붙어도 열림', r.status === 200, String(r.status));
+
+r = await kcall('/api/kakao/test/kakao-key-123%20', kakaoBody());
+t('주소 끝에 공백이 붙어도 열림', r.status === 200, String(r.status));
+
+r = await kcall('/api/kakao/test/%E0%A4%A', kakaoBody());
+t('깨진 주소도 멈추지 않고 404', r.status === 404, String(r.status));
+
 r = await kcall('/api/kakao/test/틀린열쇠', kakaoBody());
 t('열쇠가 틀리면 404', r.status === 404, String(r.status));
 
