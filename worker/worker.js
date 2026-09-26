@@ -216,7 +216,12 @@ function text(prop) {
  * 원본 전체는 클라우드플레어 워커의 '실시간 로그'에도 남깁니다.
  */
 async function kakaoTest(request, env, path) {
-  if (!env.KAKAO_SKILL_KEY) return json({ error: '카카오 열쇠(KAKAO_SKILL_KEY)가 설정되지 않았습니다.' }, 503);
+  const isPost = request.method === 'POST';
+  // 카카오는 '200 + 카카오 형식 JSON' 이 아니면 이유 없이 "올바르지 않은 응답" 이라고만 합니다.
+  // 그래서 카카오가 부르는 POST 에는 문제가 있어도 카카오 형식으로 이유를 적어 돌려줍니다.
+  const fail = (msg, status) => isPost ? kakaoReply('[고래영어 테스트 ⚠️] ' + msg) : json({ error: msg }, status);
+
+  if (!env.KAKAO_SKILL_KEY) return fail('워커에 KAKAO_SKILL_KEY 가 설정되지 않았습니다.', 503);
   // 주소를 붙여넣다 끝에 딸려 온 '/' 나 공백은 봐줍니다.
   let key = path.slice('/api/kakao/test/'.length);
   try { key = decodeURIComponent(key); } catch (e) { /* 그대로 비교 */ }
@@ -226,15 +231,19 @@ async function kakaoTest(request, env, path) {
   // 워커까지 왔는지부터 로그에 남깁니다. 여기 안 찍히면 워커 앞에서 막힌 것입니다.
   console.log('[kakao-test] ' + request.method + ' 도착 · 열쇠 ' + (keyOk ? '맞음' : '틀림') +
     ' · ' + (request.headers.get('user-agent') || '-'));
-  if (!keyOk) return json({ error: '없는 경로입니다.' }, 404);
-  if (request.method !== 'POST') return json({ ok: true, message: '카카오 테스트 창구가 열려 있습니다. 오픈빌더 스킬 주소로 쓰세요.' });
+  if (!keyOk) return fail('스킬 주소 끝의 열쇠가 워커의 KAKAO_SKILL_KEY 와 다릅니다.', 404);
+  if (!isPost) return json({ ok: true, message: '카카오 테스트 창구가 열려 있습니다. 오픈빌더 스킬 주소로 쓰세요.' });
 
-  let body;
-  try { body = await request.json(); }
-  catch (e) { return kakaoReply('받은 내용이 JSON 이 아니었습니다.'); }
-
-  console.log('[kakao-test] ' + JSON.stringify(body));
-  return kakaoReply(kakaoSummary(body));
+  try {
+    let body = null;
+    try { body = JSON.parse(await request.text()); } catch (e) { /* 아래에서 안내 */ }
+    console.log('[kakao-test] ' + JSON.stringify(body));
+    if (!body || typeof body !== 'object') return fail('받은 내용이 JSON 이 아니었습니다.');
+    return kakaoReply(kakaoSummary(body));
+  } catch (e) {
+    console.log('[kakao-test] 오류 ' + (e && e.stack || e));
+    return fail('워커 안에서 오류가 났습니다: ' + cut(String(e && e.message || e), 200));
+  }
 }
 
 /** 받은 JSON 에서 확인할 것만 추려 사람이 읽을 글로 만듭니다. */

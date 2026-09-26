@@ -184,14 +184,48 @@ t('주소 끝에 / 가 붙어도 열림', r.status === 200, String(r.status));
 r = await kcall('/api/kakao/test/kakao-key-123%20', kakaoBody());
 t('주소 끝에 공백이 붙어도 열림', r.status === 200, String(r.status));
 
-r = await kcall('/api/kakao/test/%E0%A4%A', kakaoBody());
+r = await kcall('/api/kakao/test/%E0%A4%A');
 t('깨진 주소도 멈추지 않고 404', r.status === 404, String(r.status));
 
+const ktxt = async (res) => ((await res.json()).template || { outputs: [{ simpleText: {} }] })
+  .outputs[0].simpleText.text || '';
+
 r = await kcall('/api/kakao/test/틀린열쇠', kakaoBody());
-t('열쇠가 틀리면 404', r.status === 404, String(r.status));
+t('카카오가 틀린 열쇠로 부르면 이유를 카카오 형식으로', r.status === 200 &&
+  (await ktxt(r)).includes('열쇠'), String(r.status));
+
+r = await kcall('/api/kakao/test/틀린열쇠');
+t('브라우저로 틀린 열쇠를 열면 404', r.status === 404, String(r.status));
 
 r = await call('/api/kakao/test/kakao-key-123', kakaoBody());
-t('열쇠를 설정하지 않으면 닫혀 있음', r.status === 503, String(r.status));
+t('열쇠를 설정하지 않았으면 카카오에 이유를 알려 줌', r.status === 200 &&
+  (await ktxt(r)).includes('KAKAO_SKILL_KEY'));
+
+r = await call('/api/kakao/test/kakao-key-123');
+t('열쇠를 설정하지 않으면 브라우저에는 503', r.status === 503, String(r.status));
+
+for (const odd of ['null', '[]', '"글"', '{"userRequest":null,"action":null}', '']) {
+  r = await kcall('/api/kakao/test/kakao-key-123', {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: odd });
+  const j = await r.json();
+  t('이상한 요청(' + (odd || '빈 내용') + ')에도 카카오 형식으로 답함',
+    r.status === 200 && j.version === '2.0');
+}
+
+// 카카오 스킬 화면의 '스킬서버로 전송' 기본 요청과 비슷한 모양
+r = await kcall('/api/kakao/test/kakao-key-123', {
+  method: 'POST', headers: { 'content-type': 'application/json; charset=UTF-8' },
+  body: JSON.stringify({
+    intent: { id: 'x', name: '블록 이름' },
+    userRequest: { timezone: 'Asia/Seoul', params: { ignoreMe: 'true' },
+      block: { id: 'b', name: '블록 이름' }, utterance: '발화 내용', lang: null,
+      user: { id: '123456', type: 'accountId', properties: {} } },
+    bot: { id: 'bot', name: '봇 이름' },
+    action: { name: 'a', clientExtra: null, params: {}, id: 'id', detailParams: {} }
+  })
+});
+t('스킬서버로 전송 기본 요청에 정상 답장', r.status === 200 &&
+  (await ktxt(r)).includes('테스트 수신'));
 
 r = await kcall('/api/kakao/test/kakao-key-123');
 t('주소를 브라우저로 열면 안내만', r.status === 200 && (await r.json()).ok === true);
