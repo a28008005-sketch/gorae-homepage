@@ -81,7 +81,7 @@ const ok = (l,c,e='') => console.log(`  ${c?'✓':'✗ 실패'}  ${l}${e?' — '
     nav: document.querySelectorAll('.nav a i svg').length,
     brand: !!document.querySelector('.brand-mark svg')
   }));
-  ok('메뉴 아이콘 전부 표시', icons.nav === 13 && icons.brand, JSON.stringify(icons));
+  ok('메뉴 아이콘 전부 표시', icons.nav === 14 && icons.brand, JSON.stringify(icons));
 
   // 학원자료실 — 노션에 있던 자료가 들어오는지
   await p.goto(BASE + '#/resources', { waitUntil: 'domcontentloaded' }); await p.waitForTimeout(700);

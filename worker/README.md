@@ -107,3 +107,13 @@ node tests/worker.test.js
 
 이 부분은 실제 노션 토큰으로 주고받는 것까지는 확인하지 못했습니다.
 읽어온 값을 앱의 학생 모양으로 바꾸는 부분만 가짜 응답으로 확인했습니다.
+
+## 숙제 영상 워커 (`homework-worker.js`)
+
+`gorae-staff-gate` 와 별개인 `gorae-homework` 워커의 원본입니다. `staff.whalejinju.kr/hw*` 경로만 받습니다.
+
+- `/hw` : 학부모 숙제 영상 제출 화면 (로그인 없음, 10MB 조각 업로드, 최대 1GB)
+- `/hw/admin` : 단독 관리 화면 (브라우저 기본 로그인)
+- `/hw/admin/api/*` : 원생관리 "숙제 영상" 화면이 쓰는 창구 (`X-HW-Key` 머리글)
+- 바인딩: `HW` = R2 버킷 `gorae-homework`, 비밀값 `ADMIN_PASSWORD` (= 숙제 비밀번호)
+- 버킷 수명 규칙: 제출 영상 30일 뒤 자동 삭제, 끊긴 업로드 1일 뒤 정리

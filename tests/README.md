@@ -51,3 +51,13 @@ node tests/cloud-sync.test.js                # 두 기기 양방향 전파 · �
 ```bash
 SHOT_DIR=/tmp/shots node tests/worksheet.test.js
 ```
+
+## 숙제 영상
+
+학부모 제출(`/hw`) → 원생관리 "숙제 영상" 화면까지 이어서 확인합니다.
+가짜 저장소를 쓰는 전용 서버를 먼저 띄웁니다(8899 포트, 정적 서버 대신).
+
+```bash
+node tests/hwvideo-server.mjs &
+node tests/hwvideo.test.mjs
+```
