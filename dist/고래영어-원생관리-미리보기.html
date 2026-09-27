@@ -95,8 +95,9 @@ button{font-family:inherit}
 
 .sidebar-foot{padding:14px 18px 18px;border-top:1px solid rgba(255,255,255,.07);font-size:11px;color:#77899a}
 .storage-note{margin-bottom:6px;letter-spacing:.01em}
-.ext-link{color:#9db3c6}
-.ext-link:hover{color:var(--brass-2)}
+.ext-link,.kiosk-link{color:#9db3c6}
+.kiosk-link{display:block;margin-bottom:4px}
+.ext-link:hover,.kiosk-link:hover{color:var(--brass-2)}
 
 .main{flex:1;min-width:0;display:flex;flex-direction:column}
 
@@ -610,6 +611,9 @@ body.share-mode .content{padding:0}
 .res-actions{display:flex;gap:7px;align-items:center;margin-top:auto;padding-top:4px}
 @media(max-width:760px){ .res-grid{grid-template-columns:1fr} }
 
+/* 태블릿 등하원 시각 (출결 · 일일학습) */
+.att-time{display:inline-block;margin-top:3px;font-size:12px;font-weight:600;color:var(--mint);background:var(--mint-soft);padding:1px 7px;border-radius:99px;white-space:nowrap}
+
 
 .demo-strip{
   display:flex;align-items:flex-start;gap:12px;
@@ -653,6 +657,7 @@ body.share-mode .content{padding:0}
 
     <div class="sidebar-foot">
       <div class="storage-note" id="storage-note">이 브라우저에 저장됨</div>
+      <a class="kiosk-link" href="checkin.html" target="_blank" rel="noopener">태블릿 등하원 출결 ↗</a>
       <a class="ext-link" href="https://whalejinju.kr" target="_blank" rel="noopener">학원 홈페이지 ↗</a>
     </div>
   </aside>
@@ -4464,7 +4469,11 @@ Views.attendance = (function () {
         '<span class="klass-dot" style="background:' + U.esc(sc.color || '#cbd5e0') + '"></span>' +
         '<span><span class="nm">' + U.esc(s.name) + '</span><br>' +
         '<span class="gr">' + U.esc(sc.className || s.grade || '') +
-          (sc.time ? ' · ' + U.esc(sc.time) : '') + '</span></span>' +
+          (sc.time ? ' · ' + U.esc(sc.time) : '') + '</span>' +
+          // 태블릿(등하원 출결)에서 찍힌 시각
+          (r.checkIn ? '<br><span class="att-time">등원 ' + U.esc(r.checkIn) +
+            (r.checkOut ? ' · 하원 ' + U.esc(r.checkOut) : '') + '</span>' : '') +
+        '</span>' +
       '</div>' +
 
       '<div class="att-checks">' +

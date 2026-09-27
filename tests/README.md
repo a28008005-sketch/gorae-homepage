@@ -61,3 +61,13 @@ SHOT_DIR=/tmp/shots node tests/worksheet.test.js
 node tests/hwvideo-server.mjs &
 node tests/hwvideo.test.mjs
 ```
+
+## 태블릿 등하원 출결
+
+학부모 번호 뒤 4자리 입력 → 등원·하원 → 원생관리 [출결 · 일일학습]에 시각이 뜨는지까지 확인합니다.
+정적 서버(8899)와 가짜 백엔드(8902)를 모두 띄우고, 실행 전에 `/reset` 을 부르세요.
+
+```bash
+curl -s http://127.0.0.1:8902/reset
+node tests/checkin.test.js
+```

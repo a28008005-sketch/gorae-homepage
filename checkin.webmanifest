@@ -1,0 +1,13 @@
+{
+  "name": "고래영어 등하원 출결",
+  "short_name": "고래 출결",
+  "start_url": "checkin.html",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#0a2033",
+  "theme_color": "#0a2033",
+  "icons": [
+    { "src": "assets/img/checkin-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

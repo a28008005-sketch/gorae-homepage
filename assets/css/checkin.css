@@ -1,0 +1,86 @@
+/* ===== 등하원 출결 (태블릿) ===== */
+.ci-body{background:var(--navy);min-height:100vh;overflow:hidden;
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.ci-app{position:relative;display:grid;grid-template-columns:minmax(260px,38%) 1fr;min-height:100vh}
+
+.ci-side{color:#fff;padding:48px 44px;display:flex;flex-direction:column;gap:8px;
+  background:linear-gradient(160deg,var(--navy) 0%,var(--navy-3) 100%)}
+.ci-brand{display:flex;align-items:center;gap:10px;font-size:20px;font-weight:700;color:var(--brass-2)}
+.ci-brand svg{color:var(--brass-2)}
+.ci-clock{margin-top:auto;font-size:clamp(64px,10vw,120px);font-weight:700;letter-spacing:-3px;line-height:1;font-variant-numeric:tabular-nums}
+.ci-date{font-size:22px;color:#c8d4df}
+.ci-hello{margin:28px 0 0;font-size:19px;line-height:1.7;color:#dfe6ec}
+.ci-hello b{color:var(--brass-2)}
+.ci-count{margin-top:auto;font-size:15px;color:#9fb1c2}
+
+.ci-panel{background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 32px 64px}
+.ci-ask{margin:0 0 20px;font-size:24px;text-align:center;line-height:1.5;color:var(--ink)}
+.ci-ask b{color:var(--blue)}
+
+.ci-dots{display:flex;gap:16px;margin-bottom:6px}
+.ci-dot{width:64px;height:76px;border-radius:14px;border:2px solid var(--line);background:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:38px;font-weight:700;color:var(--navy)}
+.ci-dot.on{border-color:var(--blue)}
+.ci-dots.shake{animation:ci-shake .4s}
+@keyframes ci-shake{20%,60%{transform:translateX(-10px)}40%,80%{transform:translateX(10px)}}
+.ci-msg{min-height:26px;margin:8px 0 14px;font-size:17px;color:var(--muted)}
+.ci-msg.bad{color:var(--bad);font-weight:600}
+
+.ci-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;width:min(100%,420px)}
+.ci-key{height:86px;border-radius:18px;border:0;background:#fff;box-shadow:var(--shadow);
+  font-size:36px;font-weight:600;color:var(--ink);cursor:pointer;font-family:inherit}
+.ci-key:active{background:var(--blue-soft);transform:scale(.97)}
+.ci-key.fn{font-size:20px;color:var(--muted);background:#eef1f4;box-shadow:none}
+
+.ci-names{display:flex;flex-direction:column;gap:14px;width:min(100%,460px)}
+.ci-name{position:relative;display:flex;align-items:baseline;gap:12px;padding:24px 26px;border-radius:18px;border:2px solid var(--line);
+  background:#fff;box-shadow:var(--shadow);cursor:pointer;font-family:inherit;text-align:left}
+.ci-name:active{border-color:var(--blue);background:var(--blue-soft)}
+.ci-name .nm{font-size:32px;font-weight:700;color:var(--navy)}
+.ci-name .sub{font-size:17px;color:var(--muted)}
+.ci-badge{margin-left:auto;align-self:center;font-size:15px;padding:4px 10px;border-radius:99px;background:var(--mint-soft);color:var(--mint);font-weight:600}
+.ci-badge.done{background:#eef1f4;color:var(--muted)}
+.ci-back{margin-top:26px;border:0;background:none;font-size:18px;color:var(--muted);text-decoration:underline;cursor:pointer;font-family:inherit;padding:12px}
+
+.ci-confirm,.ci-done{text-align:center}
+.ci-big{margin:0 0 10px;font-size:52px;font-weight:800;color:var(--navy);letter-spacing:-1px}
+.ci-two{display:flex;gap:16px;justify-content:center;margin-top:12px}
+.ci-btn{min-width:170px;height:84px;border-radius:18px;font-size:26px;font-weight:700;cursor:pointer;font-family:inherit;border:0}
+.ci-btn.primary{background:var(--navy);color:#fff}
+.ci-btn.ghost{background:#e6eaee;color:var(--ink)}
+
+.ci-check{width:108px;height:108px;margin:0 auto 18px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:60px;font-weight:700;color:#fff;background:var(--ok);animation:ci-pop .35s ease-out}
+.ci-done.info .ci-check{background:var(--brass);font-family:Georgia,serif;font-style:italic}
+@keyframes ci-pop{0%{transform:scale(.4);opacity:0}100%{transform:scale(1);opacity:1}}
+.ci-title{margin:0;font-size:30px;font-weight:700;color:var(--ink)}
+.ci-time{color:var(--blue);font-variant-numeric:tabular-nums}
+.ci-line{margin:10px 0 0;font-size:20px;color:var(--muted)}
+
+.ci-status{position:absolute;right:14px;bottom:12px;border:0;background:none;font-size:13px;color:var(--muted);
+  padding:6px 8px 6px 20px;cursor:default;font-family:inherit}
+.ci-status::before{content:"";position:absolute;left:6px;top:50%;width:8px;height:8px;margin-top:-4px;border-radius:50%;background:#9aa7b3}
+.ci-status.online::before{background:var(--ok)}
+.ci-status.connecting::before{background:var(--blue-2)}
+.ci-status.offline::before{background:var(--warn)}
+.ci-status.error::before,.ci-status.signedout::before,.ci-status.off::before{background:var(--bad)}
+.ci-status.error,.ci-status.signedout,.ci-status.off{color:var(--bad);font-weight:600}
+
+/* 세로로 세운 태블릿 · 작은 화면 */
+@media (max-width:820px), (orientation:portrait){
+  .ci-body{overflow:auto}
+  .ci-app{grid-template-columns:1fr;grid-template-rows:auto 1fr}
+  .ci-side{padding:24px 28px;flex-direction:row;flex-wrap:wrap;align-items:flex-end;gap:4px 18px}
+  .ci-brand{width:100%}
+  .ci-clock{margin-top:8px;font-size:64px}
+  .ci-date{font-size:18px;padding-bottom:8px}
+  .ci-hello{display:none}
+  .ci-count{width:100%;margin-top:4px}
+  .ci-panel{padding:28px 18px 60px}
+}
+@media (max-width:420px){
+  .ci-dot{width:54px;height:64px;font-size:30px}
+  .ci-key{height:72px;font-size:30px}
+  .ci-big{font-size:40px}
+  .ci-btn{min-width:130px;height:72px;font-size:22px}
+}

@@ -22,7 +22,11 @@ Views.attendance = (function () {
         '<span class="klass-dot" style="background:' + U.esc(sc.color || '#cbd5e0') + '"></span>' +
         '<span><span class="nm">' + U.esc(s.name) + '</span><br>' +
         '<span class="gr">' + U.esc(sc.className || s.grade || '') +
-          (sc.time ? ' · ' + U.esc(sc.time) : '') + '</span></span>' +
+          (sc.time ? ' · ' + U.esc(sc.time) : '') + '</span>' +
+          // 태블릿(등하원 출결)에서 찍힌 시각
+          (r.checkIn ? '<br><span class="att-time">등원 ' + U.esc(r.checkIn) +
+            (r.checkOut ? ' · 하원 ' + U.esc(r.checkOut) : '') + '</span>' : '') +
+        '</span>' +
       '</div>' +
 
       '<div class="att-checks">' +
