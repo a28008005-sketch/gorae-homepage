@@ -2,12 +2,12 @@
  *
  * 학부모님이 staff.whalejinju.kr/hw 에서 올린 숙제 영상을 봅니다.
  * 영상 자체는 클라우드플레어 R2(gorae-homework 워커)에 있고, 이 화면은 목록을 불러와 보여 주기만 합니다.
- * 워커에 들어가려면 '숙제 비밀번호'가 필요합니다. 기기마다 처음 한 번만 넣으면 이 기기에 기억합니다.
+ * 원생관리에 학원 비밀번호로 로그인한 기기라면 따로 비밀번호 없이 바로 보입니다.
+ * (워커가 원생관리 로그인 쿠키를 gorae-staff-gate 에 물어 확인합니다.)
  */
 window.Views = window.Views || {};
 Views.hwvideo = (function () {
 
-  var KEY_STORE = 'gorae_hw_key';
   var API = '/hw/admin';
   var days = '7';
   var q = '';
@@ -23,15 +23,12 @@ Views.hwvideo = (function () {
     return '미확인 ' + n + '건 · 전체 ' + items.length + '건';
   }
 
-  /* ---------- 비밀번호 · 요청 ---------- */
-  function getKey() { try { return localStorage.getItem(KEY_STORE) || ''; } catch (e) { return ''; } }
-  function setKey(k) { try { if (k) localStorage.setItem(KEY_STORE, k); else localStorage.removeItem(KEY_STORE); } catch (e) {} }
-
+  /* ---------- 요청 ---------- */
   function onServer() { return /^https?:$/.test(location.protocol); }
 
   function api(path, opts) {
     opts = opts || {};
-    var headers = { 'X-HW-Key': getKey() };
+    var headers = {};
     if (opts.body) headers['Content-Type'] = 'application/json';
     return fetch(API + path, {
       method: opts.method || 'GET',
@@ -41,7 +38,7 @@ Views.hwvideo = (function () {
     }).then(function (r) {
       return r.json().catch(function () { return { ok: false, error: '서버 응답을 읽지 못했습니다.' }; })
         .then(function (j) {
-          if (r.status === 401) { var e = new Error(j.error || '숙제 비밀번호가 맞지 않습니다.'); e.auth = true; throw e; }
+          if (r.status === 401) { var e = new Error(j.error || '원생관리 로그인이 필요합니다.'); e.auth = true; throw e; }
           if (!r.ok || !j.ok) throw new Error(j.error || '불러오지 못했습니다.');
           return j;
         });
@@ -63,7 +60,6 @@ Views.hwvideo = (function () {
     }).catch(function (e) {
       items = null;
       loadError = e.message;
-      if (e.auth) { setKey(''); }
     }).then(function () {
       App.setSub(sub());
       draw(el);
@@ -85,19 +81,6 @@ Views.hwvideo = (function () {
   function mb(n) { return (n / 1048576).toFixed(1) + 'MB'; }
 
   /* ---------- 화면 조각 ---------- */
-  function keyForm(msg) {
-    return '<div class="card"><div class="card-b" style="max-width:460px">' +
-      '<h2 style="margin:0 0 6px;font-size:16px">숙제 비밀번호를 넣어 주세요</h2>' +
-      '<p class="hint" style="margin:0 0 14px;line-height:1.7">학부모님이 올린 영상은 따로 잠겨 있습니다. ' +
-        '이 기기에서 처음 한 번만 넣으면 다음부터는 묻지 않습니다.</p>' +
-      (msg ? '<p style="color:#a8453f;font-size:13px;margin:0 0 10px">' + U.esc(msg) + '</p>' : '') +
-      '<div style="display:flex;gap:8px">' +
-        '<input type="password" id="hw-key" placeholder="숙제 비밀번호" autocomplete="off" style="flex:1">' +
-        '<button class="btn primary" id="hw-key-go">확인</button>' +
-      '</div>' +
-    '</div></div>';
-  }
-
   function linkCard() {
     var link = (onServer() ? location.origin : 'https://staff.whalejinju.kr') + '/hw';
     return '<div class="card" style="margin-top:16px"><div class="card-h"><h2>학부모님께 보낼 제출 링크</h2></div>' +
@@ -155,17 +138,11 @@ Views.hwvideo = (function () {
       el.innerHTML = UI.emptyBox('숙제 영상은 학원 주소(staff.whalejinju.kr)로 접속했을 때만 볼 수 있습니다.', 'alert');
       return;
     }
-    if (!getKey()) {
-      el.innerHTML = keyForm(loadError) + linkCard();
-      bindKey(el);
-      bindCopy(el);
-      return;
-    }
     if (items === null && loadError) {
       el.innerHTML = '<div class="card"><div class="card-b">' +
         '<p style="margin:0 0 12px;color:#a8453f">' + U.esc(loadError) + '</p>' +
-        '<button class="btn primary" id="hw-retry">다시 시도</button></div></div>' + linkCard();
-      el.querySelector('#hw-retry').addEventListener('click', function () { loadError = ''; draw(el); load(el); });
+        '<button class="btn primary" id="hw-retry">새로고침</button></div></div>' + linkCard();
+      el.querySelector('#hw-retry').addEventListener('click', function () { location.reload(); });
       bindCopy(el);
       return;
     }
@@ -200,29 +177,13 @@ Views.hwvideo = (function () {
         '</div>' +
         '<div class="card-b" id="hw-list">' + listHtml() + '</div>' +
       '</div>' +
-      linkCard() +
-      '<p class="hint" style="margin-top:10px;text-align:right"><a href="#" id="hw-forget">이 기기에서 숙제 비밀번호 지우기</a></p>';
+      linkCard();
 
     bind(el);
     bindCopy(el);
   }
 
   /* ---------- 동작 ---------- */
-  function bindKey(el) {
-    var input = el.querySelector('#hw-key');
-    var go = function () {
-      var v = input.value;
-      if (!v) { UI.toast('숙제 비밀번호를 입력해 주세요.', true); return; }
-      setKey(v);
-      items = null; loadError = '';
-      draw(el);
-      load(el).then(function () { if (items) UI.toast('숙제 영상을 불러왔습니다.'); });
-    };
-    el.querySelector('#hw-key-go').addEventListener('click', go);
-    input.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
-    input.focus();
-  }
-
   function bindCopy(el) {
     var b = el.querySelector('#hw-copy');
     if (!b) return;
@@ -284,12 +245,6 @@ Views.hwvideo = (function () {
     });
     el.querySelector('#hw-new').addEventListener('click', function () { onlyNew = !onlyNew; draw(el); });
     el.querySelector('#hw-reload').addEventListener('click', function () { items = null; draw(el); load(el); });
-    el.querySelector('#hw-forget').addEventListener('click', function (e) {
-      e.preventDefault();
-      UI.confirm('이 기기에 기억된 숙제 비밀번호를 지울까요?', function () {
-        setKey(''); items = null; loadError = ''; draw(el);
-      });
-    });
     UI.on(el, '[data-play]', 'click', function (e, b) { play(keyOf(b)); });
     UI.on(el, '[data-dl]', 'click', function (e, b) { download(keyOf(b)); });
     UI.on(el, '[data-ck]', 'change', function (e, cb) { setChecked(keyOf(cb), cb.checked); });
@@ -301,7 +256,7 @@ Views.hwvideo = (function () {
   function render(el) {
     draw(el);
     // 화면에 들어올 때마다 새 목록을 받아옵니다. (비밀번호가 있을 때만)
-    if (onServer() && getKey() && !loadError) {
+    if (onServer() && !loadError) {
       var first = items === null;
       if (first) load(el);
       else api('/api/list?days=' + days).then(function (j) {

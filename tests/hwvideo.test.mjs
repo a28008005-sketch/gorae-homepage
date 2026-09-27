@@ -33,19 +33,12 @@ await page.goto(B + '/index.html#/dashboard');
 await page.waitForTimeout(800);
 ok(await page.isVisible('a[data-route="hwvideo"]'), '왼쪽 메뉴에 "숙제 영상" 표시');
 await page.click('a[data-route="hwvideo"]');
-await page.waitForSelector('#hw-key');
+await page.waitForTimeout(800);
 ok((await page.textContent('#page-title')).includes('숙제 영상'), '제목 표시');
-await page.screenshot({ path: (process.env.SHOT_DIR || '.') + '/hw-key.png' });
-
-// 틀린 비밀번호 → 브라우저 로그인 창 없이 안내
-await page.fill('#hw-key', 'wrong');
-await page.click('#hw-key-go');
-await page.waitForSelector('#hw-key', { timeout: 5000 });
-await page.waitForTimeout(500);
-ok((await page.content()).includes('숙제 비밀번호가 맞지 않습니다'), '틀린 비밀번호 안내 (창 안 뜸)');
-
-await page.fill('#hw-key', 'pw-test');
-await page.click('#hw-key-go');
+ok((await page.content()).includes('원생관리 로그인이 필요합니다'), '원생관리 로그인이 없으면 영상이 안 보임');
+ok(!(await page.$('#hw-key')), '숙제 비밀번호 칸은 없음');
+await ctx.addCookies([{ name: 'gorae_staff', value: 'ok', url: B }]);
+await page.reload();
 await page.waitForSelector('[data-key]', { timeout: 5000 });
 const rowText = await page.textContent('#hw-list');
 ok(rowText.includes(kid) && !rowText.includes('명부에 없음') && rowText.includes('3과 읽기') && rowText.includes('13.0MB'), '제출 목록에 학생·메모·용량 표시, 명부와 이름 연결');
@@ -65,7 +58,7 @@ ok((await page.textContent('#page-sub')).includes('미확인 0건'), '확인 완
 // 새로고침해도 비밀번호 기억
 await page.reload(); await page.waitForTimeout(800);
 await page.waitForSelector('[data-key]', { timeout: 5000 });
-ok(await page.isChecked('[data-ck]'), '다시 들어와도 비밀번호 묻지 않고 확인 상태 유지');
+ok(await page.isChecked('[data-ck]'), '다시 들어와도 확인 상태 유지');
 
 // 모바일
 await page.setViewportSize({ width: 390, height: 844 });

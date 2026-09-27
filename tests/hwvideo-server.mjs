@@ -20,7 +20,9 @@ const HW = {
   head: async (k) => store.has(k) ? { size: store.get(k).body.length } : null,
   get: async (k, o) => { const s = store.get(k); if (!s) return null; let b = s.body; if (o?.range) b = b.subarray(o.range.offset, o.range.offset + o.range.length); return { body: b, size: s.body.length, httpMetadata: s.meta?.httpMetadata, customMetadata: s.meta?.customMetadata }; },
 };
-const env = { HW, ADMIN_PASSWORD: 'pw-test' };
+// 원생관리 문지기 흉내: gorae_staff=ok 쿠키면 로그인된 것으로 봅니다.
+const GATE = { fetch: async (u, init) => new Response('{}', { status: /gorae_staff=ok/.test((init && init.headers && init.headers.cookie) || '') ? 503 : 401 }) };
+const env = { HW, GATE, ADMIN_PASSWORD: 'pw-test' };
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'application/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json' };
 
 http.createServer(async (req, res) => {

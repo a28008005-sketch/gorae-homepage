@@ -1,6 +1,6 @@
 // gorae-homework : 고래영어학원 동영상 숙제 제출 워커
 // 경로: staff.whalejinju.kr/hw*
-// 바인딩: HW (R2 bucket gorae-homework), ADMIN_PASSWORD (secret)
+// 바인딩: HW (R2 bucket gorae-homework), GATE (서비스 바인딩 → gorae-staff-gate), ADMIN_PASSWORD (secret)
 
 const PART_SIZE = 10 * 1024 * 1024; // 10MB 조각
 const MAX_SIZE = 1024 * 1024 * 1024; // 1GB
@@ -21,7 +21,8 @@ export default {
         if (!(await authorized(request, env, url, p))) {
           // 원생관리 화면(X-HW-Key)이나 API 요청에는 브라우저 로그인 창을 띄우지 않습니다.
           if (p !== '/hw/admin' || request.headers.get('X-HW-Key') !== null) {
-            return json({ ok: false, error: '숙제 비밀번호가 맞지 않습니다.' }, 401);
+            const msg = request.headers.get('X-HW-Key') !== null ? '숙제 비밀번호가 맞지 않습니다.' : '원생관리 로그인이 필요합니다. 새로고침한 뒤 학원 비밀번호로 다시 들어와 주세요.';
+            return json({ ok: false, error: msg }, 401);
           }
           return new Response('로그인이 필요합니다.', {
             status: 401,
@@ -96,7 +97,35 @@ async function abort(request, env) {
 }
 
 // ---------- 관리자 ----------
+/*
+ * 원생관리에 로그인한 기기인지 확인합니다.
+ * 원생관리 로그인은 gorae-staff-gate 워커가 관리하므로, 서비스 바인딩(GATE)으로 그 워커에
+ * 같은 쿠키를 들고 '로그인해야만 열리는 창구'를 두드려 봅니다. 401 이 아니면 로그인된 기기입니다.
+ * 같은 쿠키는 5분 동안 결과를 기억해 매번 묻지 않습니다.
+ */
+const staffCache = new Map();
+async function staffSignedIn(request, env) {
+  if (!env.GATE) return false;
+  const jar = request.headers.get('cookie') || '';
+  const m = jar.match(/(?:^|;\s*)gorae_staff=([^;]+)/);
+  if (!m) return false;
+  const hit = staffCache.get(m[1]);
+  if (hit && hit.until > Date.now()) return hit.ok;
+  let ok = false;
+  try {
+    const r = await env.GATE.fetch('https://staff.whalejinju.kr/api/notion/students', {
+      headers: { cookie: 'gorae_staff=' + m[1], accept: 'application/json' },
+    });
+    ok = r.status !== 401;
+  } catch (_) { ok = false; }
+  if (staffCache.size > 500) staffCache.clear();
+  staffCache.set(m[1], { ok, until: Date.now() + 5 * 60 * 1000 });
+  return ok;
+}
+
 async function authorized(request, env, url, p) {
+  // 0) 원생관리에 로그인한 기기 (비밀번호 없이 바로)
+  if (await staffSignedIn(request, env)) return true;
   if (!env.ADMIN_PASSWORD) return false;
   // 1) 원생관리 화면: X-HW-Key 머리글
   const k = request.headers.get('X-HW-Key');
