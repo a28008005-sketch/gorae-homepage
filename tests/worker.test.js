@@ -82,15 +82,17 @@ t('틀렸을 때 안내 문구', (await r.text()).includes('비밀번호가 맞�
 
 // 휴대폰 키보드가 넣는 앞뒤 공백 · 전각 문자는 같은 비밀번호로 봅니다.
 r = await call('/__login', loginBody(' ' + ENV.STAFF_PASSWORD + ' '));
-t('앞뒤 공백이 붙어도 통과', r.status === 302 && r.headers.get('location') === '/');
+t('앞뒤 공백이 붙어도 통과', r.status === 200 && (r.headers.get('set-cookie') || '').startsWith('gorae_staff='));
 r = await call('/__login', loginBody(ENV.STAFF_PASSWORD.replace(/[0-9]/g, d => String.fromCharCode(0xFF10 + Number(d)))));
-t('전각 숫자로 넣어도 통과', r.status === 302 && r.headers.get('location') === '/');
+t('전각 숫자로 넣어도 통과', r.status === 200 && (r.headers.get('set-cookie') || '').startsWith('gorae_staff='));
 r = await call('/__login', loginBody(ENV.STAFF_PASSWORD + '1'));
 t('한 글자라도 다르면 못 들어감', r.headers.get('location') === '/?e=1');
 
 r = await call('/__login', loginBody(ENV.STAFF_PASSWORD));
 const setCookie = r.headers.get('set-cookie') || '';
-t('맞는 비밀번호로 통과', r.status === 302 && r.headers.get('location') === '/');
+const doneHtml = await r.clone().text();
+t('맞는 비밀번호로 통과 (쿠키를 담은 화면을 거쳐 이동)', r.status === 200 && setCookie.startsWith('gorae_staff=') &&
+  doneHtml.includes('location.replace("/")') && doneHtml.includes('http-equiv="refresh"'));
 t('쿠키는 HttpOnly · Secure',
   setCookie.includes('HttpOnly') && setCookie.includes('Secure') && setCookie.includes('SameSite=Lax'));
 
@@ -121,9 +123,9 @@ t('/p/ 아래 파일은 /p 를 뗀 주소로', seen[0] && seen[0].endsWith('/ass
 
 /* ---------- 열린 리다이렉트 ---------- */
 r = await call('/__login', loginBody(ENV.STAFF_PASSWORD, 'https://evil.example.com'));
-t('바깥 주소로는 돌려보내지 않음', r.headers.get('location') === '/', r.headers.get('location'));
+{ const h = await r.text(); t('바깥 주소로는 돌려보내지 않음', h.includes('location.replace("/")') && !h.includes('evil')); }
 r = await call('/__login', loginBody(ENV.STAFF_PASSWORD, '//evil.example.com'));
-t('// 로 시작하는 주소도 막음', r.headers.get('location') === '/', r.headers.get('location'));
+{ const h = await r.text(); t('// 로 시작하는 주소도 막음', h.includes('location.replace("/")') && !h.includes('evil')); }
 
 /* ---------- 로그아웃 ---------- */
 r = await call('/__logout', AUTH);

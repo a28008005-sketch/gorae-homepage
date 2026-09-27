@@ -92,9 +92,30 @@ async function login(request, env, url) {
   if (!env.STAFF_PASSWORD || !timingSafeEqual(normPw(pw), normPw(env.STAFF_PASSWORD))) {
     return new Response(null, { status: 302, headers: { Location: '/?e=1' } });
   }
-  return new Response(null, {
-    status: 302,
-    headers: { Location: to, 'Set-Cookie': await makeCookie(env, url) }
+  return loginDone(to, await makeCookie(env, url));
+}
+
+/**
+ * 로그인 성공 응답.
+ * 302 로 바로 넘기면 네이버·카카오톡 같은 앱 안 브라우저가 쿠키를 저장하지 않고 넘어가 버려서
+ * 비밀번호가 맞아도 다시 로그인 화면이 나옵니다. 그래서 쿠키를 담은 짧은 화면을 먼저 보여 주고,
+ * 그 화면이 원래 가려던 주소로 넘어갑니다.
+ */
+function loginDone(to, cookie) {
+  const safe = JSON.stringify(to).replace(/</g, '\\u003c');
+  const attr = to.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  const html = '<!doctype html><html lang="ko"><head><meta charset="utf-8">' +
+    '<meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">' +
+    '<meta http-equiv="refresh" content="1;url=' + attr + '"><title>들어가는 중…</title></head>' +
+    '<body style="font-family:sans-serif;text-align:center;padding-top:30vh;color:#555">원생관리를 여는 중입니다…' +
+    '<script>setTimeout(function(){location.replace(' + safe + ')},150)</script></body></html>';
+  return new Response(html, {
+    status: 200,
+    headers: {
+      'content-type': 'text/html; charset=utf-8',
+      'cache-control': 'no-store',
+      'Set-Cookie': cookie
+    }
   });
 }
 
