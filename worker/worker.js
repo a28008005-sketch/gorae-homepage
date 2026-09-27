@@ -89,13 +89,22 @@ async function login(request, env, url) {
   const pw = String(form.get('pw') || '');
   const to = safeRedirect(String(form.get('to') || '/'));
 
-  if (!env.STAFF_PASSWORD || !timingSafeEqual(pw, env.STAFF_PASSWORD)) {
+  if (!env.STAFF_PASSWORD || !timingSafeEqual(normPw(pw), normPw(env.STAFF_PASSWORD))) {
     return new Response(null, { status: 302, headers: { Location: '/?e=1' } });
   }
   return new Response(null, {
     status: 302,
     headers: { Location: to, 'Set-Cookie': await makeCookie(env, url) }
   });
+}
+
+/**
+ * 비교 전에 비밀번호를 정리합니다.
+ * 휴대폰 키보드는 전각 숫자(１２３)나 앞뒤 공백을 넣기도 하고,
+ * 대시보드에 붙여 넣은 비밀값 끝에 줄바꿈이 따라 들어가기도 합니다.
+ */
+function normPw(s) {
+  return String(s || '').normalize('NFKC').replace(/\s+/g, '');
 }
 
 /** 돌아갈 주소는 이 사이트 안쪽만 허용합니다(열린 리다이렉트 방지). */

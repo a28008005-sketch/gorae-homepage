@@ -80,6 +80,14 @@ const errPage = await r.text();
 r = await call('/?e=1', { headers: HTML });
 t('틀렸을 때 안내 문구', (await r.text()).includes('비밀번호가 맞지 않습니다'));
 
+// 휴대폰 키보드가 넣는 앞뒤 공백 · 전각 문자는 같은 비밀번호로 봅니다.
+r = await call('/__login', loginBody(' ' + ENV.STAFF_PASSWORD + ' '));
+t('앞뒤 공백이 붙어도 통과', r.status === 302 && r.headers.get('location') === '/');
+r = await call('/__login', loginBody(ENV.STAFF_PASSWORD.replace(/[0-9]/g, d => String.fromCharCode(0xFF10 + Number(d)))));
+t('전각 숫자로 넣어도 통과', r.status === 302 && r.headers.get('location') === '/');
+r = await call('/__login', loginBody(ENV.STAFF_PASSWORD + '1'));
+t('한 글자라도 다르면 못 들어감', r.headers.get('location') === '/?e=1');
+
 r = await call('/__login', loginBody(ENV.STAFF_PASSWORD));
 const setCookie = r.headers.get('set-cookie') || '';
 t('맞는 비밀번호로 통과', r.status === 302 && r.headers.get('location') === '/');
