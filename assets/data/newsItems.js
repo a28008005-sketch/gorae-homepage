@@ -9,7 +9,7 @@ window.NEWSLETTER_DATA = [
     "sourceUrl": "https://www.timeforkids.com/k1/meet-sea-turtles-k1/",
     "worksheetUrl": "/assets/pdf/meet-sea-turtles-k1-worksheet.pdf",
     "answersUrl": "/assets/pdf/meet-sea-turtles-k1-answers.pdf",
-    "memo": "7종류의 바다거북이를 소개하는 기사",
+    "memo": "바다거북 7종의 먹이·알 낳기·시력과 바다 쓰레기 문제를 소개하는 K1 기사",
     "articleUrl": "/assets/pdf/meet-sea-turtles-k1-article.pdf"
   },
   {
@@ -22,7 +22,7 @@ window.NEWSLETTER_DATA = [
     "sourceUrl": "https://www.timeforkids.com/k1/saving-sea-turtles/",
     "worksheetUrl": "/assets/pdf/saving-sea-turtles-worksheet.pdf",
     "answersUrl": "/assets/pdf/saving-sea-turtles-answers.pdf",
-    "memo": "Grace Buschiazzo - South Carolina Aquarium, Sea Turtle Care Center",
+    "memo": "사우스캐롤라이나 수족관 바다거북 치료 센터에서 아픈 거북을 돌보는 해양생물학자를 소개하는 K1 기사",
     "articleUrl": "/assets/pdf/saving-sea-turtles-article.pdf"
   },
   {
