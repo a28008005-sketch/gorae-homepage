@@ -119,7 +119,10 @@ var Checkin = (function () {
     if (!list.length) {
       beep(false);
       code = '';
-      showPad('등록된 번호가 없어요. 다시 눌러 주세요.', true);
+      // 명단 자체가 비어 있으면 번호 문제가 아니라 원생관리와 연결이 안 된 것입니다.
+      showPad(Store.students({ active: true }).length
+        ? '등록된 번호가 없어요. 다시 눌러 주세요.'
+        : '학생 명단을 아직 받아오지 못했어요. 선생님께 알려 주세요.', true);
       return;
     }
     showPick(list);
@@ -257,7 +260,11 @@ var Checkin = (function () {
     if (!el) return;
     var pending = Sync.pendingCount();
     el.className = 'ci-status ' + s;
-    el.textContent = (LABEL[s] || '') + (pending ? ' (보낼 기록 ' + pending + '건)' : '');
+    var msg = Sync.statusMessage();
+    // 인터넷 문제가 아닌 서버 오류는 원인을 그대로 보여 줍니다 (선생님이 알아볼 수 있게).
+    var detail = (s === 'offline' || s === 'error') && msg && navigator.onLine ? ' — ' + msg : '';
+    el.textContent = (s === 'offline' && navigator.onLine ? '원생관리와 연결 안 됨' : (LABEL[s] || '')) + detail +
+      (pending ? ' (보낼 기록 ' + pending + '건)' : '');
   }
 
   /* ---------- 시작 ---------- */
