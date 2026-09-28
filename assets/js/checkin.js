@@ -10,7 +10,7 @@
 var Checkin = (function () {
 
   var DIGITS = 4;
-  var RECHECK_MIN = 10;     // 등원 직후 이 시간 안에 다시 누르면 하원으로 넘기지 않습니다
+  var RECHECK_MIN = 50;     // 등원 직후 이 시간 안에 다시 누르면 하원으로 넘기지 않습니다
   var IDLE_MS = 20000;      // 이름 고르는 화면에서 아무것도 안 하면 처음으로
   var DONE_MS = 3500;       // 완료 화면을 보여주는 시간
 
