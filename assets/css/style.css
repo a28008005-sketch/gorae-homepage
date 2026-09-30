@@ -614,3 +614,27 @@ div.fld input[type=file]{font-size:13px;color:var(--ink);font-weight:400}
 
 /* 태블릿 등하원 시각 (출결 · 일일학습) */
 .att-time{display:inline-block;margin-top:3px;font-size:12px;font-weight:600;color:var(--mint);background:var(--mint-soft);padding:1px 7px;border-radius:99px;white-space:nowrap}
+
+/* ---------- 도서 대여: 표지 · 바코드 등록 ---------- */
+.bk-cell{display:flex;align-items:center;gap:10px}
+.bk-thumb{width:30px;height:42px;object-fit:cover;border-radius:3px;flex:0 0 auto;background:#eef1f4;border:1px solid var(--line)}
+.bk-thumb.none{display:inline-block}
+.bk-cover{width:92px;height:128px;object-fit:cover;border-radius:6px;flex:0 0 auto;background:#eef1f4;border:1px solid var(--line);display:block}
+.bk-cover.none{background:repeating-linear-gradient(135deg,#f3f5f7 0 8px,#eaeef2 8px 16px)}
+.bk-form-top{display:flex;gap:16px;align-items:flex-start}
+.scan-input{width:100%;font-size:20px !important;padding:14px 16px !important;letter-spacing:.04em;border:2px solid #9cc3bc !important;border-radius:12px !important}
+.scan-input:focus{outline:none;border-color:#2d6d63 !important;box-shadow:0 0 0 4px rgba(45,109,99,.12)}
+.scan-card{display:flex;gap:16px;align-items:flex-start;border:1px solid var(--line);border-radius:12px;padding:14px;background:#fafbfc}
+.scan-msg{padding:12px 14px;border-radius:10px;background:#f4f7f9;font-size:13.5px}
+.scan-done{max-height:180px;overflow:auto;border:1px solid var(--line);border-radius:10px}
+.scan-done-row{padding:7px 12px;border-bottom:1px solid var(--line);font-size:13px}
+.scan-done-row:last-child{border-bottom:0}
+.bk-3col{grid-template-columns:1fr 1fr 1fr}
+.lb-opts{grid-template-columns:2fr 1.3fr 1fr}
+.bk-head{flex-wrap:wrap}
+@media (max-width:640px){
+  .bk-form-top{flex-direction:column}
+  .bk-3col,.lb-opts{grid-template-columns:1fr}
+  .bk-head .btn{padding:7px 10px;font-size:12.5px}
+  .scan-card{flex-direction:column}
+}

@@ -183,6 +183,60 @@ t('토큰이 없으면 친절히 알려 줌', r.status === 503);
   t('카카오 창구: 받은 말을 답장으로 돌려줌', JSON.stringify(kj).includes('안녕'));
 }
 
+/* ---------- 도서 조회 창구 ---------- */
+{
+  const base = globalThis.fetch;
+  let naverHeaders = null, naverOn = true;
+  globalThis.fetch = async (input, init) => {
+    const u = typeof input === 'string' ? input : input.url;
+    if (u.startsWith('https://openapi.naver.com/')) {
+      naverHeaders = init && init.headers;
+      const items = naverOn && u.includes('9780064440202')
+        ? [{ title: 'Frog and <b>Toad</b> Are Friends', author: 'Arnold Lobel^Someone', publisher: 'HarperCollins', pubdate: '19790305', image: 'https://img.example/n.jpg' }]
+        : [];
+      return new Response(JSON.stringify({ items }), { headers: { 'content-type': 'application/json' } });
+    }
+    if (u.startsWith('https://www.aladin.co.kr/')) {
+      const item = u.includes('9788949161478')
+        ? [{ title: '개구리와 두꺼비는 친구', author: '아놀드 로벨 (지은이), 엄혜숙 (옮긴이)', publisher: '비룡소', pubDate: '1996-06-10', cover: 'https://img.example/a.jpg' }]
+        : [];
+      return new Response(JSON.stringify({ item }) + ';', { headers: { 'content-type': 'text/javascript' } });
+    }
+    return base(input, init);
+  };
+  const EB = { ...ENV, NAVER_CLIENT_ID: 'nid', NAVER_CLIENT_SECRET: 'nsecret', ALADIN_TTB_KEY: 'ttb' };
+  const book = (isbn, env = EB, ck = cookie) =>
+    worker.fetch(req('/api/book?isbn=' + isbn, { headers: { accept: 'application/json', cookie: ck } }), env, {});
+
+  r = await worker.fetch(req('/api/book?isbn=9780064440202', { headers: { accept: 'application/json' } }), EB, {});
+  t('도서 조회: 로그인 없이는 401', r.status === 401, String(r.status));
+
+  r = await book('9780064440202');
+  let bj = await r.json();
+  t('도서 조회: 네이버에서 찾음', r.status === 200 && bj.title === 'Frog and Toad Are Friends' && bj.source === '네이버 책', JSON.stringify(bj));
+  t('도서 조회: 지은이 ^ 구분·출판일 모양 정리', bj.author === 'Arnold Lobel, Someone' && bj.pubDate === '1979-03-05');
+  t('도서 조회: 네이버 열쇠를 머리글로 보냄', naverHeaders && naverHeaders['X-Naver-Client-Secret'] === 'nsecret');
+  t('도서 조회: 열쇠는 응답에 들어가지 않음', !JSON.stringify(bj).includes('nsecret') && !JSON.stringify(bj).includes('ttb'));
+
+  r = await book('9788949161478');
+  bj = await r.json();
+  t('도서 조회: 네이버에 없으면 알라딘으로', r.status === 200 && bj.source === '알라딘' && bj.author === '아놀드 로벨, 엄혜숙', JSON.stringify(bj));
+
+  r = await book('9781234567897');
+  t('도서 조회: 어디에도 없으면 404', r.status === 404, String(r.status));
+
+  r = await book('12345');
+  t('도서 조회: ISBN 모양이 아니면 400', r.status === 400, String(r.status));
+
+  r = await book('9780064440202', ENV);
+  t('도서 조회: 열쇠가 없으면 503 (화면은 구글 도서로 넘어감)', r.status === 503, String(r.status));
+
+  r = await book('9788949161478', { ...ENV, ALADIN_TTB_KEY: 'ttb' });
+  t('도서 조회: 알라딘 열쇠만 있어도 동작', r.status === 200, String(r.status));
+
+  globalThis.fetch = base;
+}
+
 /* ---------- 결과 ---------- */
 console.log('\n통과 ' + ok.length + '건 · 실패 ' + errs.length + '건');
 if (errs.length) { console.log('실패: ' + errs.join(', ')); process.exit(1); }

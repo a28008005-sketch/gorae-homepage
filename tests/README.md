@@ -15,6 +15,7 @@ npx http-server -p 8899 -s .   # 저장소 최상위에서 정적 서버 실행
 ```bash
 node tests/classes-attitude.test.js          # 반·시간표, 수업 태도, 삭제된 메뉴
 node tests/homework-vocab-library.test.js    # 숙제, 단어학습 가져오기, 도서 대여
+node tests/library-books.test.js             # 바코드(ISBN) 등록 · 도서 자동 조회 · 청구기호 · CSV 일괄 등록 · 라벨
 node tests/worksheet.test.js                 # 워크시트 레벨 판정·생성·대여 연동
 node tests/bundle-check.js                   # dist 단일 파일이 제대로 동작하는지
 ```

@@ -42,6 +42,8 @@ GitHub Pages 쪽 설정(`CNAME` 파일, Custom domain)은 **그대로 두시면 
    | `STAFF_PASSWORD` | Secret | 선생님들이 쓸 학원 비밀번호 |
    | `SESSION_SECRET` | Secret | 아무 긴 문자열 (쿠키 서명용) |
    | `NOTION_TOKEN` | Secret | 노션 연동을 쓸 때만 |
+   | `NAVER_CLIENT_ID` · `NAVER_CLIENT_SECRET` | Secret | 도서 조회(네이버 책)를 쓸 때만 |
+   | `ALADIN_TTB_KEY` | Secret | 도서 조회(알라딘)를 쓸 때만 |
    | `NOTION_STUDENT_DB` | Text | `2c3e4c50882081c2b2c5ded6f7a8ba5a` |
 
 ### 방법 B — 명령어로
@@ -107,6 +109,28 @@ node tests/worker.test.js
 
 이 부분은 실제 노션 토큰으로 주고받는 것까지는 확인하지 못했습니다.
 읽어온 값을 앱의 학생 모양으로 바꾸는 부분만 가짜 응답으로 확인했습니다.
+
+## 도서 조회 창구 (`/api/book?isbn=…`)
+
+도서 대여 화면에서 책 뒤 ISBN 바코드를 찍으면 제목·지은이·출판사·출판일·표지를 자동으로 채웁니다.
+화면은 아래 순서로 물어보고, 먼저 찾은 곳의 정보를 씁니다.
+
+1. **이 워커** → 네이버 책 → 알라딘 (열쇠를 넣었을 때만)
+2. 구글 도서 (열쇠 없이 동작 — 영어 원서는 대부분 여기서 나옵니다)
+3. 오픈 라이브러리 (열쇠 없이 동작)
+
+그래서 **열쇠를 안 넣어도 영어 원서 등록은 됩니다.** 한글 책(번역본·국내 도서)까지 잘 찾으려면 아래 둘 중 하나 이상을 넣으세요.
+네이버 비밀키는 화면 코드에 두면 누구나 볼 수 있어서, 워커 비밀값에만 두고 워커가 대신 물어봅니다.
+
+| 이름 | 받는 곳 |
+|---|---|
+| `NAVER_CLIENT_ID` · `NAVER_CLIENT_SECRET` | 네이버 개발자센터 → Application 등록 → 사용 API **검색** 선택 |
+| `ALADIN_TTB_KEY` | 알라딘 Open API 안내(blog.aladin.co.kr/openapi) → TTB 키 발급 |
+
+넣은 뒤 확인: 로그인한 브라우저에서 `https://staff.whalejinju.kr/api/book?isbn=9788949161478` 을 열어
+책 정보(JSON)가 나오면 됩니다. `503` 이면 열쇠가 안 들어간 것입니다.
+
+---
 
 ## 숙제 영상 워커 (`homework-worker.js`)
 

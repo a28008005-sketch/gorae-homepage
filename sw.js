@@ -22,8 +22,8 @@ self.addEventListener('fetch', function (e) {
   var cacheable = url.origin === self.location.origin || url.host === SDK_HOST ||
     /fonts\.(googleapis|gstatic)\.com$/.test(url.host);
   if (!cacheable) return;   // Supabase 데이터 요청은 건드리지 않습니다
-  // 숙제 영상·자료실 파일(/hw…)은 크기가 커서 보관하지 않고 그대로 보냅니다.
-  if (url.origin === self.location.origin && /^\/hw(\/|$)/.test(url.pathname)) return;
+  // 숙제 영상·자료실 파일(/hw…)은 크기가 커서, 워커 창구(/api…)는 그때그때 답이 달라서 보관하지 않습니다.
+  if (url.origin === self.location.origin && /^\/(hw|api)(\/|$)/.test(url.pathname)) return;
 
   // 학원 화면 파일은 브라우저 캐시를 믿지 않고 매번 서버에 '바뀌었나요?' 를 묻습니다(바뀌지 않았으면 가볍게 끝남).
   // 화면 이동(navigate)은 로그인 이동 처리 때문에 요청을 그대로 두고 캐시만 건너뜁니다.
