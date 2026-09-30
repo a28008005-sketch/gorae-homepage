@@ -71,3 +71,12 @@ node tests/hwvideo.test.mjs
 curl -s http://127.0.0.1:8902/reset
 node tests/checkin.test.js
 ```
+
+## 학원자료실 파일 첨부
+
+숙제 영상과 같은 서버(`tests/hwvideo-server.mjs`, 8899 포트)를 씁니다.
+
+```bash
+node tests/hwvideo-server.mjs &
+node tests/resources-file.test.mjs    # 파일 올리기·열기·내려받기·교체·삭제, 데일리 시트지 인쇄 연결
+```

@@ -1,10 +1,17 @@
 // gorae-homework : 고래영어학원 동영상 숙제 제출 워커
 // 경로: staff.whalejinju.kr/hw*
 // 바인딩: HW (R2 bucket gorae-homework), GATE (서비스 바인딩 → gorae-staff-gate), ADMIN_PASSWORD (secret)
+//
+// 학원자료실 파일도 같은 버킷의 res/ 폴더에 둡니다. (숙제 영상은 sub/ 폴더)
+//   PUT  /hw/admin/api/res/upload?name=파일이름   파일 올리기 (한 번에, 최대 95MB)
+//   POST /hw/admin/api/res/delete {key}          파일 지우기
+//   GET  /hw/admin/res?key=...[&dl=1]            파일 열기 / 내려받기
+// ★ 버킷 수명 규칙(30일 자동 삭제)은 sub/ 폴더에만 걸려 있어야 합니다. 버킷 전체에 걸면 자료 파일도 지워집니다.
 
 const PART_SIZE = 10 * 1024 * 1024; // 10MB 조각
 const MAX_SIZE = 1024 * 1024 * 1024; // 1GB
 const KEEP_DAYS = 30;
+const RES_MAX = 95 * 1024 * 1024; // 자료 파일 한 개 최대 크기 (워커가 한 번에 받을 수 있는 한도 100MB 아래)
 
 export default {
   async fetch(request, env) {
@@ -34,6 +41,9 @@ export default {
         if (p === '/hw/admin/api/list') return list(env, url);
         if (p === '/hw/admin/api/check' && request.method === 'POST') return check(request, env);
         if (p === '/hw/admin/file') return file(request, env, url);
+        if (p === '/hw/admin/api/res/upload' && request.method === 'PUT') return resUpload(request, env, url);
+        if (p === '/hw/admin/api/res/delete' && request.method === 'POST') return resDelete(request, env);
+        if (p === '/hw/admin/res') return resFile(env, url);
       }
       return new Response('Not found', { status: 404 });
     } catch (e) {
@@ -132,7 +142,7 @@ async function authorized(request, env, url, p) {
   if (k !== null) return safeEqual(k, env.ADMIN_PASSWORD);
   // 2) 영상 재생·저장 링크: 12시간짜리 서명 토큰 (?t=)
   const t = url.searchParams.get('t');
-  if (t && p === '/hw/admin/file') return verifyToken(t, env);
+  if (t && (p === '/hw/admin/file' || p === '/hw/admin/res')) return verifyToken(t, env);
   // 3) /hw/admin 단독 화면: 브라우저 기본 로그인
   const h = request.headers.get('Authorization') || '';
   if (!h.startsWith('Basic ')) return false;
@@ -235,6 +245,50 @@ async function file(request, env, url) {
   return new Response(obj.body, { headers: h });
 }
 
+// ---------- 학원자료실 파일 ----------
+// 브라우저 안에서 바로 열어도 안전한 종류만 화면에 띄웁니다. 나머지(HTML 등)는 내려받기로만 줍니다.
+const RES_INLINE = /^(application\/pdf|image\/(png|jpe?g|gif|webp)|audio\/[a-z0-9.+-]+|video\/[a-z0-9.+-]+|text\/plain)$/;
+
+async function resUpload(request, env, url) {
+  const name = clean(url.searchParams.get('name'), 120) || 'file';
+  const size = Number(request.headers.get('Content-Length')) || 0;
+  if (size > RES_MAX) return json({ ok: false, error: '파일이 너무 큽니다. 95MB 이하 파일만 올릴 수 있어요.' }, 413);
+  const type = clean(request.headers.get('Content-Type'), 100).split(';')[0] || 'application/octet-stream';
+  const ext = (name.match(/\.([a-zA-Z0-9]{1,5})$/) || [, 'bin'])[1].toLowerCase();
+  const key = `res/${Date.now()}_${rand(6)}.${ext}`;
+  const obj = await env.HW.put(key, request.body, {
+    httpMetadata: { contentType: type },
+    customMetadata: { filename: enc(name), uploadedAt: new Date().toISOString() },
+  });
+  const stored = obj && obj.size != null ? obj.size : size;
+  if (stored > RES_MAX) { await env.HW.delete(key); return json({ ok: false, error: '파일이 너무 큽니다. 95MB 이하 파일만 올릴 수 있어요.' }, 413); }
+  return json({ ok: true, key, size: stored, type, name });
+}
+
+async function resDelete(request, env) {
+  const b = await request.json().catch(() => ({}));
+  if (!validResKey(b.key)) return json({ ok: false, error: 'bad key' }, 400);
+  await env.HW.delete(b.key);
+  return json({ ok: true });
+}
+
+async function resFile(env, url) {
+  const key = url.searchParams.get('key');
+  if (!validResKey(key)) return new Response('bad', { status: 400 });
+  const obj = await env.HW.get(key);
+  if (!obj) return new Response('파일을 찾지 못했습니다. 자료실에서 다시 올려 주세요.', { status: 404, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+  const type = obj.httpMetadata?.contentType || 'application/octet-stream';
+  const fn = dec(obj.customMetadata?.filename) || 'file';
+  const inline = !url.searchParams.get('dl') && RES_INLINE.test(type);
+  const h = new Headers();
+  h.set('Content-Type', inline ? type : 'application/octet-stream');
+  h.set('Content-Disposition', `${inline ? 'inline' : 'attachment'}; filename*=UTF-8''${encodeURIComponent(fn)}`);
+  h.set('X-Content-Type-Options', 'nosniff');
+  h.set('Cache-Control', 'private, no-store');
+  if (obj.size != null) h.set('Content-Length', String(obj.size));
+  return new Response(obj.body, { headers: h });
+}
+
 // ---------- 유틸 ----------
 function json(o, status = 200) {
   return new Response(JSON.stringify(o), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } });
@@ -247,6 +301,7 @@ function enc(s) { return encodeURIComponent(s || ''); }
 function dec(s) { try { return decodeURIComponent(s || ''); } catch (_) { return s || ''; } }
 function rand(n) { const a = crypto.getRandomValues(new Uint8Array(n)); return [...a].map(x => (x % 36).toString(36)).join(''); }
 function validKey(k) { return typeof k === 'string' && /^sub\/\d{4}-\d{2}-\d{2}\/[0-9]+_[a-z0-9]+\.[a-z0-9]{1,5}$/.test(k); }
+function validResKey(k) { return typeof k === 'string' && /^res\/[0-9]+_[a-z0-9]+\.[a-z0-9]{1,5}$/.test(k); }
 function safeEqual(a, b) {
   const x = new TextEncoder().encode(a), y = new TextEncoder().encode(b);
   if (x.length !== y.length) return false;

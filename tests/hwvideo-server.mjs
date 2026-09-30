@@ -1,4 +1,4 @@
-// 숙제 영상 확인용: 원생관리 정적 파일 + gorae-homework 워커(가짜 R2) — 8899 포트
+// 숙제 영상·학원자료실 파일 확인용: 원생관리 정적 파일 + gorae-homework 워커(가짜 R2) — 8899 포트
 // 실행: node tests/hwvideo-server.mjs &  →  node tests/hwvideo.test.mjs
 import http from 'node:http';
 import fs from 'node:fs';
@@ -15,7 +15,7 @@ const HW = {
     abort: async () => {},
   }),
   list: async ({ prefix }) => ({ truncated: false, objects: [...store.keys()].filter(k => k.startsWith(prefix)).map(k => ({ key: k, size: store.get(k).body.length, uploaded: store.get(k).uploaded, customMetadata: store.get(k).meta?.customMetadata })) }),
-  put: async (k) => store.set(k, { body: Buffer.alloc(0), meta: {}, uploaded: new Date() }),
+  put: async (k, b, o) => { const body = b == null || typeof b === 'string' ? Buffer.from(b || '') : Buffer.from(await new Response(b).arrayBuffer()); store.set(k, { body, meta: o || {}, uploaded: new Date() }); return { size: body.length }; },
   delete: async (k) => store.delete(k),
   head: async (k) => store.has(k) ? { size: store.get(k).body.length } : null,
   get: async (k, o) => { const s = store.get(k); if (!s) return null; let b = s.body; if (o?.range) b = b.subarray(o.range.offset, o.range.offset + o.range.length); return { body: b, size: s.body.length, httpMetadata: s.meta?.httpMetadata, customMetadata: s.meta?.customMetadata }; },
@@ -23,7 +23,7 @@ const HW = {
 // 원생관리 문지기 흉내: gorae_staff=ok 쿠키면 로그인된 것으로 봅니다.
 const GATE = { fetch: async (u, init) => new Response('{}', { status: /gorae_staff=ok/.test((init && init.headers && init.headers.cookie) || '') ? 503 : 401 }) };
 const env = { HW, GATE, ADMIN_PASSWORD: 'pw-test' };
-const types = { '.html': 'text/html; charset=utf-8', '.js': 'application/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json' };
+const types = { '.pdf': 'application/pdf', '.html': 'text/html; charset=utf-8', '.js': 'application/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json' };
 
 http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost:8899');

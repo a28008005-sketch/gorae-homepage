@@ -117,3 +117,19 @@ node tests/worker.test.js
 - `/hw/admin/api/*` : 원생관리 "숙제 영상" 화면이 쓰는 창구 (`X-HW-Key` 머리글)
 - 바인딩: `HW` = R2 버킷 `gorae-homework`, 비밀값 `ADMIN_PASSWORD` (= 숙제 비밀번호)
 - 버킷 수명 규칙: 제출 영상 30일 뒤 자동 삭제, 끊긴 업로드 1일 뒤 정리
+
+### 학원자료실 파일 (같은 워커 · 같은 버킷의 `res/` 폴더)
+
+원생관리 **학원자료실**에서 올린 파일(PDF·한글·워드·그림 등)을 보관합니다. 숙제 영상과 같은 로그인 확인을 거칩니다.
+
+| 주소 | 하는 일 |
+|---|---|
+| `PUT /hw/admin/api/res/upload?name=파일이름` | 파일 올리기 (한 번에, 최대 95MB) |
+| `POST /hw/admin/api/res/delete` | 파일 지우기 (자료 삭제·파일 교체 때 자동으로 부름) |
+| `GET /hw/admin/res?key=...` | 파일 열기 (PDF·그림은 브라우저에서 바로 열림 → 인쇄) |
+| `GET /hw/admin/res?key=...&dl=1` | 원래 이름으로 내려받기 |
+
+- HTML·SVG 같은 파일은 화면에 띄우지 않고 내려받기로만 줍니다 (안전을 위해).
+- **버킷 수명 규칙(30일 자동 삭제)은 `sub/` 접두어에만 걸려 있어야 합니다.**
+  버킷 전체에 걸려 있으면 자료실 파일도 30일 뒤 사라집니다.
+  클라우드플레어 → R2 → `gorae-homework` → Settings → Object lifecycle rules 에서 확인하세요.

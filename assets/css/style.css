@@ -599,6 +599,18 @@ body.share-mode .content{padding:0}
 .res-desc{font-size:12.5px;color:var(--muted);line-height:1.6}
 .res-actions{display:flex;gap:7px;align-items:center;margin-top:auto;padding-top:4px}
 @media(max-width:760px){ .res-grid{grid-template-columns:1fr} }
+.res-actions{flex-wrap:wrap}
+.res-file{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink);background:var(--bg,#F4F6F9);border-radius:8px;padding:6px 9px;word-break:break-all}
+.res-file svg{flex:none;color:var(--muted)}
+div.fld{display:flex;flex-direction:column;gap:6px;font-size:12.5px;color:var(--muted);font-weight:600}
+div.fld input[type=file]{font-size:13px;color:var(--ink);font-weight:400}
+.res-file-now{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);font-weight:500;border:1px solid var(--line);border-radius:9px;padding:6px 6px 6px 11px;word-break:break-all}
+.res-progress{height:6px;border-radius:99px;background:var(--line);overflow:hidden}
+.res-progress>div{height:100%;width:0;background:var(--navy,#003C70);transition:width .2s}
+.daily-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px}
+.daily-row .btn{white-space:nowrap}
+.daily-row{display:flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.daily-lv{font-weight:800;font-size:14.5px;min-width:64px;flex:1;letter-spacing:-.2px}
 
 /* 태블릿 등하원 시각 (출결 · 일일학습) */
 .att-time{display:inline-block;margin-top:3px;font-size:12px;font-weight:600;color:var(--mint);background:var(--mint-soft);padding:1px 7px;border-radius:99px;white-space:nowrap}
