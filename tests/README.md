@@ -80,3 +80,15 @@ node tests/checkin.test.js
 node tests/hwvideo-server.mjs &
 node tests/resources-file.test.mjs    # 파일 올리기·열기·내려받기·교체·삭제, 데일리 시트지 인쇄 연결
 ```
+
+## 배포 뒤 새 화면이 바로 반영되는지
+
+테스트 서버는 GitHub Pages 처럼 10분 캐시 머리글을 붙여 보냅니다.
+
+```bash
+node tests/hwvideo-server.mjs &
+node tests/sw-update.test.js          # 열어 둔 탭 새로고침·새 탭·오프라인·큰 파일 보관 안 함
+```
+
+> `classes-attitude.test.js` 의 영자신문 2건(워크시트 개수·레벨 거르기)은 2026-09-28 버전부터 실패합니다.
+> 테스트가 기대하는 개수와 목록이 어긋난 것으로, 화면 동작 문제는 아닙니다.

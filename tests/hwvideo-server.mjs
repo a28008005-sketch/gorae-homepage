@@ -35,11 +35,12 @@ http.createServer(async (req, res) => {
     res.end(Buffer.from(await r.arrayBuffer()));
     return;
   }
+  if (process.env.LOG_REQ && /resources\.js/.test(url.pathname)) console.log('REQ', req.url);
   let f = path.join(ROOT, decodeURIComponent(url.pathname));
   if (f.endsWith('/')) f += 'index.html';
   fs.readFile(f, (e, d) => {
     if (e) { res.writeHead(404); res.end('nf'); return; }
-    res.writeHead(200, { 'Content-Type': types[path.extname(f)] || 'application/octet-stream' });
+    res.writeHead(200, { 'Content-Type': types[path.extname(f)] || 'application/octet-stream', 'Cache-Control': 'max-age=600' }); // GitHub Pages 와 같은 10분 캐시
     res.end(d);
   });
 }).listen(8899, () => console.log('dev on 8899'));
