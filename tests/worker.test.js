@@ -154,6 +154,35 @@ r = await worker.fetch(req('/api/notion/students', { headers: { cookie } }),
   { ...ENV, NOTION_TOKEN: '' }, {});
 t('토큰이 없으면 친절히 알려 줌', r.status === 503);
 
+
+/* ---------- 휴대폰 로그인 (2026-09-30 실제 문제) ---------- */
+// 대시보드에 비밀값을 붙여 넣으며 끝에 줄바꿈·공백이 섞여 들어간 경우
+{
+  const E2 = { ...ENV, STAFF_PASSWORD: '132600\n' };
+  r = await worker.fetch(req('/__login', loginBody('132600')), E2, {});
+  t('비밀값 끝에 줄바꿈이 있어도 로그인', r.status === 200 && /gorae_staff=/.test(r.headers.get('set-cookie') || ''), String(r.status));
+  r = await worker.fetch(req('/__login', loginBody('１３２６００')), E2, {});
+  t('휴대폰 전각 숫자로 넣어도 로그인', r.status === 200, String(r.status));
+  r = await worker.fetch(req('/__login', loginBody('132601')), E2, {});
+  t('숫자 하나 틀리면 못 들어감', r.status === 302 && r.headers.get('location') === '/?e=1');
+  r = await worker.fetch(req('/__login', loginBody('132600')), E2, {});
+  const html = await r.text();
+  t('로그인 성공은 302 가 아니라 쿠키를 담은 화면 (앱 안 브라우저 대응)',
+    r.status === 200 && html.includes('location.replace') && (r.headers.get('set-cookie') || '').includes('Max-Age='));
+}
+
+/* ---------- 카카오 테스트 창구 (합친 뒤에도 살아 있는지) ---------- */
+{
+  const E3 = { ...ENV, KAKAO_SKILL_KEY: 'k'.repeat(24) };
+  r = await worker.fetch(req('/api/kakao/test/' + 'k'.repeat(24)), E3, {});
+  t('카카오 창구: 열쇠가 맞으면 열림', r.status === 200, String(r.status));
+  r = await worker.fetch(req('/api/kakao/test/wrong'), E3, {});
+  t('카카오 창구: 열쇠가 틀리면 404', r.status === 404, String(r.status));
+  r = await worker.fetch(req('/api/kakao/test/' + 'k'.repeat(24), { method: 'POST', body: JSON.stringify({ userRequest: { utterance: '안녕' } }) }), E3, {});
+  const kj = await r.json();
+  t('카카오 창구: 받은 말을 답장으로 돌려줌', JSON.stringify(kj).includes('안녕'));
+}
+
 /* ---------- 결과 ---------- */
 console.log('\n통과 ' + ok.length + '건 · 실패 ' + errs.length + '건');
 if (errs.length) { console.log('실패: ' + errs.join(', ')); process.exit(1); }
