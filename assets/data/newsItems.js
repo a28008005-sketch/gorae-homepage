@@ -154,5 +154,18 @@ window.NEWSLETTER_DATA = [
     "worksheetUrl": "/assets/pdf/prepare-together-g2-worksheet.pdf",
     "answersUrl": "/assets/pdf/prepare-together-g2-answers.pdf",
     "memo": "세서미 스트리트 특별편으로 극한 날씨 대비와 공동체의 힘을 소개하는 G2 기사"
+  },
+  {
+    "id": "where-we-live-k1",
+    "title": "Where We Live",
+    "level": "K1",
+    "topic": "Culture",
+    "status": "완성",
+    "date": "2026-10-07",
+    "sourceUrl": "https://www.timeforkids.com/k1/where-we-live-k1/",
+    "articleUrl": "/assets/pdf/where-we-live-k1-article.pdf",
+    "worksheetUrl": "/assets/pdf/where-we-live-k1-worksheet.pdf",
+    "answersUrl": "/assets/pdf/where-we-live-k1-answers.pdf",
+    "memo": "도시·교외·시골 세 가지 지역사회의 모습을 사진으로 비교하는 K1 기사"
   }
 ];
