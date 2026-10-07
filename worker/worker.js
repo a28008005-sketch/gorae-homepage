@@ -1,11 +1,13 @@
 /**
  * 고래영어 원생관리 — 클라우드플레어 워커
  *
- * staff.whalejinju.kr 앞에 세워 두는 문지기입니다. 하는 일은 세 가지입니다.
+ * staff.whalejinju.kr 앞에 세워 두는 문지기입니다. 하는 일은 네 가지입니다.
  *
  *  1. 비밀번호 잠금  — 학원 비밀번호를 한 번 넣으면 그 기기는 30일간 통과합니다.
  *  2. 공개 통로(/p/) — 학부모에게 보낸 리포트·납부확인서 링크는 비밀번호 없이 열립니다.
  *  3. 노션 읽기 창구 — 노션 토큰을 브라우저에 두지 않고 여기서 대신 불러옵니다.
+ *  4. 카카오 테스트 창구 — 카카오 채널로 온 메시지가 어떤 모양으로 넘어오는지 답장으로 보여 줍니다.
+ *  5. 도서 조회 창구 — 책 ISBN 으로 네이버 책 · 알라딘에서 제목·지은이·표지를 찾아 줍니다.
  *
  * 화면 파일 자체는 그대로 GitHub Pages 에서 가져옵니다. 이 워커는 앞을 지킬 뿐입니다.
  *
@@ -25,6 +27,18 @@ export default {
       if (!(await signedIn(request, env))) return json({ error: '로그인이 필요합니다.' }, 401);
       return notion(path, env);
     }
+
+    // --- 도서 조회 창구 ---------------------------------------------------
+    // 네이버·알라딘 열쇠는 워커 비밀값에만 두고, 화면은 이 주소로만 물어봅니다.
+    if (path === '/api/book') {
+      if (!(await signedIn(request, env))) return json({ error: '로그인이 필요합니다.' }, 401);
+      return bookLookup(url, env);
+    }
+
+    // --- 카카오 챗봇 테스트 창구 -----------------------------------------
+    // 카카오 서버가 부르는 곳이라 비밀번호 쿠키가 없습니다.
+    // 대신 주소 끝에 비밀 열쇠(KAKAO_SKILL_KEY)를 붙여야만 열립니다.
+    if (path.startsWith('/api/kakao/test/')) return kakaoTest(request, env, path);
 
     // --- 로그인 처리 ----------------------------------------------------
     if (path === '/__login' && request.method === 'POST') return login(request, env, url);
@@ -182,6 +196,81 @@ function timingSafeEqual(a, b) {
   return diff === 0;
 }
 
+/* ---------- 도서 조회 ---------- */
+
+/**
+ * /api/book?isbn=9780064440202
+ * 네이버 책(NAVER_CLIENT_ID · NAVER_CLIENT_SECRET) → 알라딘(ALADIN_TTB_KEY) 순서로 물어봅니다.
+ * 열쇠가 하나도 없으면 503 을 돌려주고, 화면은 구글 도서 · 오픈 라이브러리로 넘어갑니다.
+ */
+async function bookLookup(url, env) {
+  const isbn = String(url.searchParams.get('isbn') || '').replace(/[^0-9Xx]/g, '');
+  if (!/^(97[89]\d{10}|\d{9}[\dXx])$/.test(isbn)) return json({ error: 'ISBN 이 올바르지 않습니다.' }, 400);
+
+  const hasNaver = env.NAVER_CLIENT_ID && env.NAVER_CLIENT_SECRET;
+  const hasAladin = !!env.ALADIN_TTB_KEY;
+  if (!hasNaver && !hasAladin) return json({ error: '도서 조회 열쇠(네이버·알라딘)가 설정되지 않았습니다.' }, 503);
+
+  const tries = [];
+  if (hasNaver) tries.push(naverBook);
+  if (hasAladin) tries.push(aladinBook);
+  for (const fn of tries) {
+    try {
+      const r = await fn(isbn, env);
+      if (r && r.title) return json(Object.assign({ isbn }, r), 200);
+    } catch (e) {
+      console.log('[book] ' + fn.name + ' 오류 ' + (e && e.message || e));
+    }
+  }
+  return json({ error: '도서 정보를 찾지 못했습니다.' }, 404);
+}
+
+const stripTags = (s) => String(s || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+
+async function naverBook(isbn, env) {
+  const res = await fetch('https://openapi.naver.com/v1/search/book_adv.json?d_isbn=' + isbn, {
+    headers: {
+      'X-Naver-Client-Id': env.NAVER_CLIENT_ID,
+      'X-Naver-Client-Secret': env.NAVER_CLIENT_SECRET
+    }
+  });
+  if (!res.ok) throw new Error('네이버 응답 ' + res.status);
+  const j = await res.json();
+  const it = j.items && j.items[0];
+  if (!it) return null;
+  const d = String(it.pubdate || '');
+  return {
+    title: stripTags(it.title),
+    author: stripTags(it.author).split('^').join(', '),
+    publisher: stripTags(it.publisher),
+    pubDate: /^\d{8}$/.test(d) ? d.slice(0, 4) + '-' + d.slice(4, 6) + '-' + d.slice(6, 8) : d,
+    cover: it.image || '',
+    source: '네이버 책'
+  };
+}
+
+async function aladinBook(isbn, env) {
+  const q = new URLSearchParams({
+    ttbkey: env.ALADIN_TTB_KEY, itemIdType: isbn.length === 13 ? 'ISBN13' : 'ISBN',
+    ItemId: isbn, output: 'js', Version: '20131101', Cover: 'Big'
+  });
+  const res = await fetch('https://www.aladin.co.kr/ttb/api/ItemLookUp.aspx?' + q.toString());
+  if (!res.ok) throw new Error('알라딘 응답 ' + res.status);
+  // 알라딘은 끝에 ; 가 붙거나 \' 같은 JSON 에 없는 표기를 섞어 보낼 때가 있어 정리한 뒤 읽습니다.
+  const text = (await res.text()).trim().replace(/;\s*$/, '').replace(/\\'/g, "'");
+  const j = JSON.parse(text);
+  const it = j.item && j.item[0];
+  if (!it) return null;
+  return {
+    title: stripTags(it.title),
+    author: stripTags(it.author).replace(/\s*\((지은이|글|그림|옮긴이|엮은이|글·그림)\)/g, ''),
+    publisher: stripTags(it.publisher),
+    pubDate: String(it.pubDate || ''),
+    cover: it.cover || '',
+    source: '알라딘'
+  };
+}
+
 /* ---------- 노션 ---------- */
 
 /**
@@ -230,6 +319,106 @@ function text(prop) {
   if (!prop) return '';
   const rich = prop.title || prop.rich_text || [];
   return rich.map(t => t.plain_text || '').join('').trim();
+}
+
+/* ---------- 카카오 챗봇 테스트 ---------- */
+
+/**
+ * 채널로 보낸 메시지가 카카오 오픈빌더를 거쳐 무엇으로 넘어오는지 확인하는 창구입니다.
+ * 받은 내용을 정리해서 그대로 카톡 답장으로 돌려줍니다. 아무것도 저장하지 않습니다.
+ * 원본 전체는 클라우드플레어 워커의 '실시간 로그'에도 남깁니다.
+ */
+async function kakaoTest(request, env, path) {
+  const isPost = request.method === 'POST';
+  // 카카오는 '200 + 카카오 형식 JSON' 이 아니면 이유 없이 "올바르지 않은 응답" 이라고만 합니다.
+  // 그래서 카카오가 부르는 POST 에는 문제가 있어도 카카오 형식으로 이유를 적어 돌려줍니다.
+  const fail = (msg, status) => isPost ? kakaoReply('[고래영어 테스트 ⚠️] ' + msg) : json({ error: msg }, status);
+
+  if (!env.KAKAO_SKILL_KEY) return fail('워커에 KAKAO_SKILL_KEY 가 설정되지 않았습니다.', 503);
+  // 주소를 붙여넣다 끝에 딸려 온 '/' 나 공백은 봐줍니다.
+  let key = path.slice('/api/kakao/test/'.length);
+  try { key = decodeURIComponent(key); } catch (e) { /* 그대로 비교 */ }
+  key = key.replace(/[\s/]+$/, '');
+  const keyOk = timingSafeEqual(key, String(env.KAKAO_SKILL_KEY).trim());
+
+  // 워커까지 왔는지부터 로그에 남깁니다. 여기 안 찍히면 워커 앞에서 막힌 것입니다.
+  console.log('[kakao-test] ' + request.method + ' 도착 · 열쇠 ' + (keyOk ? '맞음' : '틀림') +
+    ' · ' + (request.headers.get('user-agent') || '-'));
+  if (!keyOk) return fail('스킬 주소 끝의 열쇠가 워커의 KAKAO_SKILL_KEY 와 다릅니다.', 404);
+  if (!isPost) return json({ ok: true, message: '카카오 테스트 창구가 열려 있습니다. 오픈빌더 스킬 주소로 쓰세요.' });
+
+  try {
+    let body = null;
+    try { body = JSON.parse(await request.text()); } catch (e) { /* 아래에서 안내 */ }
+    console.log('[kakao-test] ' + JSON.stringify(body));
+    if (!body || typeof body !== 'object') return fail('받은 내용이 JSON 이 아니었습니다.');
+    return kakaoReply(kakaoSummary(body));
+  } catch (e) {
+    console.log('[kakao-test] 오류 ' + (e && e.stack || e));
+    return fail('워커 안에서 오류가 났습니다: ' + cut(String(e && e.message || e), 200));
+  }
+}
+
+/** 받은 JSON 에서 확인할 것만 추려 사람이 읽을 글로 만듭니다. */
+function kakaoSummary(body) {
+  const req = body.userRequest || {};
+  const user = req.user || {};
+  const props = user.properties || {};
+  const action = body.action || {};
+  const utter = String(req.utterance || '');
+
+  const files = [];
+  findUrls(body, '', files);
+
+  const lines = ['[고래영어 테스트 수신 ✅]'];
+  lines.push('보낸 말: ' + (utter ? cut(utter, 120) : '(없음)'));
+  lines.push('블록: ' + ((body.intent || {}).name || '(알 수 없음)'));
+  lines.push('보낸 사람 번호: ' + (user.id ? String(user.id).slice(0, 6) + '…' : '(없음)') +
+    (props.plusfriendUserKey ? ' · 채널키 있음' : '') + (props.botUserKey ? ' · 봇키 있음' : ''));
+
+  const params = Object.keys(action.params || {});
+  if (params.length) lines.push('파라미터: ' + params.join(', '));
+
+  if (files.length) {
+    lines.push('', '찾은 파일 주소 ' + files.length + '개');
+    files.slice(0, 5).forEach(f => {
+      lines.push('· ' + f.where + ' [' + fileKind(f.url) + ']');
+      lines.push('  ' + cut(f.url, 140));
+    });
+  } else {
+    lines.push('', '파일 주소는 들어오지 않았습니다.');
+  }
+  return cut(lines.join('\n'), 990);   // 카카오 simpleText 는 1000자까지
+}
+
+/** JSON 안의 모든 http 주소를 어디에 있었는지와 함께 모읍니다. */
+function findUrls(v, where, out) {
+  if (typeof v === 'string') {
+    const found = v.match(/https?:\/\/[^\s"',]+/g) || [];
+    found.forEach(url => out.push({ where: where || '(맨 위)', url }));
+  } else if (Array.isArray(v)) {
+    v.forEach((x, i) => findUrls(x, where + '[' + i + ']', out));
+  } else if (v && typeof v === 'object') {
+    Object.keys(v).forEach(k => findUrls(v[k], where ? where + '.' + k : k, out));
+  }
+}
+
+/** 주소 끝의 확장자로 어떤 파일인지 짐작합니다. */
+function fileKind(url) {
+  const ext = (url.split('?')[0].match(/\.([a-z0-9]{2,4})$/i) || [])[1];
+  if (!ext) return '종류 모름';
+  const e = ext.toLowerCase();
+  if (['m4a', 'mp3', 'aac', 'wav', 'amr', 'ogg', '3gp', 'caf'].includes(e)) return '소리 ' + e;
+  if (['jpg', 'jpeg', 'png', 'gif', 'heic', 'webp'].includes(e)) return '사진 ' + e;
+  if (['mp4', 'mov'].includes(e)) return '영상 ' + e;
+  return e;
+}
+
+function cut(s, n) { return s.length > n ? s.slice(0, n - 1) + '…' : s; }
+
+/** 카카오 오픈빌더 응답 규격(2.0)의 글 한 줄짜리 답장 */
+function kakaoReply(text) {
+  return json({ version: '2.0', template: { outputs: [{ simpleText: { text } }] } });
 }
 
 /* ---------- 거들기 ---------- */

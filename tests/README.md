@@ -15,6 +15,7 @@ npx http-server -p 8899 -s .   # 저장소 최상위에서 정적 서버 실행
 ```bash
 node tests/classes-attitude.test.js          # 반·시간표, 수업 태도, 삭제된 메뉴
 node tests/homework-vocab-library.test.js    # 숙제, 단어학습 가져오기, 도서 대여
+node tests/library-books.test.js             # 바코드(ISBN) 등록 · 도서 자동 조회 · 청구기호 · CSV 일괄 등록 · 라벨
 node tests/worksheet.test.js                 # 워크시트 레벨 판정·생성·대여 연동
 node tests/bundle-check.js                   # dist 단일 파일이 제대로 동작하는지
 ```
@@ -71,3 +72,24 @@ node tests/hwvideo.test.mjs
 curl -s http://127.0.0.1:8902/reset
 node tests/checkin.test.js
 ```
+
+## 학원자료실 파일 첨부
+
+숙제 영상과 같은 서버(`tests/hwvideo-server.mjs`, 8899 포트)를 씁니다.
+
+```bash
+node tests/hwvideo-server.mjs &
+node tests/resources-file.test.mjs    # 파일 올리기·열기·내려받기·교체·삭제, 데일리 시트지 인쇄 연결
+```
+
+## 배포 뒤 새 화면이 바로 반영되는지
+
+테스트 서버는 GitHub Pages 처럼 10분 캐시 머리글을 붙여 보냅니다.
+
+```bash
+node tests/hwvideo-server.mjs &
+node tests/sw-update.test.js          # 열어 둔 탭 새로고침·새 탭·오프라인·큰 파일 보관 안 함
+```
+
+> `classes-attitude.test.js` 의 영자신문 2건(워크시트 개수·레벨 거르기)은 2026-09-28 버전부터 실패합니다.
+> 테스트가 기대하는 개수와 목록이 어긋난 것으로, 화면 동작 문제는 아닙니다.

@@ -42,6 +42,8 @@ GitHub Pages 쪽 설정(`CNAME` 파일, Custom domain)은 **그대로 두시면 
    | `STAFF_PASSWORD` | Secret | 선생님들이 쓸 학원 비밀번호 |
    | `SESSION_SECRET` | Secret | 아무 긴 문자열 (쿠키 서명용) |
    | `NOTION_TOKEN` | Secret | 노션 연동을 쓸 때만 |
+   | `NAVER_CLIENT_ID` · `NAVER_CLIENT_SECRET` | Secret | 도서 조회(네이버 책)를 쓸 때만 |
+   | `ALADIN_TTB_KEY` | Secret | 도서 조회(알라딘)를 쓸 때만 |
    | `NOTION_STUDENT_DB` | Text | `2c3e4c50882081c2b2c5ded6f7a8ba5a` |
 
 ### 방법 B — 명령어로
@@ -108,6 +110,28 @@ node tests/worker.test.js
 이 부분은 실제 노션 토큰으로 주고받는 것까지는 확인하지 못했습니다.
 읽어온 값을 앱의 학생 모양으로 바꾸는 부분만 가짜 응답으로 확인했습니다.
 
+## 도서 조회 창구 (`/api/book?isbn=…`)
+
+도서 대여 화면에서 책 뒤 ISBN 바코드를 찍으면 제목·지은이·출판사·출판일·표지를 자동으로 채웁니다.
+화면은 아래 순서로 물어보고, 먼저 찾은 곳의 정보를 씁니다.
+
+1. **이 워커** → 네이버 책 → 알라딘 (열쇠를 넣었을 때만)
+2. 구글 도서 (열쇠 없이 동작 — 영어 원서는 대부분 여기서 나옵니다)
+3. 오픈 라이브러리 (열쇠 없이 동작)
+
+그래서 **열쇠를 안 넣어도 영어 원서 등록은 됩니다.** 한글 책(번역본·국내 도서)까지 잘 찾으려면 아래 둘 중 하나 이상을 넣으세요.
+네이버 비밀키는 화면 코드에 두면 누구나 볼 수 있어서, 워커 비밀값에만 두고 워커가 대신 물어봅니다.
+
+| 이름 | 받는 곳 |
+|---|---|
+| `NAVER_CLIENT_ID` · `NAVER_CLIENT_SECRET` | 네이버 개발자센터 → Application 등록 → 사용 API **검색** 선택 |
+| `ALADIN_TTB_KEY` | 알라딘 Open API 안내(blog.aladin.co.kr/openapi) → TTB 키 발급 |
+
+넣은 뒤 확인: 로그인한 브라우저에서 `https://staff.whalejinju.kr/api/book?isbn=9788949161478` 을 열어
+책 정보(JSON)가 나오면 됩니다. `503` 이면 열쇠가 안 들어간 것입니다.
+
+---
+
 ## 숙제 영상 워커 (`homework-worker.js`)
 
 `gorae-staff-gate` 와 별개인 `gorae-homework` 워커의 원본입니다. `staff.whalejinju.kr/hw*` 경로만 받습니다.
@@ -117,3 +141,19 @@ node tests/worker.test.js
 - `/hw/admin/api/*` : 원생관리 "숙제 영상" 화면이 쓰는 창구 (`X-HW-Key` 머리글)
 - 바인딩: `HW` = R2 버킷 `gorae-homework`, 비밀값 `ADMIN_PASSWORD` (= 숙제 비밀번호)
 - 버킷 수명 규칙: 제출 영상 30일 뒤 자동 삭제, 끊긴 업로드 1일 뒤 정리
+
+### 학원자료실 파일 (같은 워커 · 같은 버킷의 `res/` 폴더)
+
+원생관리 **학원자료실**에서 올린 파일(PDF·한글·워드·그림 등)을 보관합니다. 숙제 영상과 같은 로그인 확인을 거칩니다.
+
+| 주소 | 하는 일 |
+|---|---|
+| `PUT /hw/admin/api/res/upload?name=파일이름` | 파일 올리기 (한 번에, 최대 95MB) |
+| `POST /hw/admin/api/res/delete` | 파일 지우기 (자료 삭제·파일 교체 때 자동으로 부름) |
+| `GET /hw/admin/res?key=...` | 파일 열기 (PDF·그림은 브라우저에서 바로 열림 → 인쇄) |
+| `GET /hw/admin/res?key=...&dl=1` | 원래 이름으로 내려받기 |
+
+- HTML·SVG 같은 파일은 화면에 띄우지 않고 내려받기로만 줍니다 (안전을 위해).
+- **버킷 수명 규칙(30일 자동 삭제)은 `sub/` 접두어에만 걸려 있어야 합니다.**
+  버킷 전체에 걸려 있으면 자료실 파일도 30일 뒤 사라집니다.
+  클라우드플레어 → R2 → `gorae-homework` → Settings → Object lifecycle rules 에서 확인하세요.

@@ -799,7 +799,7 @@ var Store = (function () {
     if (opts.q) {
       var q = String(opts.q).toLowerCase();
       list = list.filter(function (b) {
-        return [b.code, b.title, b.author, b.series, b.level].join(' ').toLowerCase().indexOf(q) >= 0;
+        return [b.code, b.title, b.author, b.series, b.level, b.isbn, b.publisher].join(' ').toLowerCase().indexOf(q) >= 0;
       });
     }
     if (opts.category) list = list.filter(function (b) { return b.category === opts.category; });
@@ -817,6 +817,11 @@ var Store = (function () {
       return String(b.code || '').trim().toLowerCase() === up;
     })[0] || null;
   }
+  /** 같은 ISBN 의 책들 (같은 책을 여러 권 가지고 있을 수 있어 목록으로 돌려줍니다) */
+  function booksByIsbn(isbn) {
+    if (!isbn) return [];
+    return alive(get().books).filter(function (b) { return b.isbn && b.isbn === isbn; });
+  }
   function saveBook(b) {
     var d = get(), rec = null;
     if (b.id) {
@@ -824,7 +829,7 @@ var Store = (function () {
         if (d.books[i].id === b.id) { rec = Object.assign(d.books[i], b); break; }
       }
     }
-    if (!rec) { b.id = b.id || U.uid('bk'); rec = b; d.books.push(rec); }
+    if (!rec) { b.id = b.id || U.uid('bk'); b.addedAt = b.addedAt || U.ymd(); rec = b; d.books.push(rec); }
     stamp(rec);
     save({ kind: 'book', id: rec.id });
     return rec.id;
@@ -1203,7 +1208,7 @@ var Store = (function () {
     deleteHomework: deleteHomework, homeworkProgress: homeworkProgress,
     vocabLogs: vocabLogs, saveVocabLog: saveVocabLog, deleteVocabLog: deleteVocabLog,
     vocabSummary: vocabSummary,
-    books: books, book: book, bookByCode: bookByCode, saveBook: saveBook, deleteBook: deleteBook,
+    books: books, book: book, bookByCode: bookByCode, booksByIsbn: booksByIsbn, saveBook: saveBook, deleteBook: deleteBook,
     loans: loans, openLoanOf: openLoanOf, bookStatus: bookStatus,
     lendBook: lendBook, returnBook: returnBook, deleteLoan: deleteLoan,
     updateLoan: updateLoan, overdueLoans: overdueLoans,

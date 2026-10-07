@@ -85,7 +85,7 @@ button{font-family:inherit}
 .sidebar-foot{padding:14px 18px 18px;border-top:1px solid rgba(255,255,255,.07);font-size:11px;color:#77899a}
 .storage-note{margin-bottom:6px;letter-spacing:.01em}
 .ext-link,.kiosk-link{color:#9db3c6}
-.kiosk-link{display:block;margin-bottom:4px}
+.kiosk-link,.ext-link{display:block;margin-bottom:4px}
 .ext-link:hover,.kiosk-link:hover{color:var(--brass-2)}
 
 .main{flex:1;min-width:0;display:flex;flex-direction:column}
@@ -599,6 +599,42 @@ body.share-mode .content{padding:0}
 .res-desc{font-size:12.5px;color:var(--muted);line-height:1.6}
 .res-actions{display:flex;gap:7px;align-items:center;margin-top:auto;padding-top:4px}
 @media(max-width:760px){ .res-grid{grid-template-columns:1fr} }
+.res-actions{flex-wrap:wrap}
+.res-file{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink);background:var(--bg,#F4F6F9);border-radius:8px;padding:6px 9px;word-break:break-all}
+.res-file svg{flex:none;color:var(--muted)}
+div.fld{display:flex;flex-direction:column;gap:6px;font-size:12.5px;color:var(--muted);font-weight:600}
+div.fld input[type=file]{font-size:13px;color:var(--ink);font-weight:400}
+.res-file-now{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);font-weight:500;border:1px solid var(--line);border-radius:9px;padding:6px 6px 6px 11px;word-break:break-all}
+.res-progress{height:6px;border-radius:99px;background:var(--line);overflow:hidden}
+.res-progress>div{height:100%;width:0;background:var(--navy,#003C70);transition:width .2s}
+.daily-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px}
+.daily-row .btn{white-space:nowrap}
+.daily-row{display:flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.daily-lv{font-weight:800;font-size:14.5px;min-width:64px;flex:1;letter-spacing:-.2px}
 
 /* 태블릿 등하원 시각 (출결 · 일일학습) */
 .att-time{display:inline-block;margin-top:3px;font-size:12px;font-weight:600;color:var(--mint);background:var(--mint-soft);padding:1px 7px;border-radius:99px;white-space:nowrap}
+
+/* ---------- 도서 대여: 표지 · 바코드 등록 ---------- */
+.bk-cell{display:flex;align-items:center;gap:10px}
+.bk-thumb{width:30px;height:42px;object-fit:cover;border-radius:3px;flex:0 0 auto;background:#eef1f4;border:1px solid var(--line)}
+.bk-thumb.none{display:inline-block}
+.bk-cover{width:92px;height:128px;object-fit:cover;border-radius:6px;flex:0 0 auto;background:#eef1f4;border:1px solid var(--line);display:block}
+.bk-cover.none{background:repeating-linear-gradient(135deg,#f3f5f7 0 8px,#eaeef2 8px 16px)}
+.bk-form-top{display:flex;gap:16px;align-items:flex-start}
+.scan-input{width:100%;font-size:20px !important;padding:14px 16px !important;letter-spacing:.04em;border:2px solid #9cc3bc !important;border-radius:12px !important}
+.scan-input:focus{outline:none;border-color:#2d6d63 !important;box-shadow:0 0 0 4px rgba(45,109,99,.12)}
+.scan-card{display:flex;gap:16px;align-items:flex-start;border:1px solid var(--line);border-radius:12px;padding:14px;background:#fafbfc}
+.scan-msg{padding:12px 14px;border-radius:10px;background:#f4f7f9;font-size:13.5px}
+.scan-done{max-height:180px;overflow:auto;border:1px solid var(--line);border-radius:10px}
+.scan-done-row{padding:7px 12px;border-bottom:1px solid var(--line);font-size:13px}
+.scan-done-row:last-child{border-bottom:0}
+.bk-3col{grid-template-columns:1fr 1fr 1fr}
+.lb-opts{grid-template-columns:2fr 1.3fr 1fr}
+.bk-head{flex-wrap:wrap}
+@media (max-width:640px){
+  .bk-form-top{flex-direction:column}
+  .bk-3col,.lb-opts{grid-template-columns:1fr}
+  .bk-head .btn{padding:7px 10px;font-size:12.5px}
+  .scan-card{flex-direction:column}
+}

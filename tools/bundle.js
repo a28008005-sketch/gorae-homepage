@@ -14,7 +14,8 @@ const ROOT = path.join(__dirname, '..');
 const demo = process.argv.includes('--demo');
 // --artifact: html/head/body 껍데기를 뺀 조각. Artifact 로 올릴 때 씁니다.
 const artifact = process.argv.includes('--artifact');
-const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
+// 주소 끝의 ?v=버전 표시는 떼고 읽습니다 (tools/stamp.js 가 붙인 것).
+const read = (p) => fs.readFileSync(path.join(ROOT, p.split('?')[0]), 'utf8');
 
 let html = read('index.html');
 
