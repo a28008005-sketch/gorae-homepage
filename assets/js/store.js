@@ -25,6 +25,7 @@ var Store = (function () {
   var NEWS_TOPICS = ['Space', 'Science', 'History', 'Animals', 'Environment', 'Sports',
                      'Arts', 'Entertainment', 'Government', 'Business', 'Culture', 'Technology'];
   var NEWS_STATUS = ['완성', '진행중', '계획'];
+  var NEWS_PROGRESS = ['진행중', '완료'];
   var LOAN_DAYS = 7;
   var CLASS_COLORS = ['#215a86', '#357f73', '#a8894f', '#6b5f96', '#a8453f', '#2e7a57', '#96607a', '#4a6577'];
   var WEEKDAYS = ['월', '화', '수', '목', '금', '토'];
@@ -62,7 +63,8 @@ var Store = (function () {
     books: [],        // 도서 목록
     loans: [],        // 도서 대여 기록
     resources: [],    // 학원자료실 (링크·파일 모음)
-    newsItems: []     // 영자신문 워크시트 목록
+    newsItems: [],    // 영자신문 워크시트 목록
+    newsProgress: []  // 학생별 영자신문 진도 (기사마다 진행중·완료)
   };
 
   var data = null;
@@ -75,7 +77,7 @@ var Store = (function () {
     memo: 'memos', task: 'tasks', payment: 'payments',
     homework: 'homeworks', submission: 'submissions',
     vocab: 'vocabLogs', book: 'books', loan: 'loans',
-    resource: 'resources', news: 'newsItems'
+    resource: 'resources', news: 'newsItems', newsprog: 'newsProgress'
   };
 
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
@@ -314,6 +316,7 @@ var Store = (function () {
     kill(d.submissions, 'submission', function (x) { return x.studentId === id; });
     kill(d.vocabLogs, 'vocab', function (v) { return v.studentId === id; });
     kill(d.loans, 'loan', function (l) { return l.studentId === id; });
+    kill(d.newsProgress, 'newsprog', function (x) { return x.studentId === id; });
     save(changed);
   }
   /** 특정 요일에 수업이 있는 등록생 */
@@ -901,6 +904,79 @@ var Store = (function () {
   }
   function deleteNewsItem(id) { return softDelete('newsItems', 'news', id); }
 
+  /* ---------- 학생별 영자신문 진도 ---------- */
+  /**
+   * 학생의 신문 레벨. 학년으로 짐작하지 않습니다.
+   * 학원 아이들의 영어 읽기 수준은 학년과 다른 경우가 많아, 원장님이 정한 값만 씁니다.
+   */
+  function newsLevelOf(s) {
+    return (s && s.newsLevel) || '';
+  }
+  /** 학생 한 명의 진도 기록 (지워진 기사의 기록은 뺍니다) */
+  function newsProgressOf(studentId) {
+    return alive(get().newsProgress).filter(function (x) {
+      return x.studentId === studentId && newsItem(x.newsId);
+    });
+  }
+  function newsProgressFor(newsId) {
+    return alive(get().newsProgress).filter(function (x) { return x.newsId === newsId; });
+  }
+  /**
+   * 진도 바꾸기. status 는 '진행중' · '완료' · '' (기록 지우기)
+   * 같은 학생·같은 기사는 한 줄만 둡니다.
+   */
+  function setNewsProgress(studentId, newsId, status) {
+    var d = get(), rec = null;
+    for (var i = 0; i < d.newsProgress.length; i++) {
+      var x = d.newsProgress[i];
+      if (!x.deleted && x.studentId === studentId && x.newsId === newsId) { rec = x; break; }
+    }
+    if (!status) {
+      if (!rec) return;
+      rec.deleted = true;
+      stamp(rec);
+      save({ kind: 'newsprog', id: rec.id });
+      return;
+    }
+    if (!rec) {
+      rec = { id: U.uid('np'), studentId: studentId, newsId: newsId };
+      d.newsProgress.push(rec);
+    }
+    rec.status = status;
+    if (status === '진행중') { rec.startedAt = rec.startedAt || U.ymd(); rec.doneAt = ''; }
+    if (status === '완료') { rec.startedAt = rec.startedAt || U.ymd(); rec.doneAt = U.ymd(); }
+    stamp(rec);
+    save({ kind: 'newsprog', id: rec.id });
+  }
+  /**
+   * 학생의 영자신문 진도 요약.
+   * 다음 차례 = 학생 레벨의 기사 중 아직 손대지 않은 것을 오래된 순으로 첫 번째.
+   */
+  function newsPlan(studentId) {
+    var s = student(studentId);
+    var level = newsLevelOf(s);
+    var recs = newsProgressOf(studentId);
+    var byNews = {};
+    recs.forEach(function (x) { byNews[x.newsId] = x; });
+    var pool = level ? newsItems({ level: level }).filter(function (n) { return n.status === '완성'; }) : [];
+    pool.sort(function (a, b) {
+      return String(a.date || '').localeCompare(String(b.date || '')) || String(a.title).localeCompare(String(b.title));
+    });
+    var doing = recs.filter(function (x) { return x.status === '진행중'; })
+      .map(function (x) { return newsItem(x.newsId); });
+    var done = recs.filter(function (x) { return x.status === '완료'; })
+      .sort(function (a, b) { return String(b.doneAt || '').localeCompare(String(a.doneAt || '')); });
+    var next = null;
+    for (var i = 0; i < pool.length; i++) { if (!byNews[pool[i].id]) { next = pool[i]; break; } }
+    var doneInLevel = pool.filter(function (n) { return byNews[n.id] && byNews[n.id].status === '완료'; }).length;
+    return {
+      level: level,
+      pool: pool, byNews: byNews, doing: doing, done: done,
+      lastDone: done.length ? newsItem(done[0].newsId) : null, lastDoneAt: done.length ? done[0].doneAt : '',
+      next: next, doneInLevel: doneInLevel, total: pool.length
+    };
+  }
+
   function loans(opts) {
     opts = opts || {};
     var list = alive(get().loans).slice();
@@ -1184,7 +1260,9 @@ var Store = (function () {
     HOMEWORK_TYPES: HOMEWORK_TYPES, SUBMIT_STATUS: SUBMIT_STATUS,
     BOOK_CATEGORIES: BOOK_CATEGORIES,
     RESOURCE_CATEGORIES: RESOURCE_CATEGORIES,
-    NEWS_LEVELS: NEWS_LEVELS, NEWS_TOPICS: NEWS_TOPICS, NEWS_STATUS: NEWS_STATUS,
+    NEWS_LEVELS: NEWS_LEVELS, NEWS_TOPICS: NEWS_TOPICS, NEWS_STATUS: NEWS_STATUS, NEWS_PROGRESS: NEWS_PROGRESS,
+    newsLevelOf: newsLevelOf, newsProgressOf: newsProgressOf,
+    newsProgressFor: newsProgressFor, setNewsProgress: setNewsProgress, newsPlan: newsPlan,
     resources: resources, resource: resource, saveResource: saveResource, deleteResource: deleteResource,
     newsItems: newsItems, newsItem: newsItem, saveNewsItem: saveNewsItem, deleteNewsItem: deleteNewsItem, LOAN_DAYS: LOAN_DAYS,
     CLASS_COLORS: CLASS_COLORS,
