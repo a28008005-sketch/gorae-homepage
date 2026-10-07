@@ -91,11 +91,31 @@ const ok = (l,c,e='') => console.log(`  ${c?'✓':'✗ 실패'}  ${l}${e?' — '
 
   // 영자신문 워크시트 — 목록과 레벨 거르기
   await p.goto(BASE + '#/news', { waitUntil: 'domcontentloaded' }); await p.waitForTimeout(700);
+  // 개수는 assets/data/newsItems.js 에서 셉니다. 워크시트가 늘 때마다 테스트를 고치지 않도록.
+  const want = await p.evaluate(() => ({
+    all: window.NEWSLETTER_DATA.length,
+    g2: window.NEWSLETTER_DATA.filter(n => n.level === 'G2').length
+  }));
   const news = await p.evaluate(() => Store.newsItems().length);
-  ok('영자신문 워크시트 채워짐', news === 7, String(news));
+  ok('영자신문 워크시트 채워짐', news === want.all, news + '/' + want.all);
   await p.click('[data-lv="G2"]'); await p.waitForTimeout(400);
   const g2 = await p.locator('#n-rows tr').count();
-  ok('레벨로 거르기', g2 === 2, g2 + '행');
+  ok('레벨로 거르기', g2 === want.g2, g2 + '행');
+  await p.click('[data-lv=""]'); await p.waitForTimeout(300);
+
+  // 학생별 진도 — 레벨을 정하면 다음 차례가 나오고, 시작·완료가 기록됩니다
+  await p.click('[data-tab="progress"]'); await p.waitForTimeout(400);
+  const sid = await p.evaluate(() => Store.students({ active: true })[0].id);
+  await p.selectOption('[data-lvset="' + sid + '"]', 'K1'); await p.waitForTimeout(400);
+  const plan0 = await p.evaluate(id => Store.newsPlan(id), sid);
+  ok('레벨을 정하면 다음 차례가 나옴', plan0.level === 'K1' && !!plan0.next, plan0.next && plan0.next.title);
+  await p.click('[data-start^="' + sid + '|"]'); await p.waitForTimeout(300);
+  await p.click('[data-done^="' + sid + '|"]'); await p.waitForTimeout(300);
+  const plan1 = await p.evaluate(id => Store.newsPlan(id), sid);
+  ok('시작·완료가 기록되고 다음 기사로 넘어감',
+    plan1.doneInLevel === 1 && plan1.next && plan1.next.id !== plan0.next.id,
+    plan1.doneInLevel + '건 완료 · 다음 ' + (plan1.next && plan1.next.title));
+  await p.click('[data-tab="list"]'); await p.waitForTimeout(300);
 
   // 대시보드 캘린더는 하나만 남아야 합니다
   await p.goto(BASE + '#/dashboard', { waitUntil: 'domcontentloaded' }); await p.waitForTimeout(700);

@@ -638,3 +638,22 @@ div.fld input[type=file]{font-size:13px;color:var(--ink);font-weight:400}
   .bk-head .btn{padding:7px 10px;font-size:12.5px}
   .scan-card{flex-direction:column}
 }
+
+/* ===== 영자신문 학생별 진도 ===== */
+.np-tabs{align-self:flex-start}
+.np-sub{font-size:12px;color:var(--muted);font-weight:400;margin-top:2px}
+.np-none{color:var(--muted);font-size:12.5px}
+.np-name{border:0;background:none;padding:0;font:inherit;font-weight:700;color:var(--navy-2);cursor:pointer;text-align:left}
+.np-name:hover{text-decoration:underline}
+.np-lv{width:auto;min-width:118px;font-size:13px;padding:5px 8px}
+.np-bar{display:flex;align-items:center;gap:8px;min-width:110px}
+.np-track{flex:1;height:7px;border-radius:99px;background:var(--line);overflow:hidden}
+.np-fill{height:100%;background:var(--mint)}
+.np-num{font-size:12.5px;font-variant-numeric:tabular-nums;color:var(--muted)}
+.np-item{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:13.5px}
+.np-item + .np-item{margin-top:6px}
+.np-list{display:grid;gap:8px}
+.np-li{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;
+  border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.np-li-t{min-width:0;flex:1 1 220px}
+.np-bulk{gap:6px;margin-left:auto}
