@@ -232,5 +232,18 @@ window.NEWSLETTER_DATA = [
     "worksheetUrl": "/assets/pdf/moon-mission-g2-worksheet.pdf",
     "answersUrl": "/assets/pdf/moon-mission-g2-answers.pdf",
     "memo": "54년 만의 유인 달 탐사 아르테미스 2호 임무와 다음 계획을 소개하는 G2 기사"
+  },
+  {
+    "id": "fun-with-art-g2",
+    "title": "Fun with Art",
+    "level": "G2",
+    "topic": "Arts",
+    "status": "완성",
+    "date": "2026-10-14",
+    "sourceUrl": "https://www.timeforkids.com/g2/fun-with-art-g2/",
+    "articleUrl": "/assets/pdf/fun-with-art-g2-article.pdf",
+    "worksheetUrl": "/assets/pdf/fun-with-art-g2-worksheet.pdf",
+    "answersUrl": "/assets/pdf/fun-with-art-g2-answers.pdf",
+    "memo": "재미로 시작한 그림과 글쓰기를 직업으로 만든 그림책 작가 밥 셰이를 소개하는 G2 기사"
   }
 ];
