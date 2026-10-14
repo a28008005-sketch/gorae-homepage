@@ -180,5 +180,57 @@ window.NEWSLETTER_DATA = [
     "worksheetUrl": "/assets/pdf/my-communities-k1-worksheet.pdf",
     "answersUrl": "/assets/pdf/my-communities-k1-answers.pdf",
     "memo": "이웃·교실·운동팀·동아리처럼 내가 속한 네 가지 공동체를 소개하는 K1 기사"
+  },
+  {
+    "id": "meet-our-kid-reporters-g2",
+    "title": "Meet Our Kid Reporters",
+    "level": "G2",
+    "topic": "Culture",
+    "status": "완성",
+    "date": "2026-10-14",
+    "sourceUrl": "https://www.timeforkids.com/g2/meet-our-kid-reporters-2026-g2/",
+    "articleUrl": "/assets/pdf/meet-our-kid-reporters-g2-article.pdf",
+    "worksheetUrl": "/assets/pdf/meet-our-kid-reporters-g2-worksheet.pdf",
+    "answersUrl": "/assets/pdf/meet-our-kid-reporters-g2-answers.pdf",
+    "memo": "2026–2027 TIME for Kids 어린이 기자 9명의 취미와 꿈을 소개하는 G2 기사"
+  },
+  {
+    "id": "the-big-leagues-g2",
+    "title": "The Big Leagues",
+    "level": "G2",
+    "topic": "Sports",
+    "status": "완성",
+    "date": "2026-10-14",
+    "sourceUrl": "https://www.timeforkids.com/g2/the-big-leagues-g2/",
+    "articleUrl": "/assets/pdf/the-big-leagues-g2-article.pdf",
+    "worksheetUrl": "/assets/pdf/the-big-leagues-g2-worksheet.pdf",
+    "answersUrl": "/assets/pdf/the-big-leagues-g2-answers.pdf",
+    "memo": "70년 만에 생긴 여자 프로야구 리그(WPBL)와 선수 모네 데이비스를 소개하는 G2 기사"
+  },
+  {
+    "id": "school-screens-g2",
+    "title": "School Screens",
+    "level": "G2",
+    "topic": "Technology",
+    "status": "완성",
+    "date": "2026-10-14",
+    "sourceUrl": "https://www.timeforkids.com/g2/school-screens-g2/",
+    "articleUrl": "/assets/pdf/school-screens-g2-article.pdf",
+    "worksheetUrl": "/assets/pdf/school-screens-g2-worksheet.pdf",
+    "answersUrl": "/assets/pdf/school-screens-g2-answers.pdf",
+    "memo": "학교에서 쓰는 노트북·태블릿의 좋은 점과 걱정, 화면 사용 시간을 줄이는 학교 이야기를 다룬 G2 기사"
+  },
+  {
+    "id": "moon-mission-g2",
+    "title": "Moon Mission",
+    "level": "G2",
+    "topic": "Space",
+    "status": "완성",
+    "date": "2026-10-14",
+    "sourceUrl": "https://www.timeforkids.com/g2/moon-mission-g2/",
+    "articleUrl": "/assets/pdf/moon-mission-g2-article.pdf",
+    "worksheetUrl": "/assets/pdf/moon-mission-g2-worksheet.pdf",
+    "answersUrl": "/assets/pdf/moon-mission-g2-answers.pdf",
+    "memo": "54년 만의 유인 달 탐사 아르테미스 2호 임무와 다음 계획을 소개하는 G2 기사"
   }
 ];
