@@ -66,6 +66,7 @@ SHOT_DIR=/tmp/shots node tests/worksheet.test.js
 node tests/hwvideo-server.mjs &
 node tests/hwvideo.test.mjs
 node tests/kakao-hwvideo.test.mjs     # 카카오로 온 숙제가 대시보드·숙제 영상에 보이는지
+# ↑ 같은 서버에 기록이 쌓이면 건수 확인이 어긋납니다. 스크립트마다 서버를 새로 띄워 주세요.
 ```
 
 ## 태블릿 등하원 출결
