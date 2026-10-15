@@ -671,6 +671,40 @@ div.fld input[type=file]{font-size:13px;color:var(--ink);font-weight:400}
 .np-li-t{min-width:0;flex:1 1 220px}
 .np-bulk{gap:6px;margin-left:auto}
 
+/* ---------- 도서 대여 · 탭 / 학생별 독서 현황 / 워크시트 자료실 ---------- */
+.lib-tabs{display:inline-flex;margin-bottom:0}
+.lib-badge{display:inline-block;min-width:18px;padding:0 6px;border-radius:99px;background:var(--warn-soft);color:#8a6226;font-size:11px;font-weight:700;line-height:18px;margin-left:4px}
+.seg button.on .lib-badge{background:#fff;color:#8a6226}
+.lib-ws{display:flex;flex-direction:column;align-items:flex-start;gap:4px}
+.rd-h{flex-wrap:wrap;gap:8px;align-items:center}
+.rd-h h2{margin:0}
+.rd-stats{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;font-size:13.5px;margin-bottom:12px}
+.rd-stats b{font-size:16px}
+.rd-tbl{min-width:720px}
+.br-seg button{padding:4px 9px;font-size:12px}
+.br-seg button.on.bad{background:var(--bad-soft);color:#963934}
+.br-seg button.on.warn{background:var(--warn-soft);color:#8a6226}
+.br-seg button.on.ok{background:var(--ok-soft);color:#296b4d}
+.ws-lv-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.ws-lv{border:1px solid var(--line);border-radius:12px;background:#fff;padding:10px;display:flex;flex-direction:column;gap:8px}
+.ws-lv.on{border-color:var(--navy-3);box-shadow:0 0 0 2px rgba(33,90,134,.15)}
+.ws-lv-main{border:0;background:none;padding:0;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:2px;font:inherit;color:inherit}
+.ws-lv-n{font-size:20px;font-weight:800;letter-spacing:-.4px}
+.ws-lv-t{font-size:12.5px;font-weight:600}
+.ws-list{display:grid;gap:8px}
+.ws-item{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.ws-item-t{flex:1;min-width:0}
+.ws-item-m{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:4px}
+.ws-item-b{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
+@media (max-width:1080px){ .ws-lv-grid{grid-template-columns:repeat(3,1fr)} }
+@media (max-width:640px){
+  .ws-lv-grid{grid-template-columns:1fr 1fr}
+  .ws-item{flex-wrap:wrap}
+  .ws-item-b{width:100%;justify-content:flex-start}
+  .lib-tabs{display:flex;width:100%}
+  .lib-tabs button{flex:1;padding-left:6px;padding-right:6px}
+}
+
 </style>
 </head>
 <body>
@@ -2326,6 +2360,33 @@ var Store = (function () {
     return false;
   }
 
+  /* ---------- 북리포트 · 학생 독서 현황 ---------- */
+  var BOOK_REPORT = ['미제출', '작성중', '제출완료'];
+  /** 대여 기록의 북리포트 상태 — 값이 없으면 미제출 */
+  function bookReportOf(l) {
+    return (l && BOOK_REPORT.indexOf(l.brStatus) >= 0) ? l.brStatus : '미제출';
+  }
+  function setBookReport(loanId, status) {
+    if (BOOK_REPORT.indexOf(status) < 0) return false;
+    return updateLoan(loanId, { brStatus: status, brDate: status === '제출완료' ? U.ymd() : '' });
+  }
+  /**
+   * 학생 한 명의 독서 요약.
+   * 북리포트 제출률 = 제출완료 / 빌려간 책 전체
+   */
+  function readingOf(studentId) {
+    var list = loans({ studentId: studentId });
+    var done = list.filter(function (l) { return bookReportOf(l) === '제출완료'; }).length;
+    return {
+      loans: list,
+      open: list.filter(function (l) { return !l.returnDate; }),
+      total: list.length,
+      done: done,
+      waiting: list.length - done,
+      rate: U.pct(done, list.length)
+    };
+  }
+
   /** 지금 연체된 대출 목록 */
   function overdueLoans() {
     var today = U.ymd();
@@ -2578,6 +2639,7 @@ var Store = (function () {
     loans: loans, openLoanOf: openLoanOf, bookStatus: bookStatus,
     lendBook: lendBook, returnBook: returnBook, deleteLoan: deleteLoan,
     updateLoan: updateLoan, overdueLoans: overdueLoans,
+    BOOK_REPORT: BOOK_REPORT, bookReportOf: bookReportOf, setBookReport: setBookReport, readingOf: readingOf,
     ensureCode: ensureCode, studentByCode: studentByCode, findStudent: findStudent,
     summarize: summarize, dayOverview: dayOverview,
     exportJson: exportJson, importJson: importJson, resetAll: resetAll, saveAcademy: saveAcademy,
@@ -4447,6 +4509,7 @@ Views.dashboard = (function () {
   function libraryBox() {
     var over = Store.overdueLoans();
     var open = Store.loans({ open: true });
+    var waiting = Store.loans().filter(function (l) { return Store.bookReportOf(l) !== '제출완료'; }).length;
     if (!Store.books().length) {
       return '<div class="hint">등록된 도서가 없습니다. <a href="#/library" style="color:#215a86;font-weight:600">도서 등록</a></div>';
     }
@@ -4461,7 +4524,8 @@ Views.dashboard = (function () {
         '<span class="tag ' + (late ? 'bad' : 'mint') + '">' +
           (late ? U.dayDiff(l.dueDate, U.ymd()) + '일 연체' : '~' + U.esc(l.dueDate || '')) + '</span>' +
         '<br><span style="font-size:12px;color:#6b7b8a">' + U.esc(b ? b.title : '(삭제된 책)') + '</span></div></div>';
-    }).join('') + (over.length ? '<div class="hint" style="margin-top:8px">연체 ' + over.length + '권</div>' : '');
+    }).join('') + (over.length ? '<div class="hint" style="margin-top:8px">연체 ' + over.length + '권</div>' : '') +
+      (waiting ? '<div class="hint" style="margin-top:4px">북리포트 대기 ' + waiting + '건 · <a href="#/library" style="color:#215a86;font-weight:600">학생별 독서 현황</a></div>' : '');
   }
 
   function buildCalendar(year, month, selectedDate) {
@@ -4940,6 +5004,11 @@ Views.students = (function () {
         '<input type="number" id="f-fee" step="1000" value="' + (s.fee === undefined || s.fee === '' ? '' : U.esc(s.fee)) + '" placeholder="' + U.num(ac.defaultFee) + '"></label>' +
       '<label class="fld">납부일 <span style="font-weight:400">(매월)</span>' +
         '<input type="number" id="f-bday" min="1" max="31" value="' + (s.billingDay || '') + '" placeholder="' + U.esc(ac.billingDay) + '"></label>' +
+      '<label class="fld">권장 도서 레벨 <span style="font-weight:400">(대여 때 책 레벨과 비교)</span><select id="f-rlv"><option value="">정하지 않음</option>' +
+        [1, 2, 3, 4, 5].map(function (n) {
+          return '<option value="' + n + '"' + (+s.readLevel === n ? ' selected' : '') + '>Lv' + n + ' · ' + Worksheet.LEVELS[n].name + '</option>';
+        }).join('') + '</select></label>' +
+      '<label class="fld">레벨 메모<input type="text" id="f-rlvnote" value="' + U.esc(s.readLevelNote || '') + '" placeholder="예: AR 1.5 ~ 2.2 권장"></label>' +
       '<label class="fld full">특이사항<textarea id="f-note" placeholder="알레르기, 등하원 방법, 성향 등">' + U.esc(s.note || '') + '</textarea></label>' +
     '</div>';
   }
@@ -4976,6 +5045,8 @@ Views.students = (function () {
             parentEmail: w.querySelector('#f-pmail').value.trim(),
             fee: w.querySelector('#f-fee').value === '' ? '' : Number(w.querySelector('#f-fee').value),
             billingDay: w.querySelector('#f-bday').value === '' ? '' : Number(w.querySelector('#f-bday').value),
+            readLevel: w.querySelector('#f-rlv').value,
+            readLevelNote: w.querySelector('#f-rlvnote').value.trim(),
             note: w.querySelector('#f-note').value.trim()
           });
           UI.close();
@@ -5074,9 +5145,11 @@ Views.students = (function () {
             ? '<b style="font-size:15px">' + U.pct(subDone, subs.length) + '%</b> <span class="hint">' +
               subDone + '/' + subs.length + '건 제출</span>'
             : '<span class="hint">받은 숙제 없음</span>') + '</div>' +
-        '<div><div class="hint" style="margin-bottom:6px">도서</div>' +
+        '<div><div class="hint" style="margin-bottom:6px">도서' +
+            (Worksheet.LEVELS[+s.readLevel] ? ' · 권장 Lv' + s.readLevel : '') + '</div>' +
           '<b style="font-size:15px">' + myLoans.length + '권</b> <span class="hint">누적 대출' +
-          (myOpen.length ? ' · 대출 중 ' + myOpen.length + '권' : '') + '</span></div>' +
+          (myOpen.length ? ' · 대출 중 ' + myOpen.length + '권' : '') +
+          (myLoans.length ? ' · 북리포트 ' + Store.readingOf(s.id).rate + '%' : '') + '</span></div>' +
       '</div>' +
       (myOpen.length
         ? '<div class="chips" style="margin-top:10px">' + myOpen.map(function (l) {
@@ -6224,7 +6297,11 @@ Views.vocab = (function () {
 window.Views = window.Views || {};
 Views.library = (function () {
 
+  var tab = 'books';    // books: 도서 목록·대여 | students: 학생별 독서 현황 | sheets: 워크시트 자료실
   var filter = { q: '', category: '', state: 'all' };  // state: all | out | overdue | in
+  var sf = { q: '', classId: '', level: '', br: 'all' }; // 학생별 현황 거르기 — br: all | waiting | done
+  var wf = { q: '', level: 0, src: '' };                 // 자료실 거르기 — src: file | link | auto
+  var expanded = {};                                     // 학생별 현황에서 대출 내역을 펼친 학생
 
   function title() { return '도서 대여'; }
   function sub() {
@@ -6253,10 +6330,41 @@ Views.library = (function () {
     return '<span class="' + cls + ' none"></span>';
   }
 
+  /** 워크시트가 어디서 나오는지 — 등록 파일 / 링크 / 자동 생성 */
+  function sheetSource(b) {
+    if (b.wsHtml) return { key: 'file', label: '등록 파일', tag: 'mint' };
+    if (b.wsUrl) return { key: 'link', label: '등록 링크', tag: 'blue' };
+    return { key: 'auto', label: '자동 Lv' + Worksheet.levelOf(b), tag: 'gray' };
+  }
+
+  var BR_TAG = { '미제출': 'bad', '작성중': 'warn', '제출완료': 'ok' };
+  function brTag(l) {
+    var st = Store.bookReportOf(l);
+    return '<span class="tag ' + BR_TAG[st] + '">북리포트 ' + st + '</span>';
+  }
+
+  /** 학생 권장 레벨 표시 — 'Lv2 · Early Reader' */
+  function levelLabel(n) {
+    n = +n;
+    return Worksheet.LEVELS[n] ? 'Lv' + n + ' · ' + Worksheet.LEVELS[n].name : '';
+  }
+
+  /**
+   * 책 레벨과 학생 권장 레벨 비교.
+   * 학생 레벨이 정해져 있지 않으면 null.
+   */
+  function levelCheck(b, s) {
+    if (!b || !s || !Worksheet.LEVELS[+s.readLevel]) return null;
+    var bl = Worksheet.levelOf(b), sl = +s.readLevel;
+    if (bl > sl) return { tag: 'warn', text: s.name + ' 학생 권장 레벨 Lv' + sl + '보다 높은 Lv' + bl + ' 책입니다.' };
+    if (bl < sl) return { tag: 'blue', text: s.name + ' 학생 권장 레벨 Lv' + sl + '보다 쉬운 Lv' + bl + ' 책입니다.' };
+    return { tag: 'ok', text: s.name + ' 학생 권장 레벨(Lv' + sl + ')에 맞는 책입니다.' };
+  }
+
   function rows() {
     var list = visible();
     if (!list.length) {
-      return '<tr><td colspan="7">' + UI.emptyBox(
+      return '<tr><td colspan="8">' + UI.emptyBox(
         Store.books().length ? '조건에 맞는 책이 없습니다.' : '등록된 도서가 없습니다. [바코드로 등록] · [CSV 일괄 등록] · [+ 도서 등록] 중 편한 방법으로 시작하세요.',
         'book') + '</td></tr>';
     }
@@ -6270,17 +6378,20 @@ Views.library = (function () {
           (b.series || b.publisher ? '<br><span class="hint">' + U.esc([b.series, b.publisher].filter(Boolean).join(' · ')) + '</span>' : '') +
           '</div></div></td>' +
         '<td>' + U.esc(b.level || '-') + '</td>' +
-        '<td>' + U.esc(b.category || '-') + '<br>' +
-          '<span class="hint">' + (b.wsUrl ? '워크시트 링크' : b.wsHtml ? '워크시트 등록됨' : '자동 Lv' + Worksheet.levelOf(b)) + '</span></td>' +
+        '<td>' + U.esc(b.category || '-') + '</td>' +
         '<td><span class="tag ' + st.tag + '">' + U.esc(st.label) + '</span></td>' +
         '<td>' + (borrower
             ? U.esc(borrower.name) + '<br><span class="hint">~' + U.esc(st.loan.dueDate || '') + '</span>'
             : '-') + '</td>' +
+        '<td><div class="lib-ws">' +
+          '<button class="btn sm" data-ws="' + b.id + '">' + Icon.svg('book', 13) + ' 워크시트</button>' +
+          '<span class="hint">' + U.esc(sheetSource(b).label) + '</span>' +
+          (st.loan ? brTag(st.loan) : '') +
+        '</div></td>' +
         '<td style="white-space:nowrap">' +
           (st.key === 'in'
             ? '<button class="btn sm primary" data-lend="' + b.id + '">대여</button> '
             : '<button class="btn sm" data-return="' + st.loan.id + '">반납</button> ') +
-          '<button class="btn sm ghost" data-ws="' + b.id + '">워크시트</button> ' +
           '<button class="btn sm ghost" data-edit="' + b.id + '">수정</button>' +
         '</td>' +
       '</tr>';
@@ -6533,11 +6644,13 @@ Views.library = (function () {
       title: '도서 대여',
       body:
         '<p style="margin:0 0 14px"><b>' + U.esc(b.title) + '</b>' +
-          (b.level ? ' <span class="tag gray">' + U.esc(b.level) + '</span>' : '') + '</p>' +
+          (b.level ? ' <span class="tag gray">' + U.esc(b.level) + '</span>' : '') +
+          ' <span class="tag blue">책 Lv' + Worksheet.levelOf(b) + '</span></p>' +
         '<div class="form-grid">' +
           '<label class="fld">빌려가는 학생 *<select id="l-stu">' +
             UI.options(list.map(function (s) {
-              return { value: s.id, label: s.name + (Store.scheduleOf(s).className ? ' · ' + Store.scheduleOf(s).className : '') };
+              return { value: s.id, label: s.name + (Store.scheduleOf(s).className ? ' · ' + Store.scheduleOf(s).className : '') +
+                (Worksheet.LEVELS[+s.readLevel] ? ' · Lv' + s.readLevel : '') };
             }), '', '학생 선택') + '</select></label>' +
           '<label class="fld">반납 예정일<input type="date" id="l-due" value="' + U.daysAgo(-Store.LOAN_DAYS) + '"></label>' +
         '</div>' +
@@ -6545,9 +6658,19 @@ Views.library = (function () {
           '<input type="checkbox" id="l-ws" checked>워크시트 같이 뽑기' +
         '</label> <span class="hint">' +
           (hasRegistered(b) ? '이 책에 등록된 워크시트를 씁니다.' : 'Level ' + Worksheet.levelOf(b) + ' 워크시트를 자동으로 만듭니다.') +
-        '</span>',
+        '</span>' +
+        '<div id="l-lvcheck" style="margin-top:12px"></div>',
       footer: '<button class="btn" data-close>취소</button><button class="btn primary" id="l-save">대여 처리</button>',
       onMount: function (w) {
+        // 학생을 고르면 책 레벨이 학생 권장 레벨과 맞는지 바로 알려 줍니다 (막지는 않습니다)
+        w.querySelector('#l-stu').addEventListener('change', function (e) {
+          var s = Store.student(e.target.value);
+          var c = levelCheck(b, s);
+          w.querySelector('#l-lvcheck').innerHTML = !s ? '' : c
+            ? '<span class="tag ' + c.tag + '">' + (c.tag === 'warn' ? '레벨 확인' : c.tag === 'ok' ? '레벨 적합' : '쉬운 책') + '</span> ' +
+              '<span class="hint">' + U.esc(c.text) + '</span>'
+            : '<span class="hint">' + U.esc(s.name) + ' 학생은 권장 도서 레벨이 아직 정해지지 않았습니다. [학생별 독서 현황] 탭에서 정할 수 있습니다.</span>';
+        });
         w.querySelector('#l-save').addEventListener('click', function () {
           var sid = w.querySelector('#l-stu').value;
           if (!sid) { UI.toast('학생을 선택해 주세요.', true); return; }
@@ -7052,14 +7175,434 @@ Views.library = (function () {
     });
   }
 
-  /* ---------- 렌더 ---------- */
+  /* ---------- 탭 ---------- */
+  function tabsHtml() {
+    var waiting = Store.loans().filter(function (l) { return Store.bookReportOf(l) !== '제출완료'; }).length;
+    return '<div class="seg lib-tabs" role="tablist">' +
+      '<button data-tab="books"' + (tab === 'books' ? ' class="on"' : '') + '>도서 목록 · 대여</button>' +
+      '<button data-tab="students"' + (tab === 'students' ? ' class="on"' : '') + '>학생별 독서 현황' +
+        (waiting ? ' <span class="lib-badge">' + waiting + '</span>' : '') + '</button>' +
+      '<button data-tab="sheets"' + (tab === 'sheets' ? ' class="on"' : '') + '>워크시트 자료실</button>' +
+    '</div>';
+  }
+
+  var host = null;   // 화면 바깥 틀 (App 이 넘겨주는 요소)
+
+  /**
+   * 그릴 때마다 안쪽 틀을 새로 만듭니다.
+   * 바깥 틀에 직접 그리면 다시 그릴 때마다 클릭 처리가 겹겹이 쌓여 한 번 눌러도 여러 번 실행됩니다.
+   */
   function render(el) {
+    host = el;
+    var root = document.createElement('div');
+    el.innerHTML = '';
+    el.appendChild(root);
+    if (tab === 'students') renderStudents(root);
+    else if (tab === 'sheets') renderSheets(root);
+    else renderBooks(root);
+    root.insertAdjacentHTML('afterbegin', tabsHtml());
+    UI.on(root, '[data-tab]', 'click', function (e, btn) {
+      tab = btn.getAttribute('data-tab');
+      render(host);
+    });
+  }
+
+  /* ---------- 탭 2: 학생별 독서 현황 ---------- */
+  /** 권장 도서 레벨 정하기 */
+  function openLevelForm(studentId, done) {
+    var s = Store.student(studentId);
+    if (!s) return;
+    UI.modal({
+      title: U.esc(s.name) + ' · 권장 도서 레벨',
+      body:
+        '<p class="hint" style="margin-top:0">책을 빌려줄 때 이 레벨과 책 레벨을 비교해 알려 드립니다. ' +
+          '레벨 기준은 워크시트와 같은 5단계입니다 (AR 1.0 미만 = Lv1 · 1.0~1.5 = Lv2 · 1.5~2.2 = Lv3 · 2.2~3.0 = Lv4 · 3.0 이상 = Lv5).</p>' +
+        '<div class="form-grid">' +
+          '<label class="fld">권장 도서 레벨<select id="rl-lv"><option value="">정하지 않음</option>' +
+            [1, 2, 3, 4, 5].map(function (n) {
+              return '<option value="' + n + '"' + (+s.readLevel === n ? ' selected' : '') + '>' + levelLabel(n) + '</option>';
+            }).join('') + '</select></label>' +
+          '<label class="fld">레벨 메모 <span style="font-weight:400">(선택)</span>' +
+            '<input type="text" id="rl-note" value="' + U.esc(s.readLevelNote || '') + '" placeholder="예: AR 1.5 ~ 2.2 권장"></label>' +
+        '</div>',
+      footer: '<button class="btn" data-close>취소</button><button class="btn primary" id="rl-save">저장</button>',
+      onMount: function (w) {
+        w.querySelector('#rl-save').addEventListener('click', function () {
+          Store.saveStudent({
+            id: s.id,
+            readLevel: w.querySelector('#rl-lv').value,
+            readLevelNote: w.querySelector('#rl-note').value.trim()
+          });
+          UI.close();
+          UI.toast(s.name + ' 학생 권장 레벨을 저장했습니다.');
+          if (done) done();
+        });
+      }
+    });
+  }
+
+  function readingStudents() {
+    return Store.students({ active: true }).filter(function (s) {
+      if (sf.q && String(s.name).toLowerCase().indexOf(sf.q.toLowerCase()) < 0) return false;
+      if (sf.classId && Store.scheduleOf(s).classId !== sf.classId && s.classId !== sf.classId) return false;
+      if (sf.level === 'none' && Worksheet.LEVELS[+s.readLevel]) return false;
+      if (sf.level && sf.level !== 'none' && String(s.readLevel) !== sf.level) return false;
+      if (sf.br !== 'all') {
+        var r = Store.readingOf(s.id);
+        if (sf.br === 'waiting' && !r.waiting) return false;
+        if (sf.br === 'done' && (!r.total || r.waiting)) return false;
+      }
+      return true;
+    });
+  }
+
+  function loanRow(l) {
+    var b = Store.book(l.bookId);
+    var st = Store.bookReportOf(l);
+    var late = !l.returnDate && l.dueDate && U.ymd() > l.dueDate;
+    return '<tr>' +
+      '<td>' + U.esc(l.outDate || '') + '</td>' +
+      '<td class="nm">' + U.esc(b ? b.title : '(삭제된 책)') +
+        (b ? ' <span class="tag gray">Lv' + Worksheet.levelOf(b) + '</span>' : '') + '</td>' +
+      '<td>' + U.esc(l.dueDate || '-') + '</td>' +
+      '<td>' + (l.returnDate
+          ? '<span class="tag ok">반납 ' + U.esc(l.returnDate.slice(5)) + '</span>'
+          : '<span class="tag ' + (late ? 'bad' : 'blue') + '">' + (late ? U.dayDiff(l.dueDate, U.ymd()) + '일 연체' : '대출 중') + '</span>') + '</td>' +
+      '<td><div class="seg br-seg">' + Store.BOOK_REPORT.map(function (k) {
+          return '<button data-br="' + l.id + '|' + k + '" class="' + (st === k ? 'on ' + BR_TAG[k] : '') + '">' + k + '</button>';
+        }).join('') + '</div></td>' +
+      '<td style="white-space:nowrap">' +
+        (b ? '<button class="btn sm ghost" data-lws="' + l.id + '">' + (l.wsIssued ? '다시 출력' : '출력') + '</button>' : '') +
+        (l.returnDate ? '' : ' <button class="btn sm" data-return="' + l.id + '">반납</button>') +
+      '</td>' +
+    '</tr>';
+  }
+
+  function studentCard(s) {
+    var r = Store.readingOf(s.id);
+    var sc = Store.scheduleOf(s);
+    var lv = Worksheet.LEVELS[+s.readLevel] ? +s.readLevel : 0;
+    var limit = expanded[s.id] ? r.loans.length : 5;
+    return '<div class="card rd-card">' +
+      '<div class="card-h rd-h">' +
+        '<div><h2>' + U.esc(s.name) + '</h2>' +
+          '<div class="hint">' + U.esc([s.grade, sc.className].filter(Boolean).join(' · ') || '반 미배정') + '</div></div>' +
+        '<div class="sp"></div>' +
+        (lv
+          ? '<span class="tag blue">권장 ' + U.esc(levelLabel(lv)) + '</span>' +
+            (s.readLevelNote ? '<span class="hint">' + U.esc(s.readLevelNote) + '</span>' : '')
+          : '<span class="tag gray">레벨 미지정</span>') +
+        '<button class="btn sm" data-rlv="' + s.id + '">레벨 설정</button>' +
+        '<button class="btn sm" data-rprint="' + s.id + '"' + (r.total ? '' : ' disabled') + '>독서 이력 출력</button>' +
+      '</div>' +
+      '<div class="card-b">' +
+        '<div class="rd-stats">' +
+          '<span>누적 독서 <b>' + r.total + '</b>권</span>' +
+          '<span>대출 중 <b>' + r.open.length + '</b>권</span>' +
+          '<span>북리포트 제출률 <b>' + (r.total ? r.rate + '%' : '-') + '</b>' +
+            (r.total ? ' <span class="hint">(' + r.done + '/' + r.total + ')</span>' : '') + '</span>' +
+          (r.waiting ? '<span class="tag warn">북리포트 대기 ' + r.waiting + '건</span>' : '') +
+        '</div>' +
+        (r.total
+          ? '<div class="table-wrap"><table class="tbl rd-tbl">' +
+              '<thead><tr><th>대출일</th><th>도서명 (레벨)</th><th>반납 예정</th><th>반납</th><th>북리포트</th><th>워크시트</th></tr></thead>' +
+              '<tbody>' + r.loans.slice(0, limit).map(loanRow).join('') + '</tbody></table></div>' +
+            (r.loans.length > 5
+              ? '<button class="btn sm ghost" data-more="' + s.id + '" style="margin-top:8px">' +
+                  (expanded[s.id] ? '최근 5권만 보기' : '전체 ' + r.loans.length + '권 보기') + '</button>'
+              : '')
+          : '<div class="hint">아직 빌려간 책이 없습니다.</div>') +
+      '</div>' +
+    '</div>';
+  }
+
+  function renderStudents(el) {
+    var act = Store.students({ active: true });
+    var list = readingStudents();
+    var ym = U.ym(new Date());
+    var all = Store.loans();
+    var monthLoans = all.filter(function (l) { return (l.outDate || '').slice(0, 7) === ym; });
+    var waiting = all.filter(function (l) { return Store.bookReportOf(l) !== '제출완료'; });
+    var monthDone = all.filter(function (l) { return Store.bookReportOf(l) === '제출완료' && (l.brDate || '').slice(0, 7) === ym; });
+    var noLevel = act.filter(function (s) { return !Worksheet.LEVELS[+s.readLevel]; }).length;
+
+    el.innerHTML =
+      '<div class="grid g-4" style="margin:16px 0">' +
+        '<div class="stat accent"><div class="lbl">이달 대출</div><div class="val">' + monthLoans.length + '<small>권</small></div>' +
+          '<div class="sub">읽은 학생 ' + monthLoans.map(function (l) { return l.studentId; }).filter(function (v, i, a) { return a.indexOf(v) === i; }).length + '명</div></div>' +
+        '<div class="stat"><div class="lbl">북리포트 대기</div><div class="val" style="color:' + (waiting.length ? '#8a6226' : 'inherit') + '">' +
+          waiting.length + '<small>건</small></div><div class="sub">미제출 · 작성중</div></div>' +
+        '<div class="stat"><div class="lbl">이달 북리포트 제출</div><div class="val">' + monthDone.length + '<small>건</small></div></div>' +
+        '<div class="stat"><div class="lbl">레벨 미지정 학생</div><div class="val">' + noLevel + '<small>명</small></div>' +
+          '<div class="sub">' + (noLevel ? '레벨을 정하면 대여 때 알려 드립니다' : '모두 지정됨') + '</div></div>' +
+      '</div>' +
+
+      '<div class="card" style="margin-bottom:16px"><div class="card-b">' +
+        '<div class="row">' +
+          '<input type="search" id="rs-q" placeholder="학생 이름 검색" value="' + U.esc(sf.q) + '" style="flex:1;min-width:150px">' +
+          '<select id="rs-class" style="width:140px">' +
+            UI.options(Store.classes().map(function (c) { return { value: c.id, label: c.name }; }), sf.classId, '전체 반') + '</select>' +
+          '<select id="rs-lv" style="width:170px">' +
+            '<option value="">전체 레벨</option>' +
+            [1, 2, 3, 4, 5].map(function (n) {
+              return '<option value="' + n + '"' + (sf.level === String(n) ? ' selected' : '') + '>' + levelLabel(n) + '</option>';
+            }).join('') +
+            '<option value="none"' + (sf.level === 'none' ? ' selected' : '') + '>레벨 미지정</option></select>' +
+          '<div class="seg">' +
+            '<button data-brf="all" class="' + (sf.br === 'all' ? 'on' : '') + '">전체</button>' +
+            '<button data-brf="waiting" class="' + (sf.br === 'waiting' ? 'on' : '') + '">북리포트 미제출</button>' +
+            '<button data-brf="done" class="' + (sf.br === 'done' ? 'on' : '') + '">모두 제출</button>' +
+          '</div>' +
+        '</div>' +
+        '<p class="hint" style="margin:10px 0 0">북리포트 칸의 <b>미제출 · 작성중 · 제출완료</b>를 누르면 바로 저장됩니다. ' +
+          '제출률은 빌려간 책 중 북리포트를 제출 완료한 비율입니다.</p>' +
+      '</div></div>' +
+
+      (list.length
+        ? '<div class="stack">' + list.map(studentCard).join('') + '</div>'
+        : UI.emptyBox(act.length ? '조건에 맞는 학생이 없습니다.' : '등록생이 없습니다. 학생 명부에서 먼저 등록해 주세요.', 'students'));
+
+    function refresh() {
+      var y = window.scrollY;
+      render(host);
+      window.scrollTo(0, y);
+    }
+    var q = el.querySelector('#rs-q');
+    q.addEventListener('input', function (e) {
+      sf.q = e.target.value;
+      var pos = e.target.selectionStart;
+      refresh();
+      var nq = el.querySelector('#rs-q');
+      nq.focus();
+      nq.setSelectionRange(pos, pos);
+    });
+    el.querySelector('#rs-class').addEventListener('change', function (e) { sf.classId = e.target.value; refresh(); });
+    el.querySelector('#rs-lv').addEventListener('change', function (e) { sf.level = e.target.value; refresh(); });
+    UI.on(el, '[data-brf]', 'click', function (e, b) { sf.br = b.getAttribute('data-brf'); refresh(); });
+    UI.on(el, '[data-br]', 'click', function (e, b) {
+      var v = b.getAttribute('data-br').split('|');
+      Store.setBookReport(v[0], v[1]);
+      refresh();
+    });
+    UI.on(el, '[data-more]', 'click', function (e, b) {
+      var id = b.getAttribute('data-more');
+      expanded[id] = !expanded[id];
+      refresh();
+    });
+    UI.on(el, '[data-rlv]', 'click', function (e, b) { openLevelForm(b.getAttribute('data-rlv'), refresh); });
+    UI.on(el, '[data-rprint]', 'click', function (e, b) { openHistory(b.getAttribute('data-rprint')); });
+    UI.on(el, '[data-lws]', 'click', function (e, b) {
+      var l = Store.loans().filter(function (x) { return x.id === b.getAttribute('data-lws'); })[0];
+      if (l) issueWorksheet(l.bookId, l.studentId, l.id);
+    });
+    UI.on(el, '[data-return]', 'click', function (e, b) {
+      Store.returnBook(b.getAttribute('data-return'));
+      UI.toast('반납했습니다.');
+      refresh();
+    });
+  }
+
+  /* ---------- 독서 이력 출력 (학부모 상담용) ---------- */
+  function historyHtml(s, from, to) {
+    var ac = Store.get().academy;
+    var list = Store.readingOf(s.id).loans.filter(function (l) {
+      return (!from || l.outDate >= from) && (!to || l.outDate <= to);
+    }).reverse();
+    var done = list.filter(function (l) { return Store.bookReportOf(l) === '제출완료'; }).length;
+    var lv = Worksheet.LEVELS[+s.readLevel] ? levelLabel(s.readLevel) : '';
+    var period = from || to ? (from || '처음') + ' ~ ' + (to || U.ymd()) : '전체 기간';
+    return '<!doctype html><html lang="ko"><head><meta charset="utf-8">' +
+      '<meta name="viewport" content="width=device-width, initial-scale=1"><title>독서 이력 · ' + U.esc(s.name) + '</title>' +
+      '<style>' +
+        '@page{size:A4;margin:16mm}' +
+        'body{font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",sans-serif;color:#1d2b38;background:#fff;margin:0;padding:24px;word-break:keep-all}' +
+        'h1{font-size:22px;margin:0 0 4px}.sub{color:#6b7b8a;font-size:13px;margin-bottom:18px}' +
+        '.sum{display:flex;gap:10px;margin-bottom:18px}.sum div{flex:1;border:1px solid #dfe5ea;border-radius:10px;padding:10px 12px}' +
+        '.sum b{display:block;font-size:20px;margin-top:2px}.sum span{font-size:12px;color:#6b7b8a}' +
+        'table{width:100%;border-collapse:collapse;font-size:13px}th,td{border-bottom:1px solid #e6ebef;padding:8px 6px;text-align:left}' +
+        'th{background:#f4f7f9;font-size:12px;color:#4d5e6d}.ok{color:#296b4d;font-weight:700}.no{color:#963934}.ing{color:#8a6226}' +
+        '.foot{margin-top:24px;font-size:12px;color:#6b7b8a;text-align:right}' +
+        '@media print{body{padding:0}}' +
+      '</style></head><body>' +
+      '<h1>' + U.esc(s.name) + ' 학생 독서 이력</h1>' +
+      '<div class="sub">' + U.esc([s.grade, Store.scheduleOf(s).className, period].filter(Boolean).join(' · ')) + '</div>' +
+      '<div class="sum">' +
+        '<div><span>읽은 책</span><b>' + list.length + '권</b></div>' +
+        '<div><span>북리포트 제출</span><b>' + done + '건 (' + U.pct(done, list.length) + '%)</b></div>' +
+        '<div><span>권장 도서 레벨</span><b style="font-size:15px">' + U.esc(lv || '-') + '</b></div>' +
+      '</div>' +
+      (list.length
+        ? '<table><thead><tr><th>빌린 날</th><th>책 제목</th><th>레벨</th><th>반납</th><th>북리포트</th></tr></thead><tbody>' +
+          list.map(function (l) {
+            var b = Store.book(l.bookId), st = Store.bookReportOf(l);
+            return '<tr><td>' + U.esc(l.outDate) + '</td><td>' + U.esc(b ? b.title : '(삭제된 책)') + '</td>' +
+              '<td>' + (b ? 'Lv' + Worksheet.levelOf(b) + (b.level ? ' · ' + U.esc(b.level) : '') : '-') + '</td>' +
+              '<td>' + (l.returnDate ? U.esc(l.returnDate) : '대출 중') + '</td>' +
+              '<td class="' + (st === '제출완료' ? 'ok' : st === '작성중' ? 'ing' : 'no') + '">' + st + '</td></tr>';
+          }).join('') + '</tbody></table>'
+        : '<p>이 기간에 빌려간 책이 없습니다.</p>') +
+      '<div class="foot">' + U.esc([ac.name, ac.campus, ac.phone].filter(Boolean).join(' · ')) + ' · ' + U.ymd() + ' 출력</div>' +
+      '</body></html>';
+  }
+
+  function openHistory(studentId) {
+    var s = Store.student(studentId);
+    if (!s) return;
+    var now = new Date();
+    var ym = U.ym(now);
+    var prev = U.ym(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+    var ranges = {
+      month: [ym + '-01', U.ymd()],
+      prev: [prev + '-01', prev + '-' + String(U.daysInMonth(prev)).padStart(2, '0')],
+      three: [U.daysAgo(90), U.ymd()],
+      all: ['', '']
+    };
+    UI.modal({
+      title: '독서 이력 · ' + s.name,
+      wide: true,
+      body:
+        '<div class="row" style="margin-bottom:12px"><div class="seg" id="hi-range">' +
+          '<button data-hr="month" class="on">이번 달</button><button data-hr="prev">지난 달</button>' +
+          '<button data-hr="three">최근 3개월</button><button data-hr="all">전체</button></div></div>' +
+        '<div class="ws-frame"><iframe id="hi-if" title="독서 이력 미리보기"></iframe></div>' +
+        '<p class="hint" style="margin-top:10px">학부모 상담 때 인쇄하거나, 인쇄 창에서 <b>PDF로 저장</b>을 골라 파일로 보내실 수 있습니다.</p>',
+      footer: '<button class="btn" id="hi-dl">HTML로 저장</button><div class="sp"></div>' +
+              '<button class="btn" data-close>닫기</button><button class="btn primary" id="hi-print">인쇄</button>',
+      onMount: function (w) {
+        var html = '';
+        function draw(k) {
+          html = historyHtml(s, ranges[k][0], ranges[k][1]);
+          w.querySelector('#hi-if').srcdoc = html;
+          w.querySelectorAll('[data-hr]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-hr') === k); });
+        }
+        UI.on(w, '[data-hr]', 'click', function (e, b) { draw(b.getAttribute('data-hr')); });
+        w.querySelector('#hi-print').addEventListener('click', function () {
+          var f = w.querySelector('#hi-if');
+          f.contentWindow.focus();
+          f.contentWindow.print();
+        });
+        w.querySelector('#hi-dl').addEventListener('click', function () {
+          U.download('독서이력_' + s.name + '_' + U.ymd() + '.html', html, 'text/html');
+        });
+        draw('month');
+      }
+    });
+  }
+
+  /* ---------- 탭 3: 워크시트 자료실 ---------- */
+  function sheetBooks() {
+    var q = wf.q.toLowerCase();
+    return Store.books().filter(function (b) {
+      if (wf.level && Worksheet.levelOf(b) !== wf.level) return false;
+      if (wf.src && sheetSource(b).key !== wf.src) return false;
+      if (q && [b.title, b.series, b.author, b.code, b.wsWords].join(' ').toLowerCase().indexOf(q) < 0) return false;
+      return true;
+    });
+  }
+
+  /** 레벨별 빈 북리포트 양식 — 책을 정하지 않고 쓸 때 */
+  function blankSheet(n) {
+    var draft = { title: '', wsLevel: n };
+    openSheet(Worksheet.build(draft, null, { date: '' }), { title: 'Level ' + n + ' 빈 양식' }, null);
+  }
+
+  function renderSheets(el) {
+    var all = Store.books();
+    var counts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    var srcCount = { file: 0, link: 0, auto: 0 };
+    all.forEach(function (b) { counts[Worksheet.levelOf(b)]++; srcCount[sheetSource(b).key]++; });
+    var list = sheetBooks();
+
+    el.innerHTML =
+      '<div class="ws-lv-grid" style="margin:16px 0">' +
+        [1, 2, 3, 4, 5].map(function (n) {
+          return '<div class="ws-lv' + (wf.level === n ? ' on' : '') + '">' +
+            '<button class="ws-lv-main" data-wlv="' + n + '">' +
+              '<span class="ws-lv-n">Lv' + n + '</span>' +
+              '<span class="ws-lv-t">' + U.esc(Worksheet.LEVELS[n].name) + '</span>' +
+              '<span class="hint">책 ' + counts[n] + '권</span>' +
+            '</button>' +
+            '<button class="btn sm ghost" data-blank="' + n + '">빈 양식 출력</button>' +
+          '</div>';
+        }).join('') +
+      '</div>' +
+
+      '<div class="card">' +
+        '<div class="card-h"><h2>워크시트 · 북리포트 목록</h2><div class="sp"></div>' +
+          '<span class="hint">등록 파일 ' + srcCount.file + ' · 링크 ' + srcCount.link + ' · 자동 생성 ' + srcCount.auto + '</span></div>' +
+        '<div class="card-b">' +
+          '<div class="row" style="margin-bottom:12px">' +
+            '<input type="search" id="ws-q" placeholder="도서명 · 시리즈 · 청구기호 · 단어 검색" value="' + U.esc(wf.q) + '" style="flex:1;min-width:180px">' +
+            '<div class="seg">' +
+              '<button data-wsrc="" class="' + (!wf.src ? 'on' : '') + '">전체</button>' +
+              '<button data-wsrc="file" class="' + (wf.src === 'file' ? 'on' : '') + '">등록 파일</button>' +
+              '<button data-wsrc="link" class="' + (wf.src === 'link' ? 'on' : '') + '">링크</button>' +
+              '<button data-wsrc="auto" class="' + (wf.src === 'auto' ? 'on' : '') + '">자동 생성</button>' +
+            '</div>' +
+            (wf.level ? '<button class="btn sm" data-wlv="0">레벨 거르기 풀기</button>' : '') +
+          '</div>' +
+          '<p class="hint" style="margin:0 0 12px">책마다 워크시트가 하나씩 연결됩니다. 파일이나 링크를 직접 등록한 책은 그것을, ' +
+            '없는 책은 레벨에 맞춰 <b>자동으로 만든 A4 1장</b>을 씁니다. 파일·링크 등록과 핵심 단어 입력은 [설정]에서 합니다.</p>' +
+          (list.length
+            ? '<div class="ws-list">' + list.slice(0, 300).map(function (b) {
+                var src = sheetSource(b);
+                var st = Store.bookStatus(b);
+                var who = st.loan ? Store.student(st.loan.studentId) : null;
+                return '<div class="ws-item">' + coverImg(b, 'bk-thumb') +
+                  '<div class="ws-item-t">' +
+                    '<b>' + U.esc(b.title) + '</b>' +
+                    '<div class="ws-item-m">' +
+                      '<span class="tag gray">Lv' + Worksheet.levelOf(b) + '</span>' +
+                      '<span class="tag ' + src.tag + '">' + (src.key === 'auto' ? '자동 생성' : src.label) + '</span>' +
+                      (b.wsWords ? '<span class="hint">단어 ' + Worksheet.splitList(b.wsWords).length + '개</span>' : '') +
+                      '<span class="hint">' + (who ? U.esc(who.name) + ' 대출 중' : st.label) + '</span>' +
+                    '</div>' +
+                  '</div>' +
+                  '<div class="ws-item-b">' +
+                    '<button class="btn sm primary" data-wsv="' + b.id + '">' + (src.key === 'link' ? '링크 열기' : '미리보기 · 인쇄') + '</button>' +
+                    (src.key === 'link' ? '' : '<button class="btn sm" data-wsd="' + b.id + '">내려받기</button>') +
+                    '<button class="btn sm ghost" data-edit="' + b.id + '">설정</button>' +
+                  '</div>' +
+                '</div>';
+              }).join('') + '</div>'
+            : UI.emptyBox(all.length ? '조건에 맞는 워크시트가 없습니다.' : '등록된 도서가 없습니다. [도서 목록 · 대여] 탭에서 책을 먼저 등록해 주세요.', 'book')) +
+        '</div>' +
+      '</div>';
+
+    function refresh() { render(host); }
+    el.querySelector('#ws-q').addEventListener('input', function (e) {
+      wf.q = e.target.value;
+      var pos = e.target.selectionStart;
+      refresh();
+      var nq = el.querySelector('#ws-q');
+      nq.focus();
+      nq.setSelectionRange(pos, pos);
+    });
+    UI.on(el, '[data-wlv]', 'click', function (e, b) {
+      var n = +b.getAttribute('data-wlv');
+      wf.level = wf.level === n ? 0 : n;
+      refresh();
+    });
+    UI.on(el, '[data-wsrc]', 'click', function (e, b) { wf.src = b.getAttribute('data-wsrc'); refresh(); });
+    UI.on(el, '[data-blank]', 'click', function (e, b) { blankSheet(+b.getAttribute('data-blank')); });
+    UI.on(el, '[data-wsv]', 'click', function (e, b) { issueWorksheet(b.getAttribute('data-wsv'), '', ''); });
+    UI.on(el, '[data-wsd]', 'click', function (e, b) {
+      var bk = Store.book(b.getAttribute('data-wsd'));
+      if (!bk) return;
+      U.download(Worksheet.filename(bk, null), bk.wsHtml || Worksheet.build(bk, null, { date: '' }), 'text/html');
+      UI.toast('워크시트를 내려받았습니다.');
+    });
+    UI.on(el, '[data-edit]', 'click', function (e, b) { openBookForm(b.getAttribute('data-edit')); });
+  }
+
+  /* ---------- 탭 1: 도서 목록 · 대여 ---------- */
+  function renderBooks(el) {
     var all = Store.books();
     var open = Store.loans({ open: true });
     var over = Store.overdueLoans();
 
     el.innerHTML =
-      '<div class="grid g-4" style="margin-bottom:16px">' +
+      '<div class="grid g-4" style="margin:16px 0">' +
         '<div class="stat accent"><div class="lbl">보유 도서</div><div class="val">' + U.num(all.length) + '<small>권</small></div>' +
           '<div class="sub">대출 가능 ' + (all.length - open.length) + '권</div></div>' +
         '<div class="stat"><div class="lbl">대출 중</div><div class="val">' + open.length + '<small>권</small></div></div>' +
@@ -7107,12 +7650,12 @@ Views.library = (function () {
           '</div>' +
         '</div>' +
         '<div class="table-wrap"><table class="tbl">' +
-          '<thead><tr><th>청구기호</th><th>제목</th><th>레벨</th><th>분류</th><th>상태</th><th>대출자</th><th></th></tr></thead>' +
+          '<thead><tr><th>청구기호</th><th>제목</th><th>레벨</th><th>분류</th><th>상태</th><th>대출자</th><th>워크시트 · 북리포트</th><th></th></tr></thead>' +
           '<tbody id="rows">' + rows() + '</tbody>' +
         '</table></div>' +
       '</div>';
 
-    function refresh() { render(el); }
+    function refresh() { render(host); }
 
     el.querySelector('#add').addEventListener('click', function () { openBookForm(null); });
     el.querySelector('#scanadd').addEventListener('click', function () { openScanRegister(); });
@@ -9109,6 +9652,14 @@ Views.settings = (function () {
     // 반납 완료된 지난 기록
     var past = Store.lendBook(bookIds[1], ids[1], U.daysAgo(-1));
     Store.returnBook(past, U.daysAgo(2));
+    Store.setBookReport(past, '제출완료');
+    // 학생별 권장 도서 레벨과 북리포트 진행 상태
+    [4, 3, 5, 4, 3, 5].forEach(function (lv, i) {
+      if (ids[i]) Store.saveStudent({ id: ids[i], readLevel: String(lv) });
+    });
+    Store.loans({ open: true }).forEach(function (l, i) {
+      if (i === 0) Store.setBookReport(l.id, '작성중');
+    });
 
     Store.addTask('9월 레벨테스트 예약 학부모 안내', 'today');
     Store.addTask('원서 신간 라이브러리 등록', 'week');

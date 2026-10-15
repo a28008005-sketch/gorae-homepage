@@ -659,3 +659,37 @@ div.fld input[type=file]{font-size:13px;color:var(--ink);font-weight:400}
   border:1px solid var(--line);border-radius:10px;padding:10px 12px}
 .np-li-t{min-width:0;flex:1 1 220px}
 .np-bulk{gap:6px;margin-left:auto}
+
+/* ---------- 도서 대여 · 탭 / 학생별 독서 현황 / 워크시트 자료실 ---------- */
+.lib-tabs{display:inline-flex;margin-bottom:0}
+.lib-badge{display:inline-block;min-width:18px;padding:0 6px;border-radius:99px;background:var(--warn-soft);color:#8a6226;font-size:11px;font-weight:700;line-height:18px;margin-left:4px}
+.seg button.on .lib-badge{background:#fff;color:#8a6226}
+.lib-ws{display:flex;flex-direction:column;align-items:flex-start;gap:4px}
+.rd-h{flex-wrap:wrap;gap:8px;align-items:center}
+.rd-h h2{margin:0}
+.rd-stats{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;font-size:13.5px;margin-bottom:12px}
+.rd-stats b{font-size:16px}
+.rd-tbl{min-width:720px}
+.br-seg button{padding:4px 9px;font-size:12px}
+.br-seg button.on.bad{background:var(--bad-soft);color:#963934}
+.br-seg button.on.warn{background:var(--warn-soft);color:#8a6226}
+.br-seg button.on.ok{background:var(--ok-soft);color:#296b4d}
+.ws-lv-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.ws-lv{border:1px solid var(--line);border-radius:12px;background:#fff;padding:10px;display:flex;flex-direction:column;gap:8px}
+.ws-lv.on{border-color:var(--navy-3);box-shadow:0 0 0 2px rgba(33,90,134,.15)}
+.ws-lv-main{border:0;background:none;padding:0;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:2px;font:inherit;color:inherit}
+.ws-lv-n{font-size:20px;font-weight:800;letter-spacing:-.4px}
+.ws-lv-t{font-size:12.5px;font-weight:600}
+.ws-list{display:grid;gap:8px}
+.ws-item{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.ws-item-t{flex:1;min-width:0}
+.ws-item-m{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:4px}
+.ws-item-b{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
+@media (max-width:1080px){ .ws-lv-grid{grid-template-columns:repeat(3,1fr)} }
+@media (max-width:640px){
+  .ws-lv-grid{grid-template-columns:1fr 1fr}
+  .ws-item{flex-wrap:wrap}
+  .ws-item-b{width:100%;justify-content:flex-start}
+  .lib-tabs{display:flex;width:100%}
+  .lib-tabs button{flex:1;padding-left:6px;padding-right:6px}
+}

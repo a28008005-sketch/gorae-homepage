@@ -82,6 +82,11 @@ Views.students = (function () {
         '<input type="number" id="f-fee" step="1000" value="' + (s.fee === undefined || s.fee === '' ? '' : U.esc(s.fee)) + '" placeholder="' + U.num(ac.defaultFee) + '"></label>' +
       '<label class="fld">납부일 <span style="font-weight:400">(매월)</span>' +
         '<input type="number" id="f-bday" min="1" max="31" value="' + (s.billingDay || '') + '" placeholder="' + U.esc(ac.billingDay) + '"></label>' +
+      '<label class="fld">권장 도서 레벨 <span style="font-weight:400">(대여 때 책 레벨과 비교)</span><select id="f-rlv"><option value="">정하지 않음</option>' +
+        [1, 2, 3, 4, 5].map(function (n) {
+          return '<option value="' + n + '"' + (+s.readLevel === n ? ' selected' : '') + '>Lv' + n + ' · ' + Worksheet.LEVELS[n].name + '</option>';
+        }).join('') + '</select></label>' +
+      '<label class="fld">레벨 메모<input type="text" id="f-rlvnote" value="' + U.esc(s.readLevelNote || '') + '" placeholder="예: AR 1.5 ~ 2.2 권장"></label>' +
       '<label class="fld full">특이사항<textarea id="f-note" placeholder="알레르기, 등하원 방법, 성향 등">' + U.esc(s.note || '') + '</textarea></label>' +
     '</div>';
   }
@@ -118,6 +123,8 @@ Views.students = (function () {
             parentEmail: w.querySelector('#f-pmail').value.trim(),
             fee: w.querySelector('#f-fee').value === '' ? '' : Number(w.querySelector('#f-fee').value),
             billingDay: w.querySelector('#f-bday').value === '' ? '' : Number(w.querySelector('#f-bday').value),
+            readLevel: w.querySelector('#f-rlv').value,
+            readLevelNote: w.querySelector('#f-rlvnote').value.trim(),
             note: w.querySelector('#f-note').value.trim()
           });
           UI.close();
@@ -216,9 +223,11 @@ Views.students = (function () {
             ? '<b style="font-size:15px">' + U.pct(subDone, subs.length) + '%</b> <span class="hint">' +
               subDone + '/' + subs.length + '건 제출</span>'
             : '<span class="hint">받은 숙제 없음</span>') + '</div>' +
-        '<div><div class="hint" style="margin-bottom:6px">도서</div>' +
+        '<div><div class="hint" style="margin-bottom:6px">도서' +
+            (Worksheet.LEVELS[+s.readLevel] ? ' · 권장 Lv' + s.readLevel : '') + '</div>' +
           '<b style="font-size:15px">' + myLoans.length + '권</b> <span class="hint">누적 대출' +
-          (myOpen.length ? ' · 대출 중 ' + myOpen.length + '권' : '') + '</span></div>' +
+          (myOpen.length ? ' · 대출 중 ' + myOpen.length + '권' : '') +
+          (myLoans.length ? ' · 북리포트 ' + Store.readingOf(s.id).rate + '%' : '') + '</span></div>' +
       '</div>' +
       (myOpen.length
         ? '<div class="chips" style="margin-top:10px">' + myOpen.map(function (l) {
