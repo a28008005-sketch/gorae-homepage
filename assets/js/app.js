@@ -77,6 +77,10 @@ var App = (function () {
     }
     document.body.classList.remove('share-mode');
 
+    // 예전 '통계' · '학부모 공유' 메뉴는 '성적 관리' 의 탭으로 합쳤습니다. 예전 주소도 그대로 열립니다.
+    var MERGED = { stats: 'stats', share: 'report' };
+    if (MERGED[current]) { Views.grades.setTab(MERGED[current]); current = 'grades'; }
+
     var view = Views[current] || Views.dashboard;
     if (!Views[current]) { current = 'dashboard'; }
 

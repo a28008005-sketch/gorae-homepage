@@ -542,6 +542,9 @@ body.share-mode .content{padding:0}
 .cal-legend .dot.hw{background:var(--brass)}
 .cal-legend .dot.lib{background:var(--mint)}
 .cal-legend .dot.cls{background:var(--blue-2)}
+.cal-legend .dot.csl,.cal-item .dot.csl,.calendar-day .dot.csl{background:var(--bad)}
+a.cal-item{color:inherit;text-decoration:none}
+a.cal-item:hover b{text-decoration:underline}
 .cal-task b{color:var(--ink);font-variant-numeric:tabular-nums;margin-right:3px}
 
 .calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
@@ -700,3 +703,24 @@ div.fld input[type=file]{font-size:13px;color:var(--ink);font-weight:400}
 .rp-book-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .rp-book-t b{font-size:14px}
 .rp-book-t span{font-size:12px;color:var(--muted)}
+
+/* ===== 성적 관리 · 상담 이력 ===== */
+.gr-tabs{flex-wrap:wrap}
+.csl-head{padding:4px 0 14px;margin-bottom:14px;border-bottom:1px solid var(--line)}
+.csl-thread{border:1px solid var(--line);border-radius:10px;padding:4px 14px;margin-bottom:12px;background:#fff}
+.csl-item{padding:10px 0;border-bottom:1px dashed var(--line)}
+.csl-item:last-child{border-bottom:0}
+.csl-item.follow{margin-left:14px;padding-left:12px;border-left:2px solid var(--mint-soft)}
+.csl-meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px}
+.csl-arrow{font-size:12px;font-weight:700;color:var(--mint)}
+.csl-name{font-weight:700;color:var(--blue)}
+.csl-grade{font-size:12px;color:var(--blue);margin-top:6px}
+.csl-body{font-size:13.5px;line-height:1.7;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere;margin-top:6px}
+.csl-plan{font-size:13px;line-height:1.6;background:var(--brass-soft);border-radius:8px;padding:7px 10px;margin-top:8px;white-space:pre-wrap}
+.csl-plan b{color:#8a6226;margin-right:8px;font-size:12px}
+.csl-acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.csl-due{padding:10px 0;border-bottom:1px solid var(--line)}
+.csl-due:last-child{border-bottom:0}
+.csl-due a{color:inherit;text-decoration:none}
+.csl-due-t{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13.5px}
+.csl-parent{background:var(--mint-soft);border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:13px;line-height:1.6}

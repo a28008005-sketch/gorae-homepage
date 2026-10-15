@@ -19,6 +19,7 @@ node tests/vocab-live.test.js                # 단어 학습 · 오늘 실시간
 node tests/library-books.test.js             # 바코드(ISBN) 등록 · 도서 자동 조회 · 청구기호 · CSV 일괄 등록 · 라벨
 node tests/worksheet.test.js                 # 워크시트 레벨 판정·생성·대여 연동
 node tests/library-reading.test.js           # 도서 대여 탭 · 학생별 독서 현황 · 권장 레벨 · 북리포트 상태 · 워크시트 자료실
+node tests/grades-counsel.test.js            # 성적 관리 (통계·학부모 리포트 합침) · 시험 기록 가져오기 · 상담 이력 · 팔로우업
 node tests/bundle-check.js                   # dist 단일 파일이 제대로 동작하는지
 ```
 

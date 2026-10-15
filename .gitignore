@@ -5,3 +5,4 @@ dist/artifact.html
 
 # 검증 스크립트가 남기는 스크린샷 (SHOT_DIR 을 안 줬을 때)
 *.png
+!extension/icons/*.png

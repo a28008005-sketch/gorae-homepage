@@ -30,6 +30,10 @@ var Store = (function () {
   var CLASS_COLORS = ['#215a86', '#357f73', '#a8894f', '#6b5f96', '#a8453f', '#2e7a57', '#96607a', '#4a6577'];
   var WEEKDAYS = ['월', '화', '수', '목', '금', '토'];
   var PAY_METHODS = ['계좌이체', '현금', '카드', '기타'];
+  // 상담 이력 — 누구와, 어떻게, 무엇을 이야기했는지
+  var COUNSEL_WITH = ['학부모', '학생', '학부모+학생'];
+  var COUNSEL_CHANNELS = ['대면', '전화', '문자·카톡', '온라인'];
+  var COUNSEL_TOPICS = ['성적', '학습태도', '진도·레벨', '진로·진학', '수강·행정', '생활', '기타'];
 
   var DEFAULTS = {
     version: 1,
@@ -64,7 +68,9 @@ var Store = (function () {
     loans: [],        // 도서 대여 기록
     resources: [],    // 학원자료실 (링크·파일 모음)
     newsItems: [],    // 영자신문 워크시트 목록
-    newsProgress: []  // 학생별 영자신문 진도 (기사마다 진행중·완료)
+    newsProgress: [], // 학생별 영자신문 진도 (기사마다 진행중·완료)
+    grades: [],       // 시험 성적 (본사 성적 목록에서 가져온 기록)
+    counsels: []      // 학생별 상담 이력 (후속 상담으로 이어집니다)
   };
 
   var data = null;
@@ -77,7 +83,8 @@ var Store = (function () {
     memo: 'memos', task: 'tasks', payment: 'payments',
     homework: 'homeworks', submission: 'submissions',
     vocab: 'vocabLogs', book: 'books', loan: 'loans',
-    resource: 'resources', news: 'newsItems', newsprog: 'newsProgress'
+    resource: 'resources', news: 'newsItems', newsprog: 'newsProgress',
+    grade: 'grades', counsel: 'counsels'
   };
 
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
@@ -317,6 +324,8 @@ var Store = (function () {
     kill(d.vocabLogs, 'vocab', function (v) { return v.studentId === id; });
     kill(d.loans, 'loan', function (l) { return l.studentId === id; });
     kill(d.newsProgress, 'newsprog', function (x) { return x.studentId === id; });
+    kill(d.grades, 'grade', function (g) { return g.studentId === id; });
+    kill(d.counsels, 'counsel', function (c) { return c.studentId === id; });
     save(changed);
   }
   /** 특정 요일에 수업이 있는 등록생 */
@@ -1073,6 +1082,201 @@ var Store = (function () {
     });
   }
 
+  /* ---------- 시험 성적 ----------
+   * 본사 성적 목록(englishwhale.com)에서 크롬 확장 프로그램이나 표 붙여넣기로 가져옵니다.
+   * 같은 기록을 두 번 가져와도 한 줄만 남도록 '학생명|시험명|등록일시' 로 같은 기록을 찾습니다.
+   */
+  function gradeKey(g) {
+    return [String(g.name || '').trim(), String(g.exam || '').trim(), String(g.registeredAt || '').trim()].join('|');
+  }
+  function grades(opts) {
+    opts = opts || {};
+    var list = alive(get().grades).slice();
+    if (opts.studentId) list = list.filter(function (g) { return g.studentId === opts.studentId; });
+    if (opts.unlinked) list = list.filter(function (g) { return !g.studentId || !student(g.studentId); });
+    if (opts.from) list = list.filter(function (g) { return String(g.registeredAt || '').slice(0, 10) >= opts.from; });
+    if (opts.to) list = list.filter(function (g) { return String(g.registeredAt || '').slice(0, 10) <= opts.to; });
+    if (opts.q) {
+      var q = String(opts.q).toLowerCase();
+      list = list.filter(function (g) {
+        return [g.name, g.school, g.grade, g.exam, g.score, g.memo].join(' ').toLowerCase().indexOf(q) >= 0;
+      });
+    }
+    return list.sort(function (a, b) {
+      return String(b.registeredAt || '').localeCompare(String(a.registeredAt || ''));
+    });
+  }
+  function gradeRecord(id) {
+    return alive(get().grades).filter(function (g) { return g.id === id; })[0] || null;
+  }
+  function saveGrade(g) {
+    var d = get(), rec = null;
+    if (g.id) {
+      for (var i = 0; i < d.grades.length; i++) {
+        if (d.grades[i].id === g.id) { rec = Object.assign(d.grades[i], g); break; }
+      }
+    }
+    if (!rec) { g.id = g.id || U.uid('grd'); g.createdAt = g.createdAt || new Date().toISOString(); rec = g; d.grades.push(rec); }
+    stamp(rec);
+    save({ kind: 'grade', id: rec.id });
+    return rec.id;
+  }
+  function deleteGrade(id) { return softDelete('grades', 'grade', id); }
+
+  /**
+   * 가져온 성적을 학생에게 연결합니다. 이름이 같고 학교·학년까지 맞는 학생을 먼저 찾습니다.
+   * 같은 이름이 둘 이상인데 구별이 안 되면 연결하지 않습니다 (잘못 붙는 것보다 비워 두는 게 낫습니다).
+   */
+  function matchGradeStudent(row) {
+    var name = String(row.name || '').trim();
+    if (!name) return null;
+    var same = students({ includeArchived: true }).filter(function (s) { return s.name === name; });
+    if (same.length <= 1) return same[0] || null;
+    var school = String(row.school || '').trim();
+    var grade = String(row.grade || '').replace(/학년$/, '').trim();
+    // 학생 명부에 적힌 값만 비교합니다 (명부에 학교가 없으면 학교로는 거르지 않습니다)
+    var narrowed = same.filter(function (s) {
+      return (!school || !s.school || String(s.school).trim() === school) &&
+             (!grade || !s.grade || String(s.grade).indexOf(grade) >= 0);
+    });
+    return narrowed.length === 1 ? narrowed[0] : null;
+  }
+
+  /**
+   * 여러 줄을 한 번에 넣습니다.
+   * @return {{added:number, updated:number, unchanged:number, unlinked:number}}
+   */
+  function importGrades(rows, source) {
+    var d = get();
+    var byKey = {};
+    alive(d.grades).forEach(function (g) { byKey[gradeKey(g)] = g; });
+    var changed = [], res = { added: 0, updated: 0, unchanged: 0, unlinked: 0 };
+    var now = new Date().toISOString();
+    (rows || []).forEach(function (r) {
+      if (!r || !String(r.name || '').trim() || !String(r.exam || '').trim()) return;
+      var row = {
+        no: String(r.no || '').trim(),
+        name: String(r.name).trim(),
+        school: String(r.school || '').trim(),
+        grade: String(r.grade || '').trim(),
+        exam: String(r.exam).trim(),
+        registeredAt: String(r.registeredAt || '').trim(),
+        links: (r.links || []).filter(function (l) { return l && l.url; })
+                 .map(function (l) { return { label: String(l.label || '링크').trim(), url: String(l.url) }; })
+      };
+      var local = byKey[gradeKey(row)];
+      if (local) {
+        // 본사 쪽 값만 맞춥니다. 선생님이 적은 점수·메모·연결된 학생은 건드리지 않습니다.
+        var before = JSON.stringify([local.no, local.school, local.grade, local.links]);
+        local.no = row.no; local.school = row.school; local.grade = row.grade;
+        if (row.links.length) local.links = row.links;
+        if (!local.studentId) { var m0 = matchGradeStudent(row); if (m0) local.studentId = m0.id; }
+        if (before === JSON.stringify([local.no, local.school, local.grade, local.links])) { res.unchanged++; return; }
+        stamp(local);
+        changed.push({ kind: 'grade', id: local.id });
+        res.updated++;
+      } else {
+        var m = matchGradeStudent(row);
+        row.id = U.uid('grd');
+        row.studentId = m ? m.id : '';
+        row.score = '';
+        row.memo = '';
+        row.source = source || '';
+        row.importedAt = now;
+        row.createdAt = now;
+        stamp(row);
+        d.grades.push(row);
+        byKey[gradeKey(row)] = row;
+        changed.push({ kind: 'grade', id: row.id });
+        res.added++;
+      }
+      if (!byKey[gradeKey(row)].studentId) res.unlinked++;
+    });
+    if (changed.length) save(changed);
+    return res;
+  }
+
+  /* ---------- 상담 이력 ----------
+   * 상담 한 건마다 '다음에 확인할 날(followUpDate)' 을 정해 둘 수 있습니다.
+   * 후속 상담은 parentId 로 앞 상담에 이어 붙고, 이어 쓰면 앞 상담의 팔로우업은 완료로 바뀝니다.
+   */
+  function counsels(opts) {
+    opts = opts || {};
+    var list = alive(get().counsels).slice();
+    if (opts.studentId) list = list.filter(function (c) { return c.studentId === opts.studentId; });
+    if (opts.topic) list = list.filter(function (c) { return c.topic === opts.topic; });
+    if (opts.pending) list = list.filter(isFollowUpPending);
+    if (opts.q) {
+      var q = String(opts.q).toLowerCase();
+      list = list.filter(function (c) {
+        var s = student(c.studentId);
+        return [s ? s.name : '', c.topic, c.content, c.plan].join(' ').toLowerCase().indexOf(q) >= 0;
+      });
+    }
+    return list.sort(function (a, b) {
+      return String(b.date || '').localeCompare(String(a.date || '')) ||
+             String(b.createdAt || '').localeCompare(String(a.createdAt || ''));
+    });
+  }
+  function counsel(id) {
+    return alive(get().counsels).filter(function (c) { return c.id === id; })[0] || null;
+  }
+  function isFollowUpPending(c) { return !!c.followUpDate && !c.followUpDone; }
+  function saveCounsel(c) {
+    var d = get(), rec = null, changed = [];
+    if (c.id) {
+      for (var i = 0; i < d.counsels.length; i++) {
+        if (d.counsels[i].id === c.id) { rec = Object.assign(d.counsels[i], c); break; }
+      }
+    }
+    if (!rec) {
+      c.id = c.id || U.uid('csl');
+      c.date = c.date || U.ymd();
+      c.createdAt = c.createdAt || new Date().toISOString();
+      rec = c; d.counsels.push(rec);
+      // 후속 상담을 남기면 앞 상담에서 기다리던 확인은 끝난 것으로 봅니다.
+      var parent = c.parentId ? counsel(c.parentId) : null;
+      if (parent && isFollowUpPending(parent)) {
+        parent.followUpDone = true;
+        stamp(parent);
+        changed.push({ kind: 'counsel', id: parent.id });
+      }
+    }
+    stamp(rec);
+    changed.push({ kind: 'counsel', id: rec.id });
+    save(changed);
+    return rec.id;
+  }
+  function setFollowUpDone(id, done) {
+    var c = counsel(id);
+    if (!c) return;
+    c.followUpDone = !!done;
+    stamp(c);
+    save({ kind: 'counsel', id: c.id });
+  }
+  function deleteCounsel(id) { return softDelete('counsels', 'counsel', id); }
+
+  /** 상담을 첫 상담부터 이어진 순서대로 묶습니다 (가장 최근 흐름이 위로) */
+  function counselThreads(studentId) {
+    var list = counsels({ studentId: studentId });
+    var byId = {};
+    list.forEach(function (c) { byId[c.id] = c; });
+    function rootOf(c) {
+      var seen = {};
+      while (c.parentId && byId[c.parentId] && !seen[c.id]) { seen[c.id] = 1; c = byId[c.parentId]; }
+      return c;
+    }
+    var threads = {}, order = [];
+    list.slice().reverse().forEach(function (c) {
+      var r = rootOf(c);
+      if (!threads[r.id]) { threads[r.id] = []; order.push(r.id); }
+      threads[r.id].push(c);
+    });
+    return order.map(function (id) { return threads[id]; }).sort(function (a, b) {
+      return String(b[b.length - 1].date).localeCompare(String(a[a.length - 1].date));
+    });
+  }
+
   /* ---------- 집계 ---------- */
   /** 한 학생의 기간 통계 (노션의 출석률 / 체크사항 수식과 동일한 의미) */
   function summarize(studentId, from, to) {
@@ -1284,6 +1488,11 @@ var Store = (function () {
   return {
     STATUS: STATUS, GRADES: GRADES, FLAGS: FLAGS,
     ATTITUDES: ATTITUDES, WEEKDAYS: WEEKDAYS, PAY_METHODS: PAY_METHODS,
+    COUNSEL_WITH: COUNSEL_WITH, COUNSEL_CHANNELS: COUNSEL_CHANNELS, COUNSEL_TOPICS: COUNSEL_TOPICS,
+    grades: grades, gradeRecord: gradeRecord, saveGrade: saveGrade, deleteGrade: deleteGrade,
+    importGrades: importGrades, matchGradeStudent: matchGradeStudent,
+    counsels: counsels, counsel: counsel, saveCounsel: saveCounsel, deleteCounsel: deleteCounsel,
+    setFollowUpDone: setFollowUpDone, isFollowUpPending: isFollowUpPending, counselThreads: counselThreads,
     HOMEWORK_TYPES: HOMEWORK_TYPES, SUBMIT_STATUS: SUBMIT_STATUS,
     BOOK_CATEGORIES: BOOK_CATEGORIES,
     RESOURCE_CATEGORIES: RESOURCE_CATEGORIES,
