@@ -76,6 +76,17 @@ const ok = (l, c, e = '') => { if (!c) fails++; console.log(`  ${c ? '✓' : '�
   await p.selectOption('#gf-stu', sid2); await p.click('#gf-save'); await p.waitForTimeout(300);
   ok('미연결 기록 연결', await p.evaluate(() => Store.grades({ unlinked: true }).length) === 0);
 
+  // 한 학생 것만 고르기
+  await p.evaluate(() => window.postMessage({ type: 'gorae-grades-import', id: 't4', rows: [
+    { name: '신예솔', exam: '단어 인증 Level 5', registeredAt: '2026-10-11 10:00' },
+    { name: '다른학생', exam: '단어 인증 Level 5', registeredAt: '2026-10-11 10:00' }] }, location.origin));
+  await p.waitForSelector('#gi-name');
+  await p.fill('#gi-name', '신예솔');
+  ok('이름으로 고르면 1건', (await p.textContent('#gi-ok')).trim() === '1건 가져오기');
+  await p.click('#gi-ok'); await p.waitForTimeout(300);
+  ok('고른 학생만 저장', await p.evaluate(() => !!Store.grades().find(g => g.name === '신예솔') && !Store.grades().find(g => g.name === '다른학생')));
+  await p.evaluate(() => Store.deleteGrade(Store.grades().find(g => g.name === '신예솔').id));
+
   /* ---------- 표 붙여넣기 ---------- */
   const parsed = await p.evaluate((n) => Views.grades.parsePasted(
     '번호\t학생명\t학교\t학년\t시험명\t성적표/인증서\t등록일시\n' +

@@ -10248,10 +10248,16 @@ Views.grades = (function () {
           '<span class="tag gray">이미 있음 ' + (rows.length - fresh) + '건</span>' +
           (rows.length - matched ? '<span class="tag bad">명부에서 못 찾은 학생 ' + (rows.length - matched) + '건</span>' : '') +
         '</div>' +
+        // 특정 학생 것만 넣고 싶을 때 — 이름을 적으면 그 학생 줄만 체크됩니다
+        '<div class="row" style="margin-bottom:10px">' +
+          '<input type="search" id="gi-name" placeholder="학생 이름으로 고르기 (예: 신예솔)" style="flex:1;min-width:180px">' +
+          '<button class="btn sm" type="button" id="gi-all">전체 선택</button>' +
+          '<button class="btn sm" type="button" id="gi-none">전체 해제</button>' +
+        '</div>' +
         '<div class="table-wrap" style="max-height:360px;overflow:auto"><table class="tbl" style="min-width:auto">' +
-          '<thead><tr><th></th><th>학생</th><th>명부 연결</th><th>학교 · 학년</th><th>시험명</th><th>등록일시</th><th>링크</th></tr></thead><tbody>' +
-          preview.map(function (x) {
-            return '<tr><td>' + (x.isNew ? '<span class="tag ok">새</span>' : '<span class="tag gray">있음</span>') + '</td>' +
+          '<thead><tr><th></th><th></th><th>학생</th><th>명부 연결</th><th>학교 · 학년</th><th>시험명</th><th>등록일시</th><th>링크</th></tr></thead><tbody>' +
+          preview.map(function (x, i) {
+            return '<tr data-gi-row="' + i + '"><td><input type="checkbox" data-gi="' + i + '" checked></td><td>' + (x.isNew ? '<span class="tag ok">새</span>' : '<span class="tag gray">있음</span>') + '</td>' +
               '<td class="nm">' + U.esc(x.r.name) + '</td>' +
               '<td>' + (x.m ? U.esc(x.m.name) + (x.m.grade ? ' · ' + U.esc(x.m.grade) : '') : '<span class="tag bad">못 찾음</span>') + '</td>' +
               '<td>' + U.esc([x.r.school, x.r.grade].filter(Boolean).join(' · ') || '-') + '</td>' +
@@ -10263,8 +10269,34 @@ Views.grades = (function () {
           '명부에서 못 찾은 학생은 그대로 저장해 두고, 나중에 기록을 눌러 학생을 연결할 수 있습니다.</p>',
       footer: '<button class="btn" data-close>취소</button><button class="btn primary" id="gi-ok">가져오기</button>',
       onMount: function (w) {
+        var boxes = w.querySelectorAll('[data-gi]');
+        function picked() {
+          return rows.filter(function (r, i) { return boxes[i].checked; });
+        }
+        function refresh() {
+          var n = picked().length;
+          var ok = w.querySelector('#gi-ok');
+          ok.textContent = n + '건 가져오기';
+          ok.disabled = !n;
+        }
+        function setAll(on) { boxes.forEach(function (b) { b.checked = on; }); refresh(); }
+        w.querySelector('#gi-name').addEventListener('input', function (e) {
+          var q = e.target.value.replace(/\s+/g, '');
+          boxes.forEach(function (b, i) {
+            var hit = !q || String(rows[i].name).replace(/\s+/g, '').indexOf(q) >= 0;
+            b.checked = hit;
+            w.querySelector('[data-gi-row="' + i + '"]').style.display = hit ? '' : 'none';
+          });
+          refresh();
+        });
+        w.querySelector('#gi-all').addEventListener('click', function () { setAll(true); });
+        w.querySelector('#gi-none').addEventListener('click', function () { setAll(false); });
+        boxes.forEach(function (b) { b.addEventListener('change', refresh); });
+        refresh();
         w.querySelector('#gi-ok').addEventListener('click', function () {
-          var res = Store.importGrades(rows, source);
+          var chosen = picked();
+          if (!chosen.length) { UI.toast('가져올 줄을 골라 주세요.', true); return; }
+          var res = Store.importGrades(chosen, source);
           UI.close();
           UI.toast('새 기록 ' + res.added + '건' + (res.updated ? ' · 갱신 ' + res.updated + '건' : '') +
             (res.unlinked ? ' · 미연결 ' + res.unlinked + '건' : '') + ' 가져왔습니다.');
