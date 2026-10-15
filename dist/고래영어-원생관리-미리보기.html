@@ -227,6 +227,8 @@ label.fld{display:flex;flex-direction:column;gap:5px;font-size:12.5px;color:var(
 .tag.blue{background:var(--blue-soft);color:#2b5a80}
 .tag.mint{background:var(--mint-soft);color:#2d6d63}
 .tag.gray{background:#f0f2f5;color:#5f6d7a}
+.tag.live::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:currentColor;margin-right:5px;vertical-align:1px;animation:livePulse 1.4s ease-in-out infinite}
+@keyframes livePulse{0%,100%{opacity:1}50%{opacity:.25}}
 
 /* ---------- Table ---------- */
 .table-wrap{overflow-x:auto}
@@ -6028,8 +6030,82 @@ Views.vocab = (function () {
       }).join('') + '</tbody></table></div>';
   }
 
+  /* ---------- 오늘 실시간 현황 ----------
+     웨일리 보카 앱은 공부하는 동안 5문제마다 진행 상황을 보냅니다(워커 → 학원 클라우드).
+     같은 일차는 한 줄로 덮어써서 '학습 중' → '완료'(또는 '중간에 멈춤')로 바뀝니다.
+     클라우드 동기화가 15초마다 새 기록을 받아오면 이 화면이 다시 그려집니다. */
+  var STALE_MIN = 10;   // '학습 중'인데 이만큼 소식이 없으면 앱을 닫은 것으로 봅니다
+  var tick = null;
+
+  function minutesAgo(iso) {
+    var t = Date.parse(iso || '');
+    return isNaN(t) ? null : Math.max(0, Math.floor((Date.now() - t) / 60000));
+  }
+  function agoText(m) {
+    if (m == null) return '';
+    if (m < 1) return '방금';
+    if (m < 60) return m + '분 전';
+    return Math.floor(m / 60) + '시간 전';
+  }
+  function liveState(v) {
+    var m = minutesAgo(v.updatedAt);
+    if (v.status === 'in-progress' && m != null && m >= STALE_MIN) return { label: '응답 없음', cls: 'bad', note: '앱을 닫았거나 멈춘 것 같아요' };
+    if (v.status === 'in-progress') return { label: '학습 중', cls: 'blue live', note: '' };
+    if (v.status === 'stopped') return { label: '중간에 멈춤', cls: 'bad', note: '' };
+    return { label: '완료', cls: 'ok', note: '' };
+  }
+
+  function liveCard() {
+    var today = U.ymd();
+    var logs = Store.vocabLogs({ from: today, to: today }).filter(function (v) { return v.source === 'whaley-voca'; })
+      .sort(function (a, b) { return (b.updatedAt || '') < (a.updatedAt || '') ? -1 : 1; });
+    var counts = { live: 0, done: 0, stop: 0 };
+    logs.forEach(function (v) {
+      var st = liveState(v).label;
+      if (st === '학습 중') counts.live++; else if (st === '완료') counts.done++; else counts.stop++;
+    });
+    return '<div class="card" style="margin-bottom:16px"><div class="card-h"><h2>오늘 실시간 현황</h2>' +
+        '<span class="hint" style="margin-left:8px;font-size:12px">' +
+          '학습 중 <b>' + counts.live + '</b> · 완료 <b>' + counts.done + '</b> · 멈춤 <b>' + counts.stop + '</b>' +
+        '</span><div class="sp"></div>' +
+        '<span class="hint" style="font-size:12px">15초마다 자동으로 새로 받아옵니다</span></div>' +
+      '<div class="card-b">' +
+      (logs.length ? '<div class="table-wrap"><table class="tbl" style="min-width:auto">' +
+        '<thead><tr><th>학생</th><th>상태</th><th>레벨 · 일차</th><th>지금 하는 것</th>' +
+        '<th class="num">맞힘</th><th class="num">오늘 정답률</th><th class="num">남은 오답</th>' +
+        '<th class="num">학습 시간</th><th>마지막 소식</th></tr></thead><tbody>' +
+        logs.map(function (v) {
+          var s = Store.student(v.studentId);
+          var st = liveState(v);
+          var title = String(v.setName || '').split(' · ')[0];
+          return '<tr class="clickable" data-open="' + U.esc(v.studentId) + '">' +
+            '<td class="nm">' + U.esc(s ? s.name : '(삭제됨)') + '</td>' +
+            '<td><span class="tag ' + st.cls + '">' + st.label + '</span>' +
+              (st.note ? '<div class="hint" style="font-size:11px;margin-top:2px">' + st.note + '</div>' : '') + '</td>' +
+            '<td>' + U.esc(title) + '</td>' +
+            '<td>' + (v.status === 'done' ? '오늘 학습 끝' : U.esc(v.step || '-')) + '</td>' +
+            '<td class="num">' + (Number(v.correct) || 0) + '/' + (Number(v.total) || 0) + '</td>' +
+            '<td class="num">' + (v.clearPct != null ? v.clearPct + '%' : '-') + '</td>' +
+            '<td class="num">' + (v.wrongLeft != null ? v.wrongLeft + '개' : '-') + '</td>' +
+            '<td class="num">' + Math.round((Number(v.durationSec) || 0) / 60) + '분</td>' +
+            '<td>' + agoText(minutesAgo(v.updatedAt)) + '</td></tr>';
+        }).join('') + '</tbody></table></div>'
+        : '<div class="hint">오늘 단어 공부를 시작한 학생이 아직 없습니다. 아이가 앱에서 공부를 시작하면 여기에 바로 나타납니다.</div>') +
+      '<p class="hint" style="margin:10px 0 0;font-size:12px">' +
+        '오늘 정답률 80%가 되면 아이가 학습을 끝낼 수 있습니다. 80%가 안 돼도 오답 클리어를 3번 돌면 끝나고, 남은 오답은 여기에 표시됩니다.</p>' +
+      '</div></div>';
+  }
+
   /* ---------- 렌더 ---------- */
   function render(el) {
+    // '몇 분 전' 글자가 멈춰 있지 않게, 이 화면을 보는 동안 30초마다 다시 그립니다.
+    clearInterval(tick);
+    tick = setInterval(function () {
+      if (!document.body.contains(el) || String(location.hash).indexOf('#/vocab') !== 0) { clearInterval(tick); return; }
+      if (document.querySelector('.modal-wrap')) return;
+      render(el);
+    }, 30000);
+
     var data = rowsData();
     var totals = data.reduce(function (a, d) {
       a.sessions += d.sum.sessions; a.total += d.sum.total;
@@ -6052,6 +6128,8 @@ Views.vocab = (function () {
           '<button class="btn primary" id="imp">기록 가져오기</button>' +
         '</div>' +
       '</div></div>' +
+
+      liveCard() +
 
       '<div class="grid g-4" style="margin-bottom:16px">' +
         '<div class="stat accent"><div class="lbl">평균 정답률</div><div class="val">' + U.pct(totals.correct, totals.total) + '<small>%</small></div>' +
