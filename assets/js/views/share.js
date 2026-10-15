@@ -6,7 +6,7 @@
 window.Views = window.Views || {};
 Views.share = (function () {
 
-  var state = { studentId: '', from: U.daysAgo(29), to: U.ymd(), comment: '', reading: true };
+  var state = { studentId: '', from: U.daysAgo(29), to: U.ymd(), comment: '', reading: true, grades: true };
 
   function title() { return '학부모 공유'; }
   function sub() { return '기간별 학습 리포트를 만들어 링크로 전달합니다'; }
@@ -45,6 +45,11 @@ Views.share = (function () {
       v: 1,
       kind: opts.attendance === false ? 'reading' : '',
       reading: opts.reading || opts.attendance === false ? readingData(s, from, to) : null,
+      // 시험 기록 — 링크에 담기므로 짧은 이름으로 줄입니다 (d 등록일 · e 시험명 · sc 점수·결과)
+      // 본사 성적표 주소는 학부모님이 열 수 없어 넣지 않습니다.
+      grades: opts.grades ? Store.grades({ studentId: studentId, from: from, to: to }).map(function (g) {
+        return { d: String(g.registeredAt || '').slice(0, 10), e: g.exam, sc: g.score || '' };
+      }) : null,
       academy: { name: ac.name, campus: ac.campus, phone: ac.phone, address: ac.address },
       student: { name: s.name, grade: s.grade || '', className: Store.scheduleOf(s).className },
       period: { from: from, to: to },
@@ -81,6 +86,17 @@ Views.share = (function () {
               '<span class="tag ' + (BR_TAG[x.b] || 'gray') + '">북리포트 ' + U.esc(BR_LABEL[x.b] || x.b) + '</span></div>';
           }).join('') + '</div>'
         : '<div class="hint">이 기간에 빌려간 책이 없습니다.</div>');
+  }
+
+  function gradesHtml(list) {
+    return '<div class="section-title">시험 기록</div>' +
+      (list.length
+        ? '<div class="rp-books">' + list.map(function (g) {
+            return '<div class="rp-book"><div class="rp-book-t"><b>' + U.esc(g.e) + '</b>' +
+              '<span>' + U.esc(g.d && /^\d{4}-\d{2}-\d{2}$/.test(g.d) ? U.shortDate(g.d) : (g.d || '')) + '</span></div>' +
+              (g.sc ? '<span class="tag blue">' + U.esc(g.sc) + '</span>' : '') + '</div>';
+          }).join('') + '</div>'
+        : '<div class="hint">이 기간에 본 시험이 없습니다.</div>');
   }
 
   /* ---------- 리포트 HTML (공유 화면과 미리보기가 공용) ---------- */
@@ -132,6 +148,7 @@ Views.share = (function () {
           : '') +
 
         (readingOnly ? '' : '<div class="section-title">기간 내 출결 기록</div>' + rows) +
+        (rep.grades ? gradesHtml(rep.grades) : '') +
         (rep.reading ? readingHtml(rep.reading) : '') +
 
         '<div style="margin-top:22px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:#93a4b4;line-height:1.7">' +
@@ -177,9 +194,11 @@ Views.share = (function () {
               '<textarea id="sh-comment" placeholder="이번 기간 아이의 학습 모습을 한두 문장으로 남겨 주세요." style="min-height:96px">' + U.esc(state.comment) + '</textarea></label>' +
             '<label class="check' + (state.reading ? ' on' : '') + '" style="display:inline-flex;margin-bottom:14px">' +
               '<input type="checkbox" id="sh-reading"' + (state.reading ? ' checked' : '') + '>독서 이력 포함 (빌린 책 · 북리포트 제출)</label>' +
+            '<label class="check' + (state.grades ? ' on' : '') + '" style="display:inline-flex;margin-bottom:14px">' +
+              '<input type="checkbox" id="sh-grades"' + (state.grades ? ' checked' : '') + '>시험 기록 포함 (시험명 · 점수)</label>' +
             '<button class="btn primary block" id="sh-make" style="margin-bottom:8px">리포트 생성 · 링크 만들기</button>' +
             '<button class="btn block" id="sh-print">인쇄 / PDF 저장</button>' +
-            '<p class="hint" style="margin:14px 0 0">링크에는 <b>학생 이름과 출결 기록</b>(독서 이력을 넣으면 빌린 책 제목·북리포트 상태까지)만 담깁니다. 연락처는 포함되지 않습니다. ' +
+            '<p class="hint" style="margin:14px 0 0">링크에는 <b>학생 이름과 출결 기록</b>(독서 이력·시험 기록을 넣으면 책 제목·북리포트 상태·시험명·점수까지)만 담깁니다. 상담 기록은 담기지 않습니다. 연락처는 포함되지 않습니다. ' +
             '링크를 아는 사람은 누구나 열람할 수 있으니 학부모님께만 전달해 주세요.</p>' +
           '</div>' +
         '</div>' +
@@ -193,7 +212,7 @@ Views.share = (function () {
         el.querySelector('#sh-from').value,
         el.querySelector('#sh-to').value,
         el.querySelector('#sh-comment').value.trim(),
-        { reading: el.querySelector('#sh-reading').checked }
+        { reading: el.querySelector('#sh-reading').checked, grades: el.querySelector('#sh-grades').checked }
       );
     }
 
@@ -210,6 +229,11 @@ Views.share = (function () {
     });
     el.querySelector('#sh-reading').addEventListener('change', function (e) {
       state.reading = e.target.checked;
+      e.target.parentNode.classList.toggle('on', e.target.checked);
+      preview();
+    });
+    el.querySelector('#sh-grades').addEventListener('change', function (e) {
+      state.grades = e.target.checked;
       e.target.parentNode.classList.toggle('on', e.target.checked);
       preview();
     });

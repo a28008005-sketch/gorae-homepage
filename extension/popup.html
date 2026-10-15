@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>고래영어 성적 연동</title>
+<style>
+  :root{--navy:#0a2033;--navy-3:#17405f;--brass:#a8894f;--ink:#14212c;--muted:#6b7b8a;--line:#e3e7ec;
+        --ok:#2e7a57;--ok-soft:#eaf2ed;--bad:#a8453f;--bad-soft:#f7ecec;--warn-soft:#f7f1e4}
+  *{box-sizing:border-box}
+  body{margin:0;width:340px;font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+       font-size:13px;color:var(--ink);background:#f5f6f8;word-break:keep-all}
+  header{background:var(--navy);color:#fff;padding:12px 14px;display:flex;align-items:center;gap:9px}
+  header img{width:26px;height:26px;border-radius:6px}
+  header b{font-size:14px;display:block}
+  header span{font-size:11px;color:#a3b6c7}
+  main{padding:12px 14px}
+  .box{background:#fff;border:1px solid var(--line);border-radius:10px;padding:11px 12px;margin-bottom:10px}
+  .status{font-size:12.5px;line-height:1.6}
+  .status.ok{border-color:#cfe3d7;background:var(--ok-soft)}
+  .status.bad{border-color:#e8cfcd;background:var(--bad-soft)}
+  .status.warn{background:var(--warn-soft)}
+  .btn{display:block;width:100%;border:1px solid var(--line);background:#fff;border-radius:9px;padding:9px 10px;
+       font:inherit;font-weight:600;cursor:pointer;color:var(--ink)}
+  .btn.primary{background:var(--navy-3);border-color:var(--navy-3);color:#fff;font-size:14px;padding:11px}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn.sm{display:inline-block;width:auto;padding:6px 12px;font-size:12px}
+  details summary{cursor:pointer;font-weight:700;font-size:12.5px;color:var(--muted);padding:2px 0}
+  label{display:block;font-size:12px;color:var(--muted);font-weight:600;margin-top:10px}
+  input[type=text],input[type=url],input[type=password]{width:100%;margin-top:4px;padding:7px 9px;border:1px solid var(--line);
+       border-radius:7px;font:inherit;color:var(--ink)}
+  .radio{display:flex;gap:7px;align-items:flex-start;font-weight:500;color:var(--ink);margin-top:8px;cursor:pointer}
+  .radio input{margin-top:3px}
+  .radio small{display:block;color:var(--muted);font-size:11.5px}
+  .hint{font-size:11.5px;color:var(--muted);line-height:1.6;margin:8px 0 0}
+  .row{display:flex;gap:8px;align-items:center;margin-top:10px}
+  .last{font-size:11.5px;color:var(--muted);margin-top:8px;line-height:1.5}
+  [hidden]{display:none!important}
+</style>
+</head>
+<body>
+<header>
+  <img src="icons/icon48.png" alt="">
+  <div><b>고래영어 성적 연동</b><span>본사 성적 목록 → 원생관리 성적 관리</span></div>
+</header>
+<main>
+  <div class="box status" id="status">이 화면을 확인하는 중…</div>
+
+  <button class="btn primary" id="sync" disabled>현재 페이지 데이터 동기화(전송)</button>
+  <div class="last" id="last"></div>
+
+  <div class="box" style="margin-top:12px">
+    <details id="settings">
+      <summary>보낼 곳 설정</summary>
+
+      <label class="radio"><input type="radio" name="mode" value="app">
+        <span>원생관리로 보내기 (권장)<small>원생관리 창이 열리고 확인 창이 뜹니다. 서버가 필요 없습니다.</small></span></label>
+      <label class="radio"><input type="radio" name="mode" value="api">
+        <span>대시보드 API 로 POST<small>직접 만든 서버가 있을 때만 씁니다.</small></span></label>
+
+      <div id="app-fields">
+        <label>원생관리 주소<input type="url" id="appUrl" placeholder="https://staff.whalejinju.kr/"></label>
+      </div>
+      <div id="api-fields" hidden>
+        <label>대시보드 API 엔드포인트 URL<input type="url" id="apiUrl" placeholder="https://example.com/api/grades"></label>
+        <label>인증 토큰 (선택)<input type="password" id="apiToken" placeholder="Authorization: Bearer 에 들어갑니다"></label>
+        <p class="hint">저장을 누르면 크롬이 이 주소로 보내도 되는지 한 번 묻습니다. 허락해야 보낼 수 있습니다.</p>
+      </div>
+
+      <div class="row"><button class="btn sm" id="save">저장</button><span class="hint" id="saved" style="margin:0"></span></div>
+    </details>
+  </div>
+</main>
+<script src="popup.js"></script>
+</body>
+</html>

@@ -181,6 +181,8 @@ Views.dashboard = (function () {
 
     var html = '<div class="calendar-grid" id="calendar-grid">';
     var days = ['일', '월', '화', '수', '목', '금', '토'];
+    var followDates = {};   // 상담 팔로우업 날짜
+    Store.counsels({ pending: true }).forEach(function (c) { followDates[c.followUpDate] = true; });
 
     days.forEach(function(d) {
       html += '<div class="calendar-day-label">' + d + '</div>';
@@ -212,6 +214,7 @@ Views.dashboard = (function () {
       if (hwOnDate.length) markers += '<i class="dot hw" title="숙제 마감"></i>';
       if (libOnDate.length) markers += '<i class="dot lib" title="도서 반납"></i>';
       if (dayOverview.expected.length) markers += '<i class="dot cls" title="수업 예정"></i>';
+      if (followDates[dateStr]) markers += '<i class="dot csl" title="상담 팔로우업"></i>';
 
       html += '<div class="' + classes + '" data-date="' + dateStr + '">' +
               '<span class="d">' + date.getDate() + '</span>' +
@@ -250,6 +253,7 @@ Views.dashboard = (function () {
             '<div class="cal-legend">' +
               '<span><i class="dot hw"></i>숙제 마감</span>' +
               '<span><i class="dot lib"></i>도서 반납</span>' +
+              '<span><i class="dot csl"></i>상담 팔로우업</span>' +
               '<span><i class="dot cls"></i>수업 예정</span>' +
             '</div>' +
           '</div>' +
@@ -399,6 +403,10 @@ Views.dashboard = (function () {
       var hw = Store.homeworks({ open: true }).filter(function (h) { return h.dueDate === dateStr; });
       var loans = Store.loans({ open: true }).filter(function (l) { return l.dueDate === dateStr; });
       var overview = Store.dayOverview(dateStr);
+      // 상담 팔로우업 — 오늘 칸에는 날짜가 지난 것까지 함께 보여 줍니다
+      var follows = Store.counsels({ pending: true }).filter(function (c) {
+        return dateStr === today ? c.followUpDate <= dateStr : c.followUpDate === dateStr;
+      });
 
       var html = '<div class="section-title">' + U.esc(label) + ' (' + U.dayOf(dateStr) + ')</div>';
       var any = false;
@@ -423,6 +431,15 @@ Views.dashboard = (function () {
         html += '<div class="cal-item"><i class="dot lib"></i>' +
           '<div><b>도서 반납 · ' + U.esc(st ? st.name : '') + '</b>' +
           '<span>' + U.esc(b ? b.title : '(삭제된 책)') + '</span></div></div>';
+      });
+
+      follows.forEach(function (c) {
+        any = true;
+        var st = Store.student(c.studentId);
+        html += '<a class="cal-item" href="#/grades?tab=counsel&student=' + encodeURIComponent(c.studentId) + '"><i class="dot csl"></i>' +
+          '<div><b>상담 팔로우업 · ' + U.esc(st ? st.name : '') +
+          (c.followUpDate < dateStr ? ' (' + U.dayDiff(c.followUpDate, dateStr) + '일 지남)' : '') + '</b>' +
+          '<span>' + U.esc(c.topic || '') + (c.plan ? ' · ' + U.esc(c.plan.slice(0, 40)) : '') + '</span></div></a>';
       });
 
       if (!any) html += '<div class="empty-day">이 날은 예정된 일정이 없습니다.</div>';
@@ -505,6 +522,10 @@ Views.dashboard = (function () {
       var hw = Store.homeworks({ open: true }).filter(function (h) { return h.dueDate === dateStr; });
       var loans = Store.loans({ open: true }).filter(function (l) { return l.dueDate === dateStr; });
       var overview = Store.dayOverview(dateStr);
+      // 상담 팔로우업 — 오늘 칸에는 날짜가 지난 것까지 함께 보여 줍니다
+      var follows = Store.counsels({ pending: true }).filter(function (c) {
+        return dateStr === today ? c.followUpDate <= dateStr : c.followUpDate === dateStr;
+      });
 
       var html = '<div class="section-title">' + U.esc(label) + ' (' + U.dayOf(dateStr) + ')</div>';
       var any = false;
@@ -529,6 +550,15 @@ Views.dashboard = (function () {
         html += '<div class="cal-item"><i class="dot lib"></i>' +
           '<div><b>도서 반납 · ' + U.esc(st ? st.name : '') + '</b>' +
           '<span>' + U.esc(b ? b.title : '(삭제된 책)') + '</span></div></div>';
+      });
+
+      follows.forEach(function (c) {
+        any = true;
+        var st = Store.student(c.studentId);
+        html += '<a class="cal-item" href="#/grades?tab=counsel&student=' + encodeURIComponent(c.studentId) + '"><i class="dot csl"></i>' +
+          '<div><b>상담 팔로우업 · ' + U.esc(st ? st.name : '') +
+          (c.followUpDate < dateStr ? ' (' + U.dayDiff(c.followUpDate, dateStr) + '일 지남)' : '') + '</b>' +
+          '<span>' + U.esc(c.topic || '') + (c.plan ? ' · ' + U.esc(c.plan.slice(0, 40)) : '') + '</span></div></a>';
       });
 
       if (!any) html += '<div class="empty-day">이 날은 예정된 일정이 없습니다.</div>';

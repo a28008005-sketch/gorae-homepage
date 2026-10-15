@@ -1,0 +1,57 @@
+{
+  "manifest_version": 3,
+  "name": "고래영어 성적 연동",
+  "short_name": "고래 성적연동",
+  "version": "1.0.0",
+  "description": "본사 성적 목록(englishwhale.com)의 표를 읽어 고래영어 원생관리(성적 관리)로 보냅니다.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_title": "고래영어 성적 연동",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": ["storage", "activeTab", "scripting"],
+  "host_permissions": [
+    "https://englishwhale.com/*",
+    "https://www.englishwhale.com/*",
+    "http://englishwhale.com/*",
+    "http://www.englishwhale.com/*",
+    "https://staff.whalejinju.kr/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*"
+  ],
+  "optional_host_permissions": ["https://*/*", "http://*/*"],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://englishwhale.com/pt/grade_list.php*",
+        "https://www.englishwhale.com/pt/grade_list.php*",
+        "http://englishwhale.com/pt/grade_list.php*",
+        "http://www.englishwhale.com/pt/grade_list.php*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle",
+      "all_frames": true
+    },
+    {
+      "matches": [
+        "https://staff.whalejinju.kr/*",
+        "http://localhost/*",
+        "http://127.0.0.1/*"
+      ],
+      "js": ["bridge.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

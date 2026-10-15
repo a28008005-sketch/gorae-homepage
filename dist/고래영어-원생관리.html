@@ -553,6 +553,9 @@ body.share-mode .content{padding:0}
 .cal-legend .dot.hw{background:var(--brass)}
 .cal-legend .dot.lib{background:var(--mint)}
 .cal-legend .dot.cls{background:var(--blue-2)}
+.cal-legend .dot.csl,.cal-item .dot.csl,.calendar-day .dot.csl{background:var(--bad)}
+a.cal-item{color:inherit;text-decoration:none}
+a.cal-item:hover b{text-decoration:underline}
 .cal-task b{color:var(--ink);font-variant-numeric:tabular-nums;margin-right:3px}
 
 .calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
@@ -712,6 +715,27 @@ div.fld input[type=file]{font-size:13px;color:var(--ink);font-weight:400}
 .rp-book-t b{font-size:14px}
 .rp-book-t span{font-size:12px;color:var(--muted)}
 
+/* ===== 성적 관리 · 상담 이력 ===== */
+.gr-tabs{flex-wrap:wrap}
+.csl-head{padding:4px 0 14px;margin-bottom:14px;border-bottom:1px solid var(--line)}
+.csl-thread{border:1px solid var(--line);border-radius:10px;padding:4px 14px;margin-bottom:12px;background:#fff}
+.csl-item{padding:10px 0;border-bottom:1px dashed var(--line)}
+.csl-item:last-child{border-bottom:0}
+.csl-item.follow{margin-left:14px;padding-left:12px;border-left:2px solid var(--mint-soft)}
+.csl-meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px}
+.csl-arrow{font-size:12px;font-weight:700;color:var(--mint)}
+.csl-name{font-weight:700;color:var(--blue)}
+.csl-grade{font-size:12px;color:var(--blue);margin-top:6px}
+.csl-body{font-size:13.5px;line-height:1.7;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere;margin-top:6px}
+.csl-plan{font-size:13px;line-height:1.6;background:var(--brass-soft);border-radius:8px;padding:7px 10px;margin-top:8px;white-space:pre-wrap}
+.csl-plan b{color:#8a6226;margin-right:8px;font-size:12px}
+.csl-acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.csl-due{padding:10px 0;border-bottom:1px solid var(--line)}
+.csl-due:last-child{border-bottom:0}
+.csl-due a{color:inherit;text-decoration:none}
+.csl-due-t{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13.5px}
+.csl-parent{background:var(--mint-soft);border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:13px;line-height:1.6}
+
 </style>
 </head>
 <body>
@@ -738,8 +762,7 @@ div.fld input[type=file]{font-size:13px;color:var(--ink);font-weight:400}
       <a href="#/news"       data-route="news"><i data-icon="news" data-icon-size="17"></i><span>영자신문 워크시트</span></a>
       <a href="#/resources"  data-route="resources"><i data-icon="archive" data-icon-size="17"></i><span>학원자료실</span></a>
       <a href="#/tuition"    data-route="tuition"><i data-icon="tuition" data-icon-size="17"></i><span>수강료 납부</span></a>
-      <a href="#/stats"      data-route="stats"><i data-icon="stats" data-icon-size="17"></i><span>통계</span></a>
-      <a href="#/share"      data-route="share"><i data-icon="share" data-icon-size="17"></i><span>학부모 공유</span></a>
+      <a href="#/grades"     data-route="grades"><i data-icon="stats" data-icon-size="17"></i><span>성적 관리</span></a>
       <a href="#/settings"   data-route="settings"><i data-icon="settings" data-icon-size="17"></i><span>설정 · 백업</span></a>
     </nav>
 
@@ -1359,6 +1382,10 @@ var Store = (function () {
   var CLASS_COLORS = ['#215a86', '#357f73', '#a8894f', '#6b5f96', '#a8453f', '#2e7a57', '#96607a', '#4a6577'];
   var WEEKDAYS = ['월', '화', '수', '목', '금', '토'];
   var PAY_METHODS = ['계좌이체', '현금', '카드', '기타'];
+  // 상담 이력 — 누구와, 어떻게, 무엇을 이야기했는지
+  var COUNSEL_WITH = ['학부모', '학생', '학부모+학생'];
+  var COUNSEL_CHANNELS = ['대면', '전화', '문자·카톡', '온라인'];
+  var COUNSEL_TOPICS = ['성적', '학습태도', '진도·레벨', '진로·진학', '수강·행정', '생활', '기타'];
 
   var DEFAULTS = {
     version: 1,
@@ -1393,7 +1420,9 @@ var Store = (function () {
     loans: [],        // 도서 대여 기록
     resources: [],    // 학원자료실 (링크·파일 모음)
     newsItems: [],    // 영자신문 워크시트 목록
-    newsProgress: []  // 학생별 영자신문 진도 (기사마다 진행중·완료)
+    newsProgress: [], // 학생별 영자신문 진도 (기사마다 진행중·완료)
+    grades: [],       // 시험 성적 (본사 성적 목록에서 가져온 기록)
+    counsels: []      // 학생별 상담 이력 (후속 상담으로 이어집니다)
   };
 
   var data = null;
@@ -1406,7 +1435,8 @@ var Store = (function () {
     memo: 'memos', task: 'tasks', payment: 'payments',
     homework: 'homeworks', submission: 'submissions',
     vocab: 'vocabLogs', book: 'books', loan: 'loans',
-    resource: 'resources', news: 'newsItems', newsprog: 'newsProgress'
+    resource: 'resources', news: 'newsItems', newsprog: 'newsProgress',
+    grade: 'grades', counsel: 'counsels'
   };
 
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
@@ -1646,6 +1676,8 @@ var Store = (function () {
     kill(d.vocabLogs, 'vocab', function (v) { return v.studentId === id; });
     kill(d.loans, 'loan', function (l) { return l.studentId === id; });
     kill(d.newsProgress, 'newsprog', function (x) { return x.studentId === id; });
+    kill(d.grades, 'grade', function (g) { return g.studentId === id; });
+    kill(d.counsels, 'counsel', function (c) { return c.studentId === id; });
     save(changed);
   }
   /** 특정 요일에 수업이 있는 등록생 */
@@ -2402,6 +2434,201 @@ var Store = (function () {
     });
   }
 
+  /* ---------- 시험 성적 ----------
+   * 본사 성적 목록(englishwhale.com)에서 크롬 확장 프로그램이나 표 붙여넣기로 가져옵니다.
+   * 같은 기록을 두 번 가져와도 한 줄만 남도록 '학생명|시험명|등록일시' 로 같은 기록을 찾습니다.
+   */
+  function gradeKey(g) {
+    return [String(g.name || '').trim(), String(g.exam || '').trim(), String(g.registeredAt || '').trim()].join('|');
+  }
+  function grades(opts) {
+    opts = opts || {};
+    var list = alive(get().grades).slice();
+    if (opts.studentId) list = list.filter(function (g) { return g.studentId === opts.studentId; });
+    if (opts.unlinked) list = list.filter(function (g) { return !g.studentId || !student(g.studentId); });
+    if (opts.from) list = list.filter(function (g) { return String(g.registeredAt || '').slice(0, 10) >= opts.from; });
+    if (opts.to) list = list.filter(function (g) { return String(g.registeredAt || '').slice(0, 10) <= opts.to; });
+    if (opts.q) {
+      var q = String(opts.q).toLowerCase();
+      list = list.filter(function (g) {
+        return [g.name, g.school, g.grade, g.exam, g.score, g.memo].join(' ').toLowerCase().indexOf(q) >= 0;
+      });
+    }
+    return list.sort(function (a, b) {
+      return String(b.registeredAt || '').localeCompare(String(a.registeredAt || ''));
+    });
+  }
+  function gradeRecord(id) {
+    return alive(get().grades).filter(function (g) { return g.id === id; })[0] || null;
+  }
+  function saveGrade(g) {
+    var d = get(), rec = null;
+    if (g.id) {
+      for (var i = 0; i < d.grades.length; i++) {
+        if (d.grades[i].id === g.id) { rec = Object.assign(d.grades[i], g); break; }
+      }
+    }
+    if (!rec) { g.id = g.id || U.uid('grd'); g.createdAt = g.createdAt || new Date().toISOString(); rec = g; d.grades.push(rec); }
+    stamp(rec);
+    save({ kind: 'grade', id: rec.id });
+    return rec.id;
+  }
+  function deleteGrade(id) { return softDelete('grades', 'grade', id); }
+
+  /**
+   * 가져온 성적을 학생에게 연결합니다. 이름이 같고 학교·학년까지 맞는 학생을 먼저 찾습니다.
+   * 같은 이름이 둘 이상인데 구별이 안 되면 연결하지 않습니다 (잘못 붙는 것보다 비워 두는 게 낫습니다).
+   */
+  function matchGradeStudent(row) {
+    var name = String(row.name || '').trim();
+    if (!name) return null;
+    var same = students({ includeArchived: true }).filter(function (s) { return s.name === name; });
+    if (same.length <= 1) return same[0] || null;
+    var school = String(row.school || '').trim();
+    var grade = String(row.grade || '').replace(/학년$/, '').trim();
+    // 학생 명부에 적힌 값만 비교합니다 (명부에 학교가 없으면 학교로는 거르지 않습니다)
+    var narrowed = same.filter(function (s) {
+      return (!school || !s.school || String(s.school).trim() === school) &&
+             (!grade || !s.grade || String(s.grade).indexOf(grade) >= 0);
+    });
+    return narrowed.length === 1 ? narrowed[0] : null;
+  }
+
+  /**
+   * 여러 줄을 한 번에 넣습니다.
+   * @return {{added:number, updated:number, unchanged:number, unlinked:number}}
+   */
+  function importGrades(rows, source) {
+    var d = get();
+    var byKey = {};
+    alive(d.grades).forEach(function (g) { byKey[gradeKey(g)] = g; });
+    var changed = [], res = { added: 0, updated: 0, unchanged: 0, unlinked: 0 };
+    var now = new Date().toISOString();
+    (rows || []).forEach(function (r) {
+      if (!r || !String(r.name || '').trim() || !String(r.exam || '').trim()) return;
+      var row = {
+        no: String(r.no || '').trim(),
+        name: String(r.name).trim(),
+        school: String(r.school || '').trim(),
+        grade: String(r.grade || '').trim(),
+        exam: String(r.exam).trim(),
+        registeredAt: String(r.registeredAt || '').trim(),
+        links: (r.links || []).filter(function (l) { return l && l.url; })
+                 .map(function (l) { return { label: String(l.label || '링크').trim(), url: String(l.url) }; })
+      };
+      var local = byKey[gradeKey(row)];
+      if (local) {
+        // 본사 쪽 값만 맞춥니다. 선생님이 적은 점수·메모·연결된 학생은 건드리지 않습니다.
+        var before = JSON.stringify([local.no, local.school, local.grade, local.links]);
+        local.no = row.no; local.school = row.school; local.grade = row.grade;
+        if (row.links.length) local.links = row.links;
+        if (!local.studentId) { var m0 = matchGradeStudent(row); if (m0) local.studentId = m0.id; }
+        if (before === JSON.stringify([local.no, local.school, local.grade, local.links])) { res.unchanged++; return; }
+        stamp(local);
+        changed.push({ kind: 'grade', id: local.id });
+        res.updated++;
+      } else {
+        var m = matchGradeStudent(row);
+        row.id = U.uid('grd');
+        row.studentId = m ? m.id : '';
+        row.score = '';
+        row.memo = '';
+        row.source = source || '';
+        row.importedAt = now;
+        row.createdAt = now;
+        stamp(row);
+        d.grades.push(row);
+        byKey[gradeKey(row)] = row;
+        changed.push({ kind: 'grade', id: row.id });
+        res.added++;
+      }
+      if (!byKey[gradeKey(row)].studentId) res.unlinked++;
+    });
+    if (changed.length) save(changed);
+    return res;
+  }
+
+  /* ---------- 상담 이력 ----------
+   * 상담 한 건마다 '다음에 확인할 날(followUpDate)' 을 정해 둘 수 있습니다.
+   * 후속 상담은 parentId 로 앞 상담에 이어 붙고, 이어 쓰면 앞 상담의 팔로우업은 완료로 바뀝니다.
+   */
+  function counsels(opts) {
+    opts = opts || {};
+    var list = alive(get().counsels).slice();
+    if (opts.studentId) list = list.filter(function (c) { return c.studentId === opts.studentId; });
+    if (opts.topic) list = list.filter(function (c) { return c.topic === opts.topic; });
+    if (opts.pending) list = list.filter(isFollowUpPending);
+    if (opts.q) {
+      var q = String(opts.q).toLowerCase();
+      list = list.filter(function (c) {
+        var s = student(c.studentId);
+        return [s ? s.name : '', c.topic, c.content, c.plan].join(' ').toLowerCase().indexOf(q) >= 0;
+      });
+    }
+    return list.sort(function (a, b) {
+      return String(b.date || '').localeCompare(String(a.date || '')) ||
+             String(b.createdAt || '').localeCompare(String(a.createdAt || ''));
+    });
+  }
+  function counsel(id) {
+    return alive(get().counsels).filter(function (c) { return c.id === id; })[0] || null;
+  }
+  function isFollowUpPending(c) { return !!c.followUpDate && !c.followUpDone; }
+  function saveCounsel(c) {
+    var d = get(), rec = null, changed = [];
+    if (c.id) {
+      for (var i = 0; i < d.counsels.length; i++) {
+        if (d.counsels[i].id === c.id) { rec = Object.assign(d.counsels[i], c); break; }
+      }
+    }
+    if (!rec) {
+      c.id = c.id || U.uid('csl');
+      c.date = c.date || U.ymd();
+      c.createdAt = c.createdAt || new Date().toISOString();
+      rec = c; d.counsels.push(rec);
+      // 후속 상담을 남기면 앞 상담에서 기다리던 확인은 끝난 것으로 봅니다.
+      var parent = c.parentId ? counsel(c.parentId) : null;
+      if (parent && isFollowUpPending(parent)) {
+        parent.followUpDone = true;
+        stamp(parent);
+        changed.push({ kind: 'counsel', id: parent.id });
+      }
+    }
+    stamp(rec);
+    changed.push({ kind: 'counsel', id: rec.id });
+    save(changed);
+    return rec.id;
+  }
+  function setFollowUpDone(id, done) {
+    var c = counsel(id);
+    if (!c) return;
+    c.followUpDone = !!done;
+    stamp(c);
+    save({ kind: 'counsel', id: c.id });
+  }
+  function deleteCounsel(id) { return softDelete('counsels', 'counsel', id); }
+
+  /** 상담을 첫 상담부터 이어진 순서대로 묶습니다 (가장 최근 흐름이 위로) */
+  function counselThreads(studentId) {
+    var list = counsels({ studentId: studentId });
+    var byId = {};
+    list.forEach(function (c) { byId[c.id] = c; });
+    function rootOf(c) {
+      var seen = {};
+      while (c.parentId && byId[c.parentId] && !seen[c.id]) { seen[c.id] = 1; c = byId[c.parentId]; }
+      return c;
+    }
+    var threads = {}, order = [];
+    list.slice().reverse().forEach(function (c) {
+      var r = rootOf(c);
+      if (!threads[r.id]) { threads[r.id] = []; order.push(r.id); }
+      threads[r.id].push(c);
+    });
+    return order.map(function (id) { return threads[id]; }).sort(function (a, b) {
+      return String(b[b.length - 1].date).localeCompare(String(a[a.length - 1].date));
+    });
+  }
+
   /* ---------- 집계 ---------- */
   /** 한 학생의 기간 통계 (노션의 출석률 / 체크사항 수식과 동일한 의미) */
   function summarize(studentId, from, to) {
@@ -2613,6 +2840,11 @@ var Store = (function () {
   return {
     STATUS: STATUS, GRADES: GRADES, FLAGS: FLAGS,
     ATTITUDES: ATTITUDES, WEEKDAYS: WEEKDAYS, PAY_METHODS: PAY_METHODS,
+    COUNSEL_WITH: COUNSEL_WITH, COUNSEL_CHANNELS: COUNSEL_CHANNELS, COUNSEL_TOPICS: COUNSEL_TOPICS,
+    grades: grades, gradeRecord: gradeRecord, saveGrade: saveGrade, deleteGrade: deleteGrade,
+    importGrades: importGrades, matchGradeStudent: matchGradeStudent,
+    counsels: counsels, counsel: counsel, saveCounsel: saveCounsel, deleteCounsel: deleteCounsel,
+    setFollowUpDone: setFollowUpDone, isFollowUpPending: isFollowUpPending, counselThreads: counselThreads,
     HOMEWORK_TYPES: HOMEWORK_TYPES, SUBMIT_STATUS: SUBMIT_STATUS,
     BOOK_CATEGORIES: BOOK_CATEGORIES,
     RESOURCE_CATEGORIES: RESOURCE_CATEGORIES,
@@ -4543,6 +4775,8 @@ Views.dashboard = (function () {
 
     var html = '<div class="calendar-grid" id="calendar-grid">';
     var days = ['일', '월', '화', '수', '목', '금', '토'];
+    var followDates = {};   // 상담 팔로우업 날짜
+    Store.counsels({ pending: true }).forEach(function (c) { followDates[c.followUpDate] = true; });
 
     days.forEach(function(d) {
       html += '<div class="calendar-day-label">' + d + '</div>';
@@ -4574,6 +4808,7 @@ Views.dashboard = (function () {
       if (hwOnDate.length) markers += '<i class="dot hw" title="숙제 마감"></i>';
       if (libOnDate.length) markers += '<i class="dot lib" title="도서 반납"></i>';
       if (dayOverview.expected.length) markers += '<i class="dot cls" title="수업 예정"></i>';
+      if (followDates[dateStr]) markers += '<i class="dot csl" title="상담 팔로우업"></i>';
 
       html += '<div class="' + classes + '" data-date="' + dateStr + '">' +
               '<span class="d">' + date.getDate() + '</span>' +
@@ -4612,6 +4847,7 @@ Views.dashboard = (function () {
             '<div class="cal-legend">' +
               '<span><i class="dot hw"></i>숙제 마감</span>' +
               '<span><i class="dot lib"></i>도서 반납</span>' +
+              '<span><i class="dot csl"></i>상담 팔로우업</span>' +
               '<span><i class="dot cls"></i>수업 예정</span>' +
             '</div>' +
           '</div>' +
@@ -4761,6 +4997,10 @@ Views.dashboard = (function () {
       var hw = Store.homeworks({ open: true }).filter(function (h) { return h.dueDate === dateStr; });
       var loans = Store.loans({ open: true }).filter(function (l) { return l.dueDate === dateStr; });
       var overview = Store.dayOverview(dateStr);
+      // 상담 팔로우업 — 오늘 칸에는 날짜가 지난 것까지 함께 보여 줍니다
+      var follows = Store.counsels({ pending: true }).filter(function (c) {
+        return dateStr === today ? c.followUpDate <= dateStr : c.followUpDate === dateStr;
+      });
 
       var html = '<div class="section-title">' + U.esc(label) + ' (' + U.dayOf(dateStr) + ')</div>';
       var any = false;
@@ -4785,6 +5025,15 @@ Views.dashboard = (function () {
         html += '<div class="cal-item"><i class="dot lib"></i>' +
           '<div><b>도서 반납 · ' + U.esc(st ? st.name : '') + '</b>' +
           '<span>' + U.esc(b ? b.title : '(삭제된 책)') + '</span></div></div>';
+      });
+
+      follows.forEach(function (c) {
+        any = true;
+        var st = Store.student(c.studentId);
+        html += '<a class="cal-item" href="#/grades?tab=counsel&student=' + encodeURIComponent(c.studentId) + '"><i class="dot csl"></i>' +
+          '<div><b>상담 팔로우업 · ' + U.esc(st ? st.name : '') +
+          (c.followUpDate < dateStr ? ' (' + U.dayDiff(c.followUpDate, dateStr) + '일 지남)' : '') + '</b>' +
+          '<span>' + U.esc(c.topic || '') + (c.plan ? ' · ' + U.esc(c.plan.slice(0, 40)) : '') + '</span></div></a>';
       });
 
       if (!any) html += '<div class="empty-day">이 날은 예정된 일정이 없습니다.</div>';
@@ -4867,6 +5116,10 @@ Views.dashboard = (function () {
       var hw = Store.homeworks({ open: true }).filter(function (h) { return h.dueDate === dateStr; });
       var loans = Store.loans({ open: true }).filter(function (l) { return l.dueDate === dateStr; });
       var overview = Store.dayOverview(dateStr);
+      // 상담 팔로우업 — 오늘 칸에는 날짜가 지난 것까지 함께 보여 줍니다
+      var follows = Store.counsels({ pending: true }).filter(function (c) {
+        return dateStr === today ? c.followUpDate <= dateStr : c.followUpDate === dateStr;
+      });
 
       var html = '<div class="section-title">' + U.esc(label) + ' (' + U.dayOf(dateStr) + ')</div>';
       var any = false;
@@ -4891,6 +5144,15 @@ Views.dashboard = (function () {
         html += '<div class="cal-item"><i class="dot lib"></i>' +
           '<div><b>도서 반납 · ' + U.esc(st ? st.name : '') + '</b>' +
           '<span>' + U.esc(b ? b.title : '(삭제된 책)') + '</span></div></div>';
+      });
+
+      follows.forEach(function (c) {
+        any = true;
+        var st = Store.student(c.studentId);
+        html += '<a class="cal-item" href="#/grades?tab=counsel&student=' + encodeURIComponent(c.studentId) + '"><i class="dot csl"></i>' +
+          '<div><b>상담 팔로우업 · ' + U.esc(st ? st.name : '') +
+          (c.followUpDate < dateStr ? ' (' + U.dayDiff(c.followUpDate, dateStr) + '일 지남)' : '') + '</b>' +
+          '<span>' + U.esc(c.topic || '') + (c.plan ? ' · ' + U.esc(c.plan.slice(0, 40)) : '') + '</span></div></a>';
       });
 
       if (!any) html += '<div class="empty-day">이 날은 예정된 일정이 없습니다.</div>';
@@ -5081,6 +5343,34 @@ Views.students = (function () {
   }
 
   /* ---------- 상세 ---------- */
+  /** 학생 상세의 '성적 · 상담' 칸 — 최근 시험 3건, 최근 상담 3건, 기다리는 팔로우업 */
+  function counselSection(s) {
+    var gs = Store.grades({ studentId: s.id });
+    var cs = Store.counsels({ studentId: s.id });
+    var due = cs.filter(Store.isFollowUpPending);
+    var sid = encodeURIComponent(s.id);
+    return '<div class="section-title">성적 · 상담</div>' +
+      '<div class="grid g-2" style="gap:14px">' +
+        '<div><div class="hint" style="margin-bottom:6px">최근 시험 · 전체 ' + gs.length + '건 ' +
+          '<a href="#" data-goto="#/grades?tab=records&student=' + sid + '">모두 보기 →</a></div>' +
+          (gs.length ? gs.slice(0, 3).map(function (g) {
+            return '<div class="memo-item"><span class="dt">' + U.esc(String(g.registeredAt || '').slice(5, 10) || '-') + '</span>' +
+              '<div class="txt">' + U.esc(g.exam) + (g.score ? ' · <b>' + U.esc(g.score) + '</b>' : '') + '</div></div>';
+          }).join('') : '<div class="hint">가져온 시험 기록이 없습니다.</div>') +
+        '</div>' +
+        '<div><div class="hint" style="margin-bottom:6px">최근 상담 · 전체 ' + cs.length + '건 ' +
+          '<a href="#" data-goto="#/grades?tab=counsel&student=' + sid + '">상담 이력 →</a></div>' +
+          (due.length ? '<div style="margin-bottom:6px"><span class="tag warn">팔로우업 대기 ' + due.length + '건 · 다음 ' +
+            U.esc(U.shortDate(due.map(function (c) { return c.followUpDate; }).sort()[0])) + '</span></div>' : '') +
+          (cs.length ? cs.slice(0, 3).map(function (c) {
+            return '<div class="memo-item"><span class="dt">' + U.shortDate(c.date) + '</span>' +
+              '<div class="txt">' + (c.topic ? '<span class="tag mint">' + U.esc(c.topic) + '</span> ' : '') +
+              U.esc(String(c.content || '').slice(0, 50)) + '</div></div>';
+          }).join('') : '<div class="hint">상담 기록이 없습니다.</div>') +
+        '</div>' +
+      '</div>';
+  }
+
   function openDetail(id) {
     var s = Store.student(id);
     if (!s) return;
@@ -5186,9 +5476,11 @@ Views.students = (function () {
           }).join('') + '</tbody></table></div>'
         : '<div class="hint">청구 기록이 없습니다. 수강료 납부 화면에서 청구서를 생성해 주세요.</div>') +
 
+      counselSection(s) +
+
       '<div class="section-title">메모</div>' +
       '<div class="row" style="margin-bottom:8px">' +
-        '<input type="text" id="d-memo" placeholder="상담 내용, 학습 특이사항 등" style="flex:1">' +
+        '<input type="text" id="d-memo" placeholder="짧은 학습 메모 (상담은 [상담 기록]으로 남겨 주세요)" style="flex:1">' +
         '<button class="btn" id="d-memo-add">추가</button></div>' +
       '<div id="d-memo-list">' +
         (memos.length ? memos.map(function (m) {
@@ -5200,7 +5492,8 @@ Views.students = (function () {
 
     UI.modal({
       title: s.name, wide: true, body: body,
-      footer: '<button class="btn" id="d-share">학부모 공유 →</button>' +
+      footer: '<button class="btn" id="d-share">학부모 리포트 →</button>' +
+              '<button class="btn" id="d-counsel">상담 기록</button>' +
               '<div class="sp"></div>' +
               '<button class="btn" data-close>닫기</button>' +
               '<button class="btn primary" id="d-edit">정보 수정</button>',
@@ -5208,7 +5501,16 @@ Views.students = (function () {
         w.querySelector('#d-edit').addEventListener('click', function () { UI.close(); openForm(s.id); });
         w.querySelector('#d-share').addEventListener('click', function () {
           UI.close();
-          location.hash = '#/share?student=' + encodeURIComponent(s.id);
+          location.hash = '#/grades?tab=report&student=' + encodeURIComponent(s.id);
+        });
+        w.querySelector('#d-counsel').addEventListener('click', function () {
+          UI.close();
+          Views.grades.openCounselForm({ studentId: s.id });
+        });
+        UI.on(w, '[data-goto]', 'click', function (e, a) {
+          e.preventDefault();
+          UI.close();
+          location.hash = a.getAttribute('data-goto');
         });
         function addMemo() {
           var input = w.querySelector('#d-memo');
@@ -9301,7 +9603,7 @@ Views.stats = (function () {
 window.Views = window.Views || {};
 Views.share = (function () {
 
-  var state = { studentId: '', from: U.daysAgo(29), to: U.ymd(), comment: '', reading: true };
+  var state = { studentId: '', from: U.daysAgo(29), to: U.ymd(), comment: '', reading: true, grades: true };
 
   function title() { return '학부모 공유'; }
   function sub() { return '기간별 학습 리포트를 만들어 링크로 전달합니다'; }
@@ -9340,6 +9642,11 @@ Views.share = (function () {
       v: 1,
       kind: opts.attendance === false ? 'reading' : '',
       reading: opts.reading || opts.attendance === false ? readingData(s, from, to) : null,
+      // 시험 기록 — 링크에 담기므로 짧은 이름으로 줄입니다 (d 등록일 · e 시험명 · sc 점수·결과)
+      // 본사 성적표 주소는 학부모님이 열 수 없어 넣지 않습니다.
+      grades: opts.grades ? Store.grades({ studentId: studentId, from: from, to: to }).map(function (g) {
+        return { d: String(g.registeredAt || '').slice(0, 10), e: g.exam, sc: g.score || '' };
+      }) : null,
       academy: { name: ac.name, campus: ac.campus, phone: ac.phone, address: ac.address },
       student: { name: s.name, grade: s.grade || '', className: Store.scheduleOf(s).className },
       period: { from: from, to: to },
@@ -9376,6 +9683,17 @@ Views.share = (function () {
               '<span class="tag ' + (BR_TAG[x.b] || 'gray') + '">북리포트 ' + U.esc(BR_LABEL[x.b] || x.b) + '</span></div>';
           }).join('') + '</div>'
         : '<div class="hint">이 기간에 빌려간 책이 없습니다.</div>');
+  }
+
+  function gradesHtml(list) {
+    return '<div class="section-title">시험 기록</div>' +
+      (list.length
+        ? '<div class="rp-books">' + list.map(function (g) {
+            return '<div class="rp-book"><div class="rp-book-t"><b>' + U.esc(g.e) + '</b>' +
+              '<span>' + U.esc(g.d && /^\d{4}-\d{2}-\d{2}$/.test(g.d) ? U.shortDate(g.d) : (g.d || '')) + '</span></div>' +
+              (g.sc ? '<span class="tag blue">' + U.esc(g.sc) + '</span>' : '') + '</div>';
+          }).join('') + '</div>'
+        : '<div class="hint">이 기간에 본 시험이 없습니다.</div>');
   }
 
   /* ---------- 리포트 HTML (공유 화면과 미리보기가 공용) ---------- */
@@ -9427,6 +9745,7 @@ Views.share = (function () {
           : '') +
 
         (readingOnly ? '' : '<div class="section-title">기간 내 출결 기록</div>' + rows) +
+        (rep.grades ? gradesHtml(rep.grades) : '') +
         (rep.reading ? readingHtml(rep.reading) : '') +
 
         '<div style="margin-top:22px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:#93a4b4;line-height:1.7">' +
@@ -9472,9 +9791,11 @@ Views.share = (function () {
               '<textarea id="sh-comment" placeholder="이번 기간 아이의 학습 모습을 한두 문장으로 남겨 주세요." style="min-height:96px">' + U.esc(state.comment) + '</textarea></label>' +
             '<label class="check' + (state.reading ? ' on' : '') + '" style="display:inline-flex;margin-bottom:14px">' +
               '<input type="checkbox" id="sh-reading"' + (state.reading ? ' checked' : '') + '>독서 이력 포함 (빌린 책 · 북리포트 제출)</label>' +
+            '<label class="check' + (state.grades ? ' on' : '') + '" style="display:inline-flex;margin-bottom:14px">' +
+              '<input type="checkbox" id="sh-grades"' + (state.grades ? ' checked' : '') + '>시험 기록 포함 (시험명 · 점수)</label>' +
             '<button class="btn primary block" id="sh-make" style="margin-bottom:8px">리포트 생성 · 링크 만들기</button>' +
             '<button class="btn block" id="sh-print">인쇄 / PDF 저장</button>' +
-            '<p class="hint" style="margin:14px 0 0">링크에는 <b>학생 이름과 출결 기록</b>(독서 이력을 넣으면 빌린 책 제목·북리포트 상태까지)만 담깁니다. 연락처는 포함되지 않습니다. ' +
+            '<p class="hint" style="margin:14px 0 0">링크에는 <b>학생 이름과 출결 기록</b>(독서 이력·시험 기록을 넣으면 책 제목·북리포트 상태·시험명·점수까지)만 담깁니다. 상담 기록은 담기지 않습니다. 연락처는 포함되지 않습니다. ' +
             '링크를 아는 사람은 누구나 열람할 수 있으니 학부모님께만 전달해 주세요.</p>' +
           '</div>' +
         '</div>' +
@@ -9488,7 +9809,7 @@ Views.share = (function () {
         el.querySelector('#sh-from').value,
         el.querySelector('#sh-to').value,
         el.querySelector('#sh-comment').value.trim(),
-        { reading: el.querySelector('#sh-reading').checked }
+        { reading: el.querySelector('#sh-reading').checked, grades: el.querySelector('#sh-grades').checked }
       );
     }
 
@@ -9505,6 +9826,11 @@ Views.share = (function () {
     });
     el.querySelector('#sh-reading').addEventListener('change', function (e) {
       state.reading = e.target.checked;
+      e.target.parentNode.classList.toggle('on', e.target.checked);
+      preview();
+    });
+    el.querySelector('#sh-grades').addEventListener('change', function (e) {
+      state.grades = e.target.checked;
       e.target.parentNode.classList.toggle('on', e.target.checked);
       preview();
     });
@@ -9581,6 +9907,685 @@ Views.share = (function () {
   }
 
   return { title: title, sub: sub, render: render, renderReport: renderReport, build: build, reportHtml: reportHtml, openLink: openLink };
+})();
+
+</script>
+<script>
+/* ===== 성적 관리 =====
+ * 예전 '통계' 와 '학부모 공유' 메뉴를 한곳으로 모았습니다. 탭 네 개로 나뉩니다.
+ *  ① 시험 기록  — 본사 성적 목록(englishwhale.com)에서 가져온 시험 기록
+ *                 (크롬 확장 프로그램 '고래영어 성적 연동' 또는 표 붙여넣기)
+ *  ② 상담 이력  — 학생별 상담 기록. 다음 확인일(팔로우업)을 정해 두고 후속 상담으로 이어 씁니다.
+ *  ③ 통계       — Views.stats 를 그대로 씁니다
+ *  ④ 학부모 리포트 — Views.share 를 그대로 씁니다
+ */
+window.Views = window.Views || {};
+Views.grades = (function () {
+
+  var TABS = [
+    { id: 'records', label: '시험 기록' },
+    { id: 'counsel', label: '상담 이력' },
+    { id: 'stats',   label: '통계' },
+    { id: 'report',  label: '학부모 리포트' }
+  ];
+  var tab = 'records';
+  var appliedHash = '';     // 주소에 적힌 탭·학생은 주소가 바뀌었을 때 한 번만 따릅니다
+  var host = null;
+  var pendingImport = null; // 확장 프로그램이 보낸, 아직 확인하지 않은 성적
+
+  var rf = { q: '', studentId: '', unlinked: false };            // 시험 기록 거르기
+  var cf = { studentId: '', topic: '', q: '' };                   // 상담 이력 거르기
+
+  function isTab(t) { return TABS.some(function (x) { return x.id === t; }); }
+  function setTab(t) { if (isTab(t)) tab = t; }
+
+  function title() { return '성적 관리'; }
+  function sub() {
+    if (tab === 'stats') return Views.stats.sub();
+    if (tab === 'report') return Views.share.sub();
+    if (tab === 'counsel') return '학생별 상담 내용과 다음 확인(팔로우업)을 이어서 기록합니다';
+    return '본사 성적 목록에서 가져온 시험 기록을 학생별로 모읍니다';
+  }
+
+  /* ---------- 공통 ---------- */
+  function studentOptions(selected, placeholder) {
+    return UI.options(Store.students({ includeArchived: true }).map(function (s) {
+      return { value: s.id, label: s.name + (s.grade ? ' · ' + s.grade : '') + (s.archived ? ' (퇴원)' : '') };
+    }), selected, placeholder);
+  }
+  function studentName(id) {
+    var s = id ? Store.student(id) : null;
+    return s ? s.name : '';
+  }
+  function gradeKey(g) {
+    return [String(g.name || '').trim(), String(g.exam || '').trim(), String(g.registeredAt || '').trim()].join('|');
+  }
+  /** '2026-10-15 14:03:22' 처럼 들어온 등록일시를 보기 좋게 */
+  function regDate(v) {
+    var s = String(v || '');
+    return /^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(0, 16) : (s || '-');
+  }
+  function linksHtml(links) {
+    return (links || []).map(function (l) {
+      return '<a class="tag blue" href="' + U.esc(l.url) + '" target="_blank" rel="noopener" data-stop>' +
+        U.esc(l.label || '링크') + ' ↗</a>';
+    }).join(' ');
+  }
+
+  /* ============================================================
+   * ① 시험 기록
+   * ============================================================ */
+  function renderRecords(root) {
+    var all = Store.grades();
+    var unlinked = Store.grades({ unlinked: true }).length;
+    var list = Store.grades({ q: rf.q, studentId: rf.studentId, unlinked: rf.unlinked });
+    var lastImport = all.reduce(function (m, g) { return g.importedAt && g.importedAt > m ? g.importedAt : m; }, '');
+    var sel = rf.studentId ? Store.student(rf.studentId) : null;
+
+    root.innerHTML =
+      '<div class="card" style="margin:16px 0"><div class="card-b" style="padding:14px 16px">' +
+        '<div class="row">' +
+          '<div><b style="font-size:14px">본사 성적 가져오기</b>' +
+            '<div class="hint" style="margin-top:2px">' +
+              (lastImport ? '마지막으로 가져온 때 ' + U.esc(lastImport.slice(0, 10)) + ' · ' : '') +
+              '전체 ' + all.length + '건' +
+              (unlinked ? ' · <b style="color:#963934">명부에 연결 안 된 기록 ' + unlinked + '건</b>' : '') +
+            '</div></div>' +
+          '<div class="sp"></div>' +
+          '<button class="btn" id="gr-ext">확장 프로그램 안내</button>' +
+          '<button class="btn" id="gr-paste">표 붙여넣기로 가져오기</button>' +
+          '<button class="btn" id="gr-csv">CSV 내보내기</button>' +
+          '<button class="btn primary" id="gr-add">+ 직접 입력</button>' +
+        '</div></div></div>' +
+
+      '<div class="card"><div class="card-b" style="padding-bottom:8px">' +
+        '<div class="row">' +
+          '<input type="search" id="gr-q" placeholder="학생 · 학교 · 시험명 검색" value="' + U.esc(rf.q) + '" style="flex:1;min-width:180px">' +
+          '<select id="gr-stu" style="width:170px">' + studentOptions(rf.studentId, '전체 학생') + '</select>' +
+          '<label class="check' + (rf.unlinked ? ' on' : '') + '"><input type="checkbox" id="gr-unlinked"' +
+            (rf.unlinked ? ' checked' : '') + '>명부 미연결만</label>' +
+        '</div>' +
+        (sel
+          ? '<div class="row" style="margin-top:10px;gap:6px">' +
+              '<span class="tag mint">' + U.esc(sel.name) + ' · 시험 ' + list.length + '건</span>' +
+              '<span class="tag gray">상담 ' + Store.counsels({ studentId: sel.id }).length + '건</span>' +
+              '<div class="sp"></div>' +
+              '<button class="btn sm" data-goto-counsel="' + sel.id + '">이 학생 상담 이력 →</button>' +
+            '</div>'
+          : '') +
+      '</div>' +
+      '<div class="table-wrap"><table class="tbl">' +
+        '<thead><tr><th>등록일시</th><th>학생</th><th>학교</th><th>학년</th><th>시험명</th>' +
+        '<th>점수 · 결과</th><th>성적표 · 인증서</th><th>메모</th></tr></thead><tbody>' +
+        (list.length ? list.map(function (g) {
+          var linked = studentName(g.studentId);
+          return '<tr class="clickable" data-grade="' + g.id + '">' +
+            '<td style="white-space:nowrap">' + U.esc(regDate(g.registeredAt)) + '</td>' +
+            '<td class="nm">' + U.esc(g.name) +
+              (linked ? '' : ' <span class="tag bad" title="학생 명부와 연결되지 않았습니다">미연결</span>') + '</td>' +
+            '<td>' + U.esc(g.school || '-') + '</td><td>' + U.esc(g.grade || '-') + '</td>' +
+            '<td>' + U.esc(g.exam) + '</td>' +
+            '<td>' + (g.score ? '<b>' + U.esc(g.score) + '</b>' : '<span class="hint">–</span>') + '</td>' +
+            '<td>' + (linksHtml(g.links) || '<span class="hint">–</span>') + '</td>' +
+            '<td>' + U.esc(g.memo || '') + '</td></tr>';
+        }).join('')
+        : '<tr><td colspan="8">' + UI.emptyBox(all.length ? '조건에 맞는 기록이 없습니다.'
+            : '아직 가져온 성적이 없습니다. 본사 성적 목록에서 확장 프로그램으로 보내거나, 표를 붙여넣어 주세요.', 'stats') + '</td></tr>') +
+      '</tbody></table></div></div>';
+
+    function redraw() { render(host); }
+    root.querySelector('#gr-q').addEventListener('input', function (e) {
+      rf.q = e.target.value;
+      clearTimeout(redraw.t);
+      redraw.t = setTimeout(function () {
+        redraw();
+        var q = host.querySelector('#gr-q');
+        if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); }
+      }, 250);
+    });
+    root.querySelector('#gr-stu').addEventListener('change', function (e) { rf.studentId = e.target.value; redraw(); });
+    root.querySelector('#gr-unlinked').addEventListener('change', function (e) { rf.unlinked = e.target.checked; redraw(); });
+    root.querySelector('#gr-ext').addEventListener('click', openExtensionHelp);
+    root.querySelector('#gr-paste').addEventListener('click', openPaste);
+    root.querySelector('#gr-add').addEventListener('click', function () { openGradeForm(null); });
+    root.querySelector('#gr-csv').addEventListener('click', function () {
+      var head = ['등록일시', '학생명', '연결된 학생', '학교', '학년', '시험명', '점수·결과', '메모', '링크'];
+      var body = list.map(function (g) {
+        return [g.registeredAt, g.name, studentName(g.studentId), g.school, g.grade, g.exam, g.score, g.memo,
+                (g.links || []).map(function (l) { return l.label + ' ' + l.url; }).join(' / ')];
+      });
+      U.download('고래영어_시험기록_' + U.ymd() + '.csv', U.toCsv([head].concat(body)), 'text/csv');
+      UI.toast('CSV 파일을 내려받았습니다.');
+    });
+    UI.on(root, '[data-stop]', 'click', function (e) { e.stopPropagation(); });
+    UI.on(root, '[data-grade]', 'click', function (e, tr) {
+      if (e.target.closest('[data-stop]')) return;
+      openGradeForm(tr.getAttribute('data-grade'));
+    });
+    UI.on(root, '[data-goto-counsel]', 'click', function (e, btn) {
+      cf.studentId = btn.getAttribute('data-goto-counsel');
+      tab = 'counsel'; App.setSub(sub()); redraw();
+    });
+
+    if (pendingImport) {
+      var p = pendingImport;
+      pendingImport = null;
+      openImportPreview(p.rows, p.source);
+    }
+  }
+
+  /** 시험 기록 한 건 수정 (학생 연결 · 점수 · 메모) */
+  function openGradeForm(id) {
+    var g = id ? Store.gradeRecord(id) : null;
+    var isNew = !g;
+    g = g || { name: '', school: '', grade: '', exam: '', registeredAt: U.ymd(), studentId: rf.studentId || '', score: '', memo: '', links: [] };
+    UI.modal({
+      title: isNew ? '시험 기록 직접 입력' : g.name + ' · ' + g.exam,
+      body:
+        '<div class="form-grid">' +
+          '<label class="fld">학생 (명부 연결)<select id="gf-stu">' + studentOptions(g.studentId, '연결 안 함') + '</select></label>' +
+          '<label class="fld">본사 기록의 학생명<input type="text" id="gf-name" value="' + U.esc(g.name) + '"' + (isNew ? '' : ' readonly') + '></label>' +
+          '<label class="fld full">시험명<input type="text" id="gf-exam" value="' + U.esc(g.exam) + '"' + (isNew ? '' : ' readonly') + '></label>' +
+          '<label class="fld">학교<input type="text" id="gf-school" value="' + U.esc(g.school) + '"></label>' +
+          '<label class="fld">학년<input type="text" id="gf-grade" value="' + U.esc(g.grade) + '"></label>' +
+          '<label class="fld">등록일<input type="text" id="gf-reg" value="' + U.esc(g.registeredAt) + '"' + (isNew ? '' : ' readonly') + '></label>' +
+          '<label class="fld">점수 · 결과<input type="text" id="gf-score" value="' + U.esc(g.score || '') + '" placeholder="예) 92점, Level 4 통과"></label>' +
+          '<label class="fld full">메모<textarea id="gf-memo" placeholder="성적표를 보고 느낀 점, 보완할 부분 등">' + U.esc(g.memo || '') + '</textarea></label>' +
+        '</div>' +
+        (g.links && g.links.length ? '<div class="section-title">성적표 · 인증서</div><div class="row" style="gap:6px">' + linksHtml(g.links) + '</div>' : '') +
+        (isNew ? '' : '<p class="hint" style="margin:14px 0 0">학생명·시험명·등록일은 본사 기록 그대로 둡니다. 다시 가져와도 점수·메모·학생 연결은 지워지지 않습니다.</p>'),
+      footer:
+        (isNew ? '' : '<button class="btn danger" id="gf-del">삭제</button>') +
+        (isNew ? '' : '<button class="btn" id="gf-counsel">이 시험으로 상담 기록</button>') +
+        '<div class="sp"></div><button class="btn" data-close>취소</button>' +
+        '<button class="btn primary" id="gf-save">저장</button>',
+      onMount: function (w) {
+        function val(sel) { return w.querySelector(sel).value.trim(); }
+        w.querySelector('#gf-stu').addEventListener('change', function (e) {
+          var nm = w.querySelector('#gf-name');
+          if (isNew && !nm.value.trim()) nm.value = studentName(e.target.value);
+        });
+        w.querySelector('#gf-save').addEventListener('click', function () {
+          var rec = {
+            id: isNew ? undefined : g.id,
+            studentId: val('#gf-stu'), school: val('#gf-school'), grade: val('#gf-grade'),
+            score: val('#gf-score'), memo: val('#gf-memo')
+          };
+          if (isNew) {
+            rec.name = val('#gf-name') || studentName(rec.studentId);
+            rec.exam = val('#gf-exam');
+            rec.registeredAt = val('#gf-reg');
+            rec.links = [];
+            rec.source = '직접 입력';
+            if (!rec.name || !rec.exam) { UI.toast('학생과 시험명을 넣어 주세요.', true); return; }
+          }
+          Store.saveGrade(rec);
+          UI.close(); UI.toast('저장했습니다.');
+          render(host);
+        });
+        if (!isNew) {
+          w.querySelector('#gf-del').addEventListener('click', function () {
+            UI.confirm('이 시험 기록을 지울까요?', function () {
+              Store.deleteGrade(g.id); UI.toast('지웠습니다.'); render(host);
+            }, { danger: true, yes: '삭제' });
+          });
+          w.querySelector('#gf-counsel').addEventListener('click', function () {
+            if (!val('#gf-stu')) { UI.toast('먼저 학생 명부와 연결해 주세요.', true); return; }
+            Store.saveGrade({ id: g.id, studentId: val('#gf-stu') });
+            openCounselForm({ studentId: val('#gf-stu'), topic: '성적', gradeId: g.id });
+          });
+        }
+      }
+    });
+  }
+
+  /* ---------- 가져오기: 표 붙여넣기 ---------- */
+  /**
+   * 머리줄 글자로 칸을 찾습니다. 본사 화면의 칸 순서가 바뀌어도 이름만 같으면 됩니다.
+   * 크롬 확장 프로그램(extension/content.js)에도 같은 규칙이 들어 있습니다.
+   */
+  var COLS = {
+    no:           /^(no\.?|번호|순번)$/i,
+    name:         /(학생명|이름|성명|학생)/,
+    school:       /학교/,
+    grade:        /^(학년|학년도)$|학년/,
+    exam:         /(시험명|시험|평가명|테스트)/,
+    links:        /(성적표|인증서|링크|보기|출력)/,
+    registeredAt: /(등록일|등록일시|일시|응시일|날짜)/
+  };
+  function mapHeader(cells) {
+    var map = {};
+    cells.forEach(function (raw, i) {
+      var t = String(raw || '').replace(/\s+/g, '');
+      Object.keys(COLS).forEach(function (k) {
+        if (map[k] !== undefined) return;
+        if (k === 'name' && /학교|학년/.test(t)) return;
+        if (k === 'grade' && /성적/.test(t)) return;
+        if (COLS[k].test(t)) map[k] = i;
+      });
+    });
+    return map;
+  }
+
+  /** 엑셀·웹 표를 복사하면 칸은 탭, 줄은 줄바꿈으로 들어옵니다. */
+  function parsePasted(text) {
+    var lines = String(text || '').split(/\r?\n/).map(function (l) { return l.split('\t'); })
+      .filter(function (c) { return c.join('').trim(); });
+    if (!lines.length) return [];
+    var hi = -1, map = null;
+    for (var i = 0; i < Math.min(lines.length, 5); i++) {
+      var m = mapHeader(lines[i]);
+      if (m.name !== undefined && m.exam !== undefined) { hi = i; map = m; break; }
+    }
+    if (!map) {
+      // 머리줄 없이 내용만 붙여넣은 경우 — 본사 화면 순서(번호·학생명·학교·학년·시험명·성적표·등록일시)로 봅니다.
+      map = lines[0].length >= 7
+        ? { no: 0, name: 1, school: 2, grade: 3, exam: 4, links: 5, registeredAt: 6 }
+        : { no: 0, name: 1, school: 2, grade: 3, exam: 4, registeredAt: 5 };
+    }
+    return lines.slice(hi + 1).map(function (c) {
+      function at(k) { return map[k] === undefined ? '' : String(c[map[k]] || '').trim(); }
+      var reg = at('registeredAt');
+      if (!reg) { // 등록일시 칸을 못 찾았으면 날짜처럼 생긴 칸을 씁니다
+        for (var j = c.length - 1; j >= 0; j--) if (/^\d{4}[-.\/]\d{1,2}[-.\/]\d{1,2}/.test(String(c[j]).trim())) { reg = String(c[j]).trim(); break; }
+      }
+      return { no: at('no'), name: at('name'), school: at('school'), grade: at('grade'), exam: at('exam'),
+               registeredAt: reg.replace(/\./g, '-').replace(/\//g, '-'), links: [] };
+    }).filter(function (r) { return r.name && r.exam && !/^(학생명|이름)$/.test(r.name); });
+  }
+
+  function openPaste() {
+    UI.modal({
+      title: '표 붙여넣기로 가져오기', wide: true,
+      body:
+        '<ol class="hint" style="margin:0 0 12px;padding-left:18px;line-height:1.8">' +
+          '<li>본사 성적 목록(englishwhale.com → 성적 목록)에서 표를 마우스로 끌어 선택합니다. 머리줄(번호·학생명…)까지 함께 잡으면 가장 정확합니다.</li>' +
+          '<li>Ctrl+C 로 복사한 뒤 아래 칸에 Ctrl+V 로 붙여넣습니다.</li>' +
+        '</ol>' +
+        '<textarea id="gp-text" style="min-height:200px;font-size:12.5px" placeholder="여기에 붙여넣기"></textarea>' +
+        '<p class="hint" style="margin:10px 0 0">붙여넣기로는 성적표·인증서 <b>링크</b>가 따라오지 않습니다. 링크까지 받으려면 크롬 확장 프로그램을 쓰세요.</p>',
+      footer: '<button class="btn" data-close>취소</button><button class="btn primary" id="gp-next">읽어보기</button>',
+      onMount: function (w) {
+        w.querySelector('#gp-next').addEventListener('click', function () {
+          var rows = parsePasted(w.querySelector('#gp-text').value);
+          if (!rows.length) { UI.toast('학생명과 시험명이 있는 줄을 찾지 못했습니다.', true); return; }
+          openImportPreview(rows, '붙여넣기');
+        });
+      }
+    });
+  }
+
+  /** 가져오기 전에 무엇이 새로 들어가고 누가 연결되는지 보여 줍니다. */
+  function openImportPreview(rows, source) {
+    rows = (rows || []).filter(function (r) { return r && r.name && r.exam; });
+    var have = {};
+    Store.grades().forEach(function (g) { have[gradeKey(g)] = true; });
+    var fresh = 0, matched = 0;
+    var preview = rows.map(function (r) {
+      var isNew = !have[gradeKey(r)];
+      var m = Store.matchGradeStudent(r);
+      if (isNew) fresh++;
+      if (m) matched++;
+      return { r: r, isNew: isNew, m: m };
+    });
+
+    UI.modal({
+      title: '성적 가져오기 확인', wide: true,
+      body:
+        '<div class="row" style="gap:6px;margin-bottom:12px">' +
+          '<span class="tag blue">받은 기록 ' + rows.length + '건</span>' +
+          '<span class="tag ok">새 기록 ' + fresh + '건</span>' +
+          '<span class="tag gray">이미 있음 ' + (rows.length - fresh) + '건</span>' +
+          (rows.length - matched ? '<span class="tag bad">명부에서 못 찾은 학생 ' + (rows.length - matched) + '건</span>' : '') +
+        '</div>' +
+        '<div class="table-wrap" style="max-height:360px;overflow:auto"><table class="tbl" style="min-width:auto">' +
+          '<thead><tr><th></th><th>학생</th><th>명부 연결</th><th>학교 · 학년</th><th>시험명</th><th>등록일시</th><th>링크</th></tr></thead><tbody>' +
+          preview.map(function (x) {
+            return '<tr><td>' + (x.isNew ? '<span class="tag ok">새</span>' : '<span class="tag gray">있음</span>') + '</td>' +
+              '<td class="nm">' + U.esc(x.r.name) + '</td>' +
+              '<td>' + (x.m ? U.esc(x.m.name) + (x.m.grade ? ' · ' + U.esc(x.m.grade) : '') : '<span class="tag bad">못 찾음</span>') + '</td>' +
+              '<td>' + U.esc([x.r.school, x.r.grade].filter(Boolean).join(' · ') || '-') + '</td>' +
+              '<td>' + U.esc(x.r.exam) + '</td><td style="white-space:nowrap">' + U.esc(regDate(x.r.registeredAt)) + '</td>' +
+              '<td>' + ((x.r.links || []).length || '–') + '</td></tr>';
+          }).join('') +
+        '</tbody></table></div>' +
+        '<p class="hint" style="margin:12px 0 0">같은 학생·시험·등록일시의 기록은 한 줄로 합쳐집니다. ' +
+          '명부에서 못 찾은 학생은 그대로 저장해 두고, 나중에 기록을 눌러 학생을 연결할 수 있습니다.</p>',
+      footer: '<button class="btn" data-close>취소</button><button class="btn primary" id="gi-ok">가져오기</button>',
+      onMount: function (w) {
+        w.querySelector('#gi-ok').addEventListener('click', function () {
+          var res = Store.importGrades(rows, source);
+          UI.close();
+          UI.toast('새 기록 ' + res.added + '건' + (res.updated ? ' · 갱신 ' + res.updated + '건' : '') +
+            (res.unlinked ? ' · 미연결 ' + res.unlinked + '건' : '') + ' 가져왔습니다.');
+          tab = 'records';
+          if (location.hash.indexOf('#/grades') === 0) render(host);
+          else location.hash = '#/grades';
+        });
+      }
+    });
+  }
+
+  function openExtensionHelp() {
+    UI.modal({
+      title: '크롬 확장 프로그램으로 성적 가져오기', wide: true,
+      body:
+        '<div class="section-title" style="margin-top:0">한 번만 설치</div>' +
+        '<ol class="hint" style="margin:0;padding-left:18px;line-height:1.9">' +
+          '<li>원생관리 저장소의 <b>extension</b> 폴더(또는 받은 압축 파일을 푼 폴더)를 컴퓨터에 둡니다.</li>' +
+          '<li>크롬 주소창에 <b>chrome://extensions</b> 를 입력합니다.</li>' +
+          '<li>오른쪽 위 <b>개발자 모드</b>를 켭니다.</li>' +
+          '<li><b>압축해제된 확장 프로그램을 로드합니다</b> → extension 폴더를 고릅니다.</li>' +
+          '<li>퍼즐 모양 아이콘에서 <b>고래영어 성적 연동</b>을 고정(핀)해 두면 편합니다.</li>' +
+        '</ol>' +
+        '<div class="section-title">쓸 때마다</div>' +
+        '<ol class="hint" style="margin:0;padding-left:18px;line-height:1.9">' +
+          '<li>본사 사이트에 로그인해 <b>성적 목록</b>(grade_list.php)을 엽니다. 여러 쪽이면 쪽마다 반복합니다.</li>' +
+          '<li>확장 프로그램 아이콘 → <b>현재 페이지 데이터 동기화(전송)</b>.</li>' +
+          '<li>원생관리 창이 열리고 <b>성적 가져오기 확인</b>이 뜹니다. 확인 후 [가져오기].</li>' +
+        '</ol>' +
+        '<p class="hint" style="margin:14px 0 0">본사 비밀번호나 쿠키는 확장 프로그램이 읽거나 보내지 않습니다. 화면에 보이는 표 내용만 옮깁니다.</p>'
+    });
+  }
+
+  /* ---------- 확장 프로그램이 보내는 성적 받기 ----------
+   * 확장 프로그램의 bridge.js 가 이 창에 window.postMessage 로 넘겨 줍니다.
+   * 같은 창에서 온 메시지만 받습니다.
+   */
+  window.addEventListener('message', function (e) {
+    if (e.source !== window || !e.data || e.data.type !== 'gorae-grades-import') return;
+    var rows = Array.isArray(e.data.rows) ? e.data.rows : [];
+    window.postMessage({ type: 'gorae-grades-ack', id: e.data.id, count: rows.length }, location.origin === 'null' ? '*' : location.origin);
+    if (!rows.length) { if (window.UI) UI.toast('받은 성적이 없습니다.', true); return; }
+    pendingImport = { rows: rows, source: '확장 프로그램' + (e.data.pageUrl ? ' · ' + e.data.pageUrl : '') };
+    tab = 'records';
+    if (location.hash.indexOf('#/grades') === 0 && host) render(host);
+    else location.hash = '#/grades?tab=records';
+  });
+
+  /* ============================================================
+   * ② 상담 이력
+   * ============================================================ */
+  function followLabel(c) {
+    if (!c.followUpDate) return '';
+    if (c.followUpDone) return '<span class="tag ok">확인 완료 · ' + U.esc(U.shortDate(c.followUpDate)) + '</span>';
+    var diff = U.dayDiff(U.ymd(), c.followUpDate);
+    if (diff < 0) return '<span class="tag bad">다음 확인 ' + U.esc(U.shortDate(c.followUpDate)) + ' · ' + (-diff) + '일 지남</span>';
+    if (diff === 0) return '<span class="tag warn">오늘 확인</span>';
+    return '<span class="tag blue">다음 확인 ' + U.esc(U.shortDate(c.followUpDate)) + ' · D-' + diff + '</span>';
+  }
+
+  function counselItem(c, opts) {
+    opts = opts || {};
+    var g = c.gradeId ? Store.gradeRecord(c.gradeId) : null;
+    return '<div class="csl-item' + (opts.follow ? ' follow' : '') + '">' +
+      '<div class="csl-meta">' +
+        (opts.follow ? '<span class="csl-arrow">↳ 후속</span>' : '') +
+        '<b>' + U.esc(U.human(c.date)) + '</b>' +
+        (opts.showName ? '<a href="#" class="csl-name" data-csl-stu="' + c.studentId + '">' + U.esc(studentName(c.studentId) || '(삭제된 학생)') + '</a>' : '') +
+        (c.with || c.channel ? '<span class="tag gray">' + U.esc([c.with, c.channel].filter(Boolean).join(' · ')) + '</span>' : '') +
+        (c.topic ? '<span class="tag mint">' + U.esc(c.topic) + '</span>' : '') +
+        followLabel(c) +
+      '</div>' +
+      (g ? '<div class="csl-grade">관련 시험 · ' + U.esc(g.exam) + (g.score ? ' (' + U.esc(g.score) + ')' : '') + '</div>' : '') +
+      '<div class="csl-body">' + U.esc(c.content || '') + '</div>' +
+      (c.plan ? '<div class="csl-plan"><b>조치 · 약속</b>' + U.esc(c.plan) + '</div>' : '') +
+      '<div class="csl-acts">' +
+        '<button class="btn sm" data-csl-follow="' + c.id + '">후속 상담 기록</button>' +
+        (Store.isFollowUpPending(c) ? '<button class="btn sm" data-csl-done="' + c.id + '">확인 완료</button>' : '') +
+        '<button class="btn sm" data-csl-edit="' + c.id + '">수정</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function pendingBox() {
+    var list = Store.counsels({ pending: true }).sort(function (a, b) {
+      return String(a.followUpDate).localeCompare(String(b.followUpDate));
+    });
+    if (!list.length) return '<div class="hint">기다리는 팔로우업이 없습니다. 상담을 기록할 때 <b>다음 확인일</b>을 정해 두면 여기에 모입니다.</div>';
+    return list.map(function (c) {
+      return '<div class="csl-due">' +
+        '<div class="csl-due-t"><a href="#" data-csl-stu="' + c.studentId + '"><b>' + U.esc(studentName(c.studentId) || '(삭제된 학생)') + '</b></a> ' +
+          followLabel(c) + '</div>' +
+        '<div class="hint" style="margin:3px 0 6px">' + U.esc(c.topic || '') + (c.plan ? ' · ' + U.esc(c.plan.slice(0, 60)) : (c.content ? ' · ' + U.esc(c.content.slice(0, 60)) : '')) + '</div>' +
+        '<div class="row" style="gap:6px">' +
+          '<button class="btn sm primary" data-csl-follow="' + c.id + '">후속 상담 기록</button>' +
+          '<button class="btn sm" data-csl-done="' + c.id + '">확인 완료</button>' +
+        '</div></div>';
+    }).join('');
+  }
+
+  function renderCounsel(root) {
+    var s = cf.studentId ? Store.student(cf.studentId) : null;
+    if (cf.studentId && !s) cf.studentId = '';
+    var body;
+    if (s) {
+      var threads = Store.counselThreads(s.id).filter(function (th) {
+        return th.some(function (c) {
+          return (!cf.topic || c.topic === cf.topic) &&
+            (!cf.q || [c.content, c.plan, c.topic].join(' ').toLowerCase().indexOf(cf.q.toLowerCase()) >= 0);
+        });
+      });
+      var gs = Store.grades({ studentId: s.id });
+      var sc = Store.scheduleOf(s);
+      body =
+        '<div class="csl-head">' +
+          '<div><b style="font-size:16px">' + U.esc(s.name) + '</b> ' +
+            '<span class="hint">' + U.esc([s.grade, sc.className].filter(Boolean).join(' · ')) + '</span></div>' +
+          '<div class="row" style="gap:6px;margin-top:6px">' +
+            '<span class="tag gray">상담 ' + Store.counsels({ studentId: s.id }).length + '건</span>' +
+            '<span class="tag gray">시험 기록 ' + gs.length + '건</span>' +
+            (gs[0] ? '<span class="tag blue">최근 시험 · ' + U.esc(gs[0].exam) + (gs[0].score ? ' (' + U.esc(gs[0].score) + ')' : '') + '</span>' : '') +
+            (s.parentPhone ? '<a class="btn sm" href="tel:' + U.esc(String(s.parentPhone).replace(/[^0-9+]/g, '')) + '">학부모 전화</a>' : '') +
+            '<button class="btn sm" data-open-stu="' + s.id + '">학생 상세</button>' +
+          '</div></div>' +
+        (threads.length
+          ? threads.map(function (th) {
+              return '<div class="csl-thread">' + th.map(function (c, i) { return counselItem(c, { follow: i > 0 }); }).join('') + '</div>';
+            }).join('')
+          : UI.emptyBox('상담 기록이 없습니다. [+ 상담 기록]으로 첫 상담을 남겨 주세요.', 'students'));
+    } else {
+      var recent = Store.counsels({ topic: cf.topic, q: cf.q }).slice(0, 40);
+      body = '<div class="section-title" style="margin-top:0">최근 상담</div>' +
+        (recent.length
+          ? recent.map(function (c) { return '<div class="csl-thread">' + counselItem(c, { showName: true }) + '</div>'; }).join('')
+          : UI.emptyBox('아직 상담 기록이 없습니다.', 'students'));
+    }
+
+    root.innerHTML =
+      '<div class="grid g-12" style="margin-top:16px">' +
+        '<div class="card" style="height:fit-content"><div class="card-h"><h2>팔로우업 할 일</h2></div>' +
+          '<div class="card-b">' + pendingBox() + '</div></div>' +
+        '<div class="card"><div class="card-b">' +
+          '<div class="row" style="margin-bottom:14px">' +
+            '<select id="cs-stu" style="width:170px">' + studentOptions(cf.studentId, '전체 학생') + '</select>' +
+            '<select id="cs-topic" style="width:130px">' + UI.options(Store.COUNSEL_TOPICS, cf.topic, '전체 주제') + '</select>' +
+            '<input type="search" id="cs-q" placeholder="상담 내용 검색" value="' + U.esc(cf.q) + '" style="flex:1;min-width:140px">' +
+            '<button class="btn primary" id="cs-add">+ 상담 기록</button>' +
+          '</div>' + body +
+        '</div></div>' +
+      '</div>';
+
+    function redraw() { render(host); }
+    root.querySelector('#cs-stu').addEventListener('change', function (e) { cf.studentId = e.target.value; redraw(); });
+    root.querySelector('#cs-topic').addEventListener('change', function (e) { cf.topic = e.target.value; redraw(); });
+    root.querySelector('#cs-q').addEventListener('input', function (e) {
+      cf.q = e.target.value;
+      clearTimeout(redraw.t);
+      redraw.t = setTimeout(function () {
+        redraw();
+        var q = host.querySelector('#cs-q');
+        if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); }
+      }, 250);
+    });
+    root.querySelector('#cs-add').addEventListener('click', function () {
+      openCounselForm({ studentId: cf.studentId });
+    });
+    UI.on(root, '[data-csl-stu]', 'click', function (e, a) {
+      e.preventDefault();
+      cf.studentId = a.getAttribute('data-csl-stu'); redraw();
+    });
+    UI.on(root, '[data-open-stu]', 'click', function (e, b) { Views.students.openDetail(b.getAttribute('data-open-stu')); });
+    UI.on(root, '[data-csl-follow]', 'click', function (e, b) {
+      var prev = Store.counsel(b.getAttribute('data-csl-follow'));
+      if (prev) openCounselForm({ studentId: prev.studentId, parentId: prev.id, topic: prev.topic, with: prev.with, gradeId: prev.gradeId });
+    });
+    UI.on(root, '[data-csl-done]', 'click', function (e, b) {
+      Store.setFollowUpDone(b.getAttribute('data-csl-done'), true);
+      UI.toast('확인 완료로 표시했습니다.'); redraw();
+    });
+    UI.on(root, '[data-csl-edit]', 'click', function (e, b) {
+      openCounselForm(Store.counsel(b.getAttribute('data-csl-edit')));
+    });
+  }
+
+  function addDays(n) {
+    var d = new Date(); d.setDate(d.getDate() + n);
+    return U.ymd(d);
+  }
+
+  /**
+   * 상담 기록 창. c.id 가 있으면 수정, c.parentId 가 있으면 앞 상담에 이어지는 후속 상담입니다.
+   */
+  function openCounselForm(c) {
+    c = c || {};
+    var isNew = !c.id;
+    var parent = c.parentId ? Store.counsel(c.parentId) : null;
+    var sid = c.studentId || '';
+    function gradeOpts(studentId, selected) {
+      return UI.options(Store.grades({ studentId: studentId }).map(function (g) {
+        return { value: g.id, label: regDate(g.registeredAt).slice(0, 10) + ' · ' + g.exam + (g.score ? ' (' + g.score + ')' : '') };
+      }), selected, '없음');
+    }
+    UI.modal({
+      title: isNew ? (parent ? '후속 상담 기록' : '상담 기록') : '상담 기록 수정', wide: true,
+      body:
+        (parent
+          ? '<div class="csl-parent"><div class="hint" style="margin-bottom:4px">이어지는 상담 · ' + U.esc(U.human(parent.date)) +
+              (parent.topic ? ' · ' + U.esc(parent.topic) : '') + '</div>' +
+              '<div style="white-space:pre-wrap">' + U.esc(parent.content || '') + '</div>' +
+              (parent.plan ? '<div style="margin-top:6px"><b>조치 · 약속</b> ' + U.esc(parent.plan) + '</div>' : '') +
+            '</div>'
+          : '') +
+        '<div class="form-grid">' +
+          '<label class="fld">학생<select id="cf-stu"' + (parent ? ' disabled' : '') + '>' + studentOptions(sid, '학생 선택') + '</select></label>' +
+          '<label class="fld">상담일<input type="date" id="cf-date" value="' + U.esc(c.date || U.ymd()) + '"></label>' +
+          '<label class="fld">상담 대상<select id="cf-with">' + UI.options(Store.COUNSEL_WITH, c.with || '학부모') + '</select></label>' +
+          '<label class="fld">방법<select id="cf-ch">' + UI.options(Store.COUNSEL_CHANNELS, c.channel || '전화') + '</select></label>' +
+          '<label class="fld">주제<select id="cf-topic">' + UI.options(Store.COUNSEL_TOPICS, c.topic || '성적') + '</select></label>' +
+          '<label class="fld">관련 시험<select id="cf-grade">' + gradeOpts(sid, c.gradeId || '') + '</select></label>' +
+          '<label class="fld full">상담 내용<textarea id="cf-content" style="min-height:110px" placeholder="학부모님·학생과 나눈 이야기, 아이의 현재 상황">' + U.esc(c.content || '') + '</textarea></label>' +
+          '<label class="fld full">조치 · 약속 사항<textarea id="cf-plan" placeholder="예) 단어 시험 재응시 / 2주 뒤 문법 진도 다시 안내">' + U.esc(c.plan || '') + '</textarea></label>' +
+          '<label class="fld">다음 확인일 (팔로우업)<input type="date" id="cf-follow" value="' + U.esc(c.followUpDate || '') + '"></label>' +
+          '<div class="fld">빠르게 정하기<div class="chips">' +
+            '<button class="chip" type="button" data-fu="7">1주 뒤</button>' +
+            '<button class="chip" type="button" data-fu="14">2주 뒤</button>' +
+            '<button class="chip" type="button" data-fu="30">한 달 뒤</button>' +
+            '<button class="chip" type="button" data-fu="">없음</button>' +
+          '</div></div>' +
+        '</div>' +
+        (parent ? '<p class="hint" style="margin:12px 0 0">저장하면 앞 상담의 팔로우업은 <b>확인 완료</b>로 바뀝니다.</p>' : ''),
+      footer:
+        (isNew ? '' : '<button class="btn danger" id="cf-del">삭제</button>') +
+        '<div class="sp"></div><button class="btn" data-close>취소</button>' +
+        '<button class="btn primary" id="cf-save">저장</button>',
+      onMount: function (w) {
+        w.querySelector('#cf-stu').addEventListener('change', function (e) {
+          w.querySelector('#cf-grade').innerHTML = gradeOpts(e.target.value, '');
+        });
+        UI.on(w, '[data-fu]', 'click', function (e, b) {
+          var n = b.getAttribute('data-fu');
+          w.querySelector('#cf-follow').value = n ? addDays(+n) : '';
+        });
+        w.querySelector('#cf-save').addEventListener('click', function () {
+          var studentId = parent ? parent.studentId : w.querySelector('#cf-stu').value;
+          var content = w.querySelector('#cf-content').value.trim();
+          if (!studentId) { UI.toast('학생을 골라 주세요.', true); return; }
+          if (!content) { UI.toast('상담 내용을 적어 주세요.', true); return; }
+          var follow = w.querySelector('#cf-follow').value;
+          var rec = {
+            id: isNew ? undefined : c.id,
+            studentId: studentId,
+            parentId: parent ? parent.id : (c.parentId || ''),
+            date: w.querySelector('#cf-date').value || U.ymd(),
+            with: w.querySelector('#cf-with').value,
+            channel: w.querySelector('#cf-ch').value,
+            topic: w.querySelector('#cf-topic').value,
+            gradeId: w.querySelector('#cf-grade').value,
+            content: content,
+            plan: w.querySelector('#cf-plan').value.trim(),
+            followUpDate: follow
+          };
+          // 확인일을 새로 바꾸면 다시 기다리는 상태로 둡니다
+          if (!isNew && follow !== c.followUpDate) rec.followUpDone = false;
+          if (isNew) rec.followUpDone = false;
+          Store.saveCounsel(rec);
+          UI.close();
+          UI.toast(parent ? '후속 상담을 이어서 기록했습니다.' : '상담을 기록했습니다.');
+          cf.studentId = studentId;
+          tab = 'counsel';
+          if (location.hash.indexOf('#/grades') === 0 && host) { App.setSub(sub()); render(host); }
+          else location.hash = '#/grades?tab=counsel&student=' + encodeURIComponent(studentId);
+        });
+        if (!isNew) {
+          w.querySelector('#cf-del').addEventListener('click', function () {
+            UI.confirm('이 상담 기록을 지울까요? 이어진 후속 상담은 남습니다.', function () {
+              Store.deleteCounsel(c.id); UI.toast('지웠습니다.'); render(host);
+            }, { danger: true, yes: '삭제' });
+          });
+        }
+      }
+    });
+  }
+
+  /* ============================================================
+   * 탭 틀
+   * ============================================================ */
+  function tabsHtml() {
+    var due = Store.counsels({ pending: true }).filter(function (c) { return c.followUpDate <= U.ymd(); }).length;
+    var unlinked = Store.grades({ unlinked: true }).length;
+    return '<div class="seg lib-tabs gr-tabs" role="tablist">' + TABS.map(function (t) {
+      var badge = t.id === 'counsel' ? due : t.id === 'records' ? unlinked : 0;
+      return '<button data-tab="' + t.id + '"' + (tab === t.id ? ' class="on"' : '') + '>' + t.label +
+        (badge ? ' <span class="lib-badge">' + badge + '</span>' : '') + '</button>';
+    }).join('') + '</div>';
+  }
+
+  /**
+   * 그릴 때마다 안쪽 틀을 새로 만듭니다 (도서 대여 화면과 같은 방식).
+   * 바깥 틀에 직접 그리면 다시 그릴 때마다 클릭 처리가 겹겹이 쌓입니다.
+   */
+  function render(el) {
+    host = el;
+    if (location.hash !== appliedHash) {
+      appliedHash = location.hash;
+      var q = App.query();
+      if (isTab(q.tab)) tab = q.tab;
+      if (q.student) { cf.studentId = q.student; if (tab === 'records') rf.studentId = q.student; }
+    }
+    App.setSub(sub());
+    el.innerHTML = '';
+    el.insertAdjacentHTML('afterbegin', tabsHtml());
+    var root = document.createElement('div');
+    if (tab === 'stats' || tab === 'report') root.style.marginTop = '16px';
+    el.appendChild(root);
+    if (tab === 'stats') Views.stats.render(root);
+    else if (tab === 'report') Views.share.render(root);
+    else if (tab === 'counsel') renderCounsel(root);
+    else renderRecords(root);
+
+    el.querySelectorAll('.gr-tabs [data-tab]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        tab = btn.getAttribute('data-tab');
+        render(host);
+      });
+    });
+  }
+
+  return {
+    title: title, sub: sub, render: render, setTab: setTab,
+    openCounselForm: openCounselForm, parsePasted: parsePasted, openImportPreview: openImportPreview
+  };
 })();
 
 </script>
@@ -10097,6 +11102,10 @@ var App = (function () {
       return;
     }
     document.body.classList.remove('share-mode');
+
+    // 예전 '통계' · '학부모 공유' 메뉴는 '성적 관리' 의 탭으로 합쳤습니다. 예전 주소도 그대로 열립니다.
+    var MERGED = { stats: 'stats', share: 'report' };
+    if (MERGED[current]) { Views.grades.setTab(MERGED[current]); current = 'grades'; }
 
     var view = Views[current] || Views.dashboard;
     if (!Views[current]) { current = 'dashboard'; }

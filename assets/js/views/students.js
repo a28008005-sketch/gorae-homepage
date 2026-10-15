@@ -152,6 +152,34 @@ Views.students = (function () {
   }
 
   /* ---------- 상세 ---------- */
+  /** 학생 상세의 '성적 · 상담' 칸 — 최근 시험 3건, 최근 상담 3건, 기다리는 팔로우업 */
+  function counselSection(s) {
+    var gs = Store.grades({ studentId: s.id });
+    var cs = Store.counsels({ studentId: s.id });
+    var due = cs.filter(Store.isFollowUpPending);
+    var sid = encodeURIComponent(s.id);
+    return '<div class="section-title">성적 · 상담</div>' +
+      '<div class="grid g-2" style="gap:14px">' +
+        '<div><div class="hint" style="margin-bottom:6px">최근 시험 · 전체 ' + gs.length + '건 ' +
+          '<a href="#" data-goto="#/grades?tab=records&student=' + sid + '">모두 보기 →</a></div>' +
+          (gs.length ? gs.slice(0, 3).map(function (g) {
+            return '<div class="memo-item"><span class="dt">' + U.esc(String(g.registeredAt || '').slice(5, 10) || '-') + '</span>' +
+              '<div class="txt">' + U.esc(g.exam) + (g.score ? ' · <b>' + U.esc(g.score) + '</b>' : '') + '</div></div>';
+          }).join('') : '<div class="hint">가져온 시험 기록이 없습니다.</div>') +
+        '</div>' +
+        '<div><div class="hint" style="margin-bottom:6px">최근 상담 · 전체 ' + cs.length + '건 ' +
+          '<a href="#" data-goto="#/grades?tab=counsel&student=' + sid + '">상담 이력 →</a></div>' +
+          (due.length ? '<div style="margin-bottom:6px"><span class="tag warn">팔로우업 대기 ' + due.length + '건 · 다음 ' +
+            U.esc(U.shortDate(due.map(function (c) { return c.followUpDate; }).sort()[0])) + '</span></div>' : '') +
+          (cs.length ? cs.slice(0, 3).map(function (c) {
+            return '<div class="memo-item"><span class="dt">' + U.shortDate(c.date) + '</span>' +
+              '<div class="txt">' + (c.topic ? '<span class="tag mint">' + U.esc(c.topic) + '</span> ' : '') +
+              U.esc(String(c.content || '').slice(0, 50)) + '</div></div>';
+          }).join('') : '<div class="hint">상담 기록이 없습니다.</div>') +
+        '</div>' +
+      '</div>';
+  }
+
   function openDetail(id) {
     var s = Store.student(id);
     if (!s) return;
@@ -257,9 +285,11 @@ Views.students = (function () {
           }).join('') + '</tbody></table></div>'
         : '<div class="hint">청구 기록이 없습니다. 수강료 납부 화면에서 청구서를 생성해 주세요.</div>') +
 
+      counselSection(s) +
+
       '<div class="section-title">메모</div>' +
       '<div class="row" style="margin-bottom:8px">' +
-        '<input type="text" id="d-memo" placeholder="상담 내용, 학습 특이사항 등" style="flex:1">' +
+        '<input type="text" id="d-memo" placeholder="짧은 학습 메모 (상담은 [상담 기록]으로 남겨 주세요)" style="flex:1">' +
         '<button class="btn" id="d-memo-add">추가</button></div>' +
       '<div id="d-memo-list">' +
         (memos.length ? memos.map(function (m) {
@@ -271,7 +301,8 @@ Views.students = (function () {
 
     UI.modal({
       title: s.name, wide: true, body: body,
-      footer: '<button class="btn" id="d-share">학부모 공유 →</button>' +
+      footer: '<button class="btn" id="d-share">학부모 리포트 →</button>' +
+              '<button class="btn" id="d-counsel">상담 기록</button>' +
               '<div class="sp"></div>' +
               '<button class="btn" data-close>닫기</button>' +
               '<button class="btn primary" id="d-edit">정보 수정</button>',
@@ -279,7 +310,16 @@ Views.students = (function () {
         w.querySelector('#d-edit').addEventListener('click', function () { UI.close(); openForm(s.id); });
         w.querySelector('#d-share').addEventListener('click', function () {
           UI.close();
-          location.hash = '#/share?student=' + encodeURIComponent(s.id);
+          location.hash = '#/grades?tab=report&student=' + encodeURIComponent(s.id);
+        });
+        w.querySelector('#d-counsel').addEventListener('click', function () {
+          UI.close();
+          Views.grades.openCounselForm({ studentId: s.id });
+        });
+        UI.on(w, '[data-goto]', 'click', function (e, a) {
+          e.preventDefault();
+          UI.close();
+          location.hash = a.getAttribute('data-goto');
         });
         function addMemo() {
           var input = w.querySelector('#d-memo');
