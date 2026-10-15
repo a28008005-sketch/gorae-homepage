@@ -154,6 +154,7 @@ Views.dashboard = (function () {
   function libraryBox() {
     var over = Store.overdueLoans();
     var open = Store.loans({ open: true });
+    var waiting = Store.loans().filter(function (l) { return Store.bookReportOf(l) !== '제출완료'; }).length;
     if (!Store.books().length) {
       return '<div class="hint">등록된 도서가 없습니다. <a href="#/library" style="color:#215a86;font-weight:600">도서 등록</a></div>';
     }
@@ -168,7 +169,8 @@ Views.dashboard = (function () {
         '<span class="tag ' + (late ? 'bad' : 'mint') + '">' +
           (late ? U.dayDiff(l.dueDate, U.ymd()) + '일 연체' : '~' + U.esc(l.dueDate || '')) + '</span>' +
         '<br><span style="font-size:12px;color:#6b7b8a">' + U.esc(b ? b.title : '(삭제된 책)') + '</span></div></div>';
-    }).join('') + (over.length ? '<div class="hint" style="margin-top:8px">연체 ' + over.length + '권</div>' : '');
+    }).join('') + (over.length ? '<div class="hint" style="margin-top:8px">연체 ' + over.length + '권</div>' : '') +
+      (waiting ? '<div class="hint" style="margin-top:4px">북리포트 대기 ' + waiting + '건 · <a href="#/library" style="color:#215a86;font-weight:600">학생별 독서 현황</a></div>' : '');
   }
 
   function buildCalendar(year, month, selectedDate) {

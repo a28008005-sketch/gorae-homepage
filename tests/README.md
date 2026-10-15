@@ -18,6 +18,7 @@ node tests/homework-vocab-library.test.js    # 숙제, 단어학습 가져오기
 node tests/vocab-live.test.js                # 단어 학습 · 오늘 실시간 현황 (웨일리 보카 진행 기록)
 node tests/library-books.test.js             # 바코드(ISBN) 등록 · 도서 자동 조회 · 청구기호 · CSV 일괄 등록 · 라벨
 node tests/worksheet.test.js                 # 워크시트 레벨 판정·생성·대여 연동
+node tests/library-reading.test.js           # 도서 대여 탭 · 학생별 독서 현황 · 권장 레벨 · 북리포트 상태 · 워크시트 자료실
 node tests/bundle-check.js                   # dist 단일 파일이 제대로 동작하는지
 ```
 

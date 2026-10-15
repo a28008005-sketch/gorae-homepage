@@ -150,6 +150,14 @@ Views.settings = (function () {
     // 반납 완료된 지난 기록
     var past = Store.lendBook(bookIds[1], ids[1], U.daysAgo(-1));
     Store.returnBook(past, U.daysAgo(2));
+    Store.setBookReport(past, '제출완료');
+    // 학생별 권장 도서 레벨과 북리포트 진행 상태
+    [4, 3, 5, 4, 3, 5].forEach(function (lv, i) {
+      if (ids[i]) Store.saveStudent({ id: ids[i], readLevel: String(lv) });
+    });
+    Store.loans({ open: true }).forEach(function (l, i) {
+      if (i === 0) Store.setBookReport(l.id, '작성중');
+    });
 
     Store.addTask('9월 레벨테스트 예약 학부모 안내', 'today');
     Store.addTask('원서 신간 라이브러리 등록', 'week');

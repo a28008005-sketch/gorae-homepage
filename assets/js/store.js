@@ -1038,6 +1038,33 @@ var Store = (function () {
     return false;
   }
 
+  /* ---------- 북리포트 · 학생 독서 현황 ---------- */
+  var BOOK_REPORT = ['미제출', '작성중', '제출완료'];
+  /** 대여 기록의 북리포트 상태 — 값이 없으면 미제출 */
+  function bookReportOf(l) {
+    return (l && BOOK_REPORT.indexOf(l.brStatus) >= 0) ? l.brStatus : '미제출';
+  }
+  function setBookReport(loanId, status) {
+    if (BOOK_REPORT.indexOf(status) < 0) return false;
+    return updateLoan(loanId, { brStatus: status, brDate: status === '제출완료' ? U.ymd() : '' });
+  }
+  /**
+   * 학생 한 명의 독서 요약.
+   * 북리포트 제출률 = 제출완료 / 빌려간 책 전체
+   */
+  function readingOf(studentId) {
+    var list = loans({ studentId: studentId });
+    var done = list.filter(function (l) { return bookReportOf(l) === '제출완료'; }).length;
+    return {
+      loans: list,
+      open: list.filter(function (l) { return !l.returnDate; }),
+      total: list.length,
+      done: done,
+      waiting: list.length - done,
+      rate: U.pct(done, list.length)
+    };
+  }
+
   /** 지금 연체된 대출 목록 */
   function overdueLoans() {
     var today = U.ymd();
@@ -1290,6 +1317,7 @@ var Store = (function () {
     loans: loans, openLoanOf: openLoanOf, bookStatus: bookStatus,
     lendBook: lendBook, returnBook: returnBook, deleteLoan: deleteLoan,
     updateLoan: updateLoan, overdueLoans: overdueLoans,
+    BOOK_REPORT: BOOK_REPORT, bookReportOf: bookReportOf, setBookReport: setBookReport, readingOf: readingOf,
     ensureCode: ensureCode, studentByCode: studentByCode, findStudent: findStudent,
     summarize: summarize, dayOverview: dayOverview,
     exportJson: exportJson, importJson: importJson, resetAll: resetAll, saveAcademy: saveAcademy,
