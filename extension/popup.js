@@ -80,6 +80,12 @@ $('sync').addEventListener('click', function () {
 });
 
 /* ---------- 시작 ---------- */
+// popup.html 을 파일로 직접 열면 크롬 확장 기능(chrome.tabs 등)이 없어 아무것도 못 합니다.
+if (!(window.chrome && chrome.tabs && chrome.storage)) {
+  setStatus('이 파일은 직접 여는 화면이 아닙니다. chrome://extensions 에서 확장 프로그램을 설치한 뒤, ' +
+    '본사 성적 목록 화면에서 주소창 오른쪽의 고래 아이콘을 눌러 주세요.', 'bad');
+  throw new Error('확장 프로그램 밖에서 열림');
+}
 Promise.all([
   chrome.tabs.query({ active: true, currentWindow: true }),
   chrome.storage.sync.get(DEFAULTS),
