@@ -78,7 +78,24 @@ const ok = (l, c, e = '') => { results.push(!!c); console.log(`  ${c ? '✓' : '
   const hist = await p.frameLocator('#hi-if').locator('body').textContent();
   ok('독서 이력 미리보기', /독서 이력/.test(hist) && /북리포트/.test(hist));
   await shot('lib-2-history');
+
+  // 독서 이력 → 학부모 공유 링크 (출결 없이 독서만)
+  await p.click('[data-hr="all"]'); await p.waitForTimeout(200);
+  await p.click('#hi-share'); await p.waitForTimeout(300);
+  const readUrl = await p.inputValue('#sh-url');
+  ok('독서 이력 공유 링크 생성', /#\/report\?d=/.test(readUrl));
   await p.click('[data-close]');
+
+  // 학부모가 처음 여는 브라우저처럼 — 저장된 자료 없이 링크만으로
+  const ctx = await b.newContext({ viewport: { width: 390, height: 844 } });
+  const pp = await ctx.newPage();
+  pp.on('pageerror', e => errs.push('PARENT PAGEERROR: ' + e.message));
+  await pp.goto(readUrl.replace(/^.*?#/, BASE + '#')); await pp.waitForTimeout(600);
+  const parentText = await pp.textContent('body');
+  ok('학부모 화면에 독서 리포트', /독서 리포트/.test(parentText) && /독서 이력/.test(parentText) && /Charlotte's Web|Frog and Toad/.test(parentText));
+  ok('독서 리포트에는 출결 없음', !/기간 내 출결 기록/.test(parentText));
+  if (SHOT) await pp.screenshot({ path: `${SHOT}/lib-share-parent.png`, fullPage: true });
+  await ctx.close();
 
   /* ---------- 탭 3: 워크시트 자료실 ---------- */
   await p.click('[data-tab="sheets"]'); await p.waitForTimeout(300);
@@ -91,6 +108,15 @@ const ok = (l, c, e = '') => { results.push(!!c); console.log(`  ${c ? '✓' : '
   await p.click('[data-blank="2"]'); await p.waitForTimeout(400);
   ok('빈 양식 출력', /Book Report/.test(await p.frameLocator('#ws-if').locator('body').textContent()));
   await p.click('[data-close]');
+
+  /* ---------- 학부모 공유 화면: 독서 이력 포함 ---------- */
+  await p.goto(BASE + '#/share?student=' + lend.sid); await p.waitForTimeout(400);
+  ok('공유 화면에 독서 이력 체크', await p.isChecked('#sh-reading'));
+  ok('미리보기에 출결 + 독서 이력', /기간 내 출결 기록/.test(await p.textContent('#sh-preview')) && /독서 이력/.test(await p.textContent('#sh-preview')));
+  await p.$eval('#sh-reading', el => { el.checked = false; el.dispatchEvent(new Event('change', { bubbles: true })); });
+  ok('체크 끄면 독서 이력 빠짐', !/독서 이력/.test(await p.textContent('#sh-preview')));
+  await p.$eval('#sh-reading', el => { el.checked = true; el.dispatchEvent(new Event('change', { bubbles: true })); });
+  await shot('lib-share-admin', true);
 
   /* ---------- 학생 명부 · 대시보드 ---------- */
   await p.goto(BASE + '#/students'); await p.waitForTimeout(300);

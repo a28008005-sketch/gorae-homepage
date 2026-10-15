@@ -1170,12 +1170,15 @@ Views.library = (function () {
           '<button data-hr="month" class="on">이번 달</button><button data-hr="prev">지난 달</button>' +
           '<button data-hr="three">최근 3개월</button><button data-hr="all">전체</button></div></div>' +
         '<div class="ws-frame"><iframe id="hi-if" title="독서 이력 미리보기"></iframe></div>' +
-        '<p class="hint" style="margin-top:10px">학부모 상담 때 인쇄하거나, 인쇄 창에서 <b>PDF로 저장</b>을 골라 파일로 보내실 수 있습니다.</p>',
-      footer: '<button class="btn" id="hi-dl">HTML로 저장</button><div class="sp"></div>' +
+        '<p class="hint" style="margin-top:10px">학부모 상담 때 인쇄하거나, 인쇄 창에서 <b>PDF로 저장</b>을 골라 파일로 보내실 수 있습니다. ' +
+          '<b>[학부모 공유 링크]</b>를 누르면 고른 기간의 독서 이력을 카톡·문자로 보낼 링크로 만들어 드립니다.</p>',
+      footer: '<button class="btn" id="hi-dl">HTML로 저장</button>' +
+              '<button class="btn" id="hi-share">학부모 공유 링크</button><div class="sp"></div>' +
               '<button class="btn" data-close>닫기</button><button class="btn primary" id="hi-print">인쇄</button>',
       onMount: function (w) {
-        var html = '';
+        var html = '', cur = 'month';
         function draw(k) {
+          cur = k;
           html = historyHtml(s, ranges[k][0], ranges[k][1]);
           w.querySelector('#hi-if').srcdoc = html;
           w.querySelectorAll('[data-hr]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-hr') === k); });
@@ -1185,6 +1188,15 @@ Views.library = (function () {
           var f = w.querySelector('#hi-if');
           f.contentWindow.focus();
           f.contentWindow.print();
+        });
+        w.querySelector('#hi-share').addEventListener('click', function () {
+          // 출결 없이 독서 이력만 담은 학부모용 링크 — '전체'는 처음 빌린 날부터
+          var r = ranges[cur];
+          var loans = Store.readingOf(s.id).loans;
+          var from = r[0] || (loans.length ? loans[loans.length - 1].outDate : U.ymd());
+          var rep = Views.share.build(s.id, from, r[1] || U.ymd(), '', { attendance: false });
+          UI.close();
+          Views.share.openLink(rep);
         });
         w.querySelector('#hi-dl').addEventListener('click', function () {
           U.download('독서이력_' + s.name + '_' + U.ymd() + '.html', html, 'text/html');
