@@ -240,6 +240,11 @@ Views.dashboard = (function () {
       // 주요 현황 요약 (상단)
       mainCards() +
 
+      // 카카오 채널 · 제출 링크로 오늘 들어온 숙제 (목록은 숙제 영상 화면이 불러옵니다)
+      '<div class="card"><div class="card-h"><h2>오늘 들어온 숙제 · 카톡</h2><div class="sp"></div>' +
+        '<a class="btn primary" href="#/hwvideo">전체 보기 →</a></div>' +
+        '<div class="card-b" id="dash-hw"></div></div>' +
+
       // 업무 상세 계획 — 달력은 왼쪽, 그날 일정은 오른쪽에 붙입니다.
       '<div class="card"><div class="card-h"><h2>업무 상세 계획</h2><div class="sp"></div>' +
         '<h3 class="cal-month" id="cal-month">' + year + '년 ' + (month + 1) + '월</h3>' +
@@ -320,6 +325,7 @@ Views.dashboard = (function () {
 
     renderUpcomingTasks();
     renderSelectedTasks(today);
+    if (Views.hwvideo && Views.hwvideo.fillToday) Views.hwvideo.fillToday(el.querySelector('#dash-hw'));
 
     // 이벤트
     UI.on(el, '[data-mark]', 'click', function (e, btn) {

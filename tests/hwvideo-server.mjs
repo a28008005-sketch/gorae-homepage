@@ -14,15 +14,25 @@ const HW = {
     complete: async (ps) => { store.set(k, { body: Buffer.concat(ps.map(p => mp[k].parts[p.partNumber])), meta: mp[k].o, uploaded: new Date() }); },
     abort: async () => {},
   }),
-  list: async ({ prefix }) => ({ truncated: false, objects: [...store.keys()].filter(k => k.startsWith(prefix)).map(k => ({ key: k, size: store.get(k).body.length, uploaded: store.get(k).uploaded, customMetadata: store.get(k).meta?.customMetadata })) }),
-  put: async (k, b, o) => { const body = b == null || typeof b === 'string' ? Buffer.from(b || '') : Buffer.from(await new Response(b).arrayBuffer()); store.set(k, { body, meta: o || {}, uploaded: new Date() }); return { size: body.length }; },
+  list: async ({ prefix }) => ({ truncated: false, objects: [...store.keys()].filter(k => k.startsWith(prefix)).map(k => ({ key: k, size: store.get(k).body.length, uploaded: store.get(k).uploaded, customMetadata: store.get(k).meta?.customMetadata, httpMetadata: store.get(k).meta?.httpMetadata })) }),
+  put: async (k, b, o) => { const body = b == null || typeof b === 'string' ? Buffer.from(b || '') : b instanceof ArrayBuffer ? Buffer.from(new Uint8Array(b)) : Buffer.from(await new Response(b).arrayBuffer()); store.set(k, { body, meta: o || {}, uploaded: new Date() }); return { size: body.length }; },
   delete: async (k) => store.delete(k),
   head: async (k) => store.has(k) ? { size: store.get(k).body.length } : null,
   get: async (k, o) => { const s = store.get(k); if (!s) return null; let b = s.body; if (o?.range) b = b.subarray(o.range.offset, o.range.offset + o.range.length); return { body: b, size: s.body.length, httpMetadata: s.meta?.httpMetadata, customMetadata: s.meta?.customMetadata }; },
 };
 // 원생관리 문지기 흉내: gorae_staff=ok 쿠키면 로그인된 것으로 봅니다.
 const GATE = { fetch: async (u, init) => new Response('{}', { status: /gorae_staff=ok/.test((init && init.headers && init.headers.cookie) || '') ? 503 : 401 }) };
-const env = { HW, GATE, ADMIN_PASSWORD: 'pw-test' };
+const env = { HW, GATE, ADMIN_PASSWORD: 'pw-test', KAKAO_SKILL_KEY: 'kk-test' };
+// 카카오 파일 서버 흉내: talk.kakaocdn.net 주소는 작은 가짜 녹음·사진을 돌려줍니다.
+const realFetch = globalThis.fetch;
+globalThis.fetch = async (input, init) => {
+  const u = typeof input === 'string' ? input : input.url;
+  if (/kakaocdn\.net/.test(u)) {
+    if (/\.jpg/.test(u)) return new Response(Buffer.from('/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=', 'base64'), { headers: { 'content-type': 'image/jpeg' } });
+    return new Response(Buffer.alloc(4000, 1), { headers: { 'content-type': 'audio/mp4' } });
+  }
+  return realFetch(input, init);
+};
 const types = { '.pdf': 'application/pdf', '.html': 'text/html; charset=utf-8', '.js': 'application/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json' };
 
 http.createServer(async (req, res) => {
