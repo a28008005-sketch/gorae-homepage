@@ -7,6 +7,10 @@
 //   POST /hw/admin/api/res/delete {key}          파일 지우기
 //   GET  /hw/admin/res?key=...[&dl=1]            파일 열기 / 내려받기
 // ★ 버킷 수명 규칙(30일 자동 삭제)은 sub/ 폴더에만 걸려 있어야 합니다. 버킷 전체에 걸면 자료 파일도 지워집니다.
+//
+// 카카오 채널 숙제 (카카오 챗봇 스킬이 부르는 곳, 비밀값 KAKAO_SKILL_KEY 필요)
+//   POST /hw/kakao/<KAKAO_SKILL_KEY>   채널로 온 파일은 sub/ 에 숙제로 저장, 글은 '카카오 메시지'로 저장, 자동 답장
+//   학부모가 "이름 김고래" 라고 한 번 보내면 그 카카오 계정 = 그 학생으로 기억합니다 (kakao/users/ 폴더, 지우지 않음)
 
 const PART_SIZE = 10 * 1024 * 1024; // 10MB 조각
 const MAX_SIZE = 1024 * 1024 * 1024; // 1GB
@@ -14,10 +18,11 @@ const KEEP_DAYS = 30;
 const RES_MAX = 95 * 1024 * 1024; // 자료 파일 한 개 최대 크기 (워커가 한 번에 받을 수 있는 한도 100MB 아래)
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const p = url.pathname.replace(/\/+$/, '') || '/';
     try {
+      if (p.startsWith('/hw/kakao/')) return kakao(request, env, ctx, p, url);
       if (p === '/hw') return html(submitPage());
       if (p === '/hw/api/start' && request.method === 'POST') return start(request, env);
       if (p === '/hw/api/part' && request.method === 'PUT') return part(request, env, url);
@@ -65,8 +70,7 @@ async function start(request, env) {
   if (!size || size > MAX_SIZE) return json({ ok: false, error: '파일 크기를 확인해 주세요. (최대 1GB)' }, 400);
   if (type && !/^(video|audio)\//.test(type)) return json({ ok: false, error: '동영상 또는 녹음 파일만 올릴 수 있어요.' }, 400);
 
-  const now = new Date(Date.now() + 9 * 3600 * 1000); // KST
-  const day = now.toISOString().slice(0, 10);
+  const day = kstDay();
   const ext = (filename.match(/\.([a-zA-Z0-9]{1,5})$/) || [, 'mp4'])[1].toLowerCase();
   const key = `sub/${day}/${Date.now()}_${rand(6)}.${ext}`;
   const mpu = await env.HW.createMultipartUpload(key, {
@@ -172,6 +176,7 @@ async function list(env, url) {
   const days = Math.min(Number(url.searchParams.get('days')) || 7, KEEP_DAYS);
   const items = [];
   const checked = new Set();
+  const names = new Map();   // 카카오 계정 → 등록된 학생 이름 (한 번 부를 때만 기억)
   let cursor;
   do {
     const r = await env.HW.list({ prefix: 'checked/', cursor, limit: 1000 });
@@ -183,13 +188,21 @@ async function list(env, url) {
     const d = new Date(Date.now() + 9 * 3600 * 1000 - i * 86400000).toISOString().slice(0, 10);
     let c;
     do {
-      const r = await env.HW.list({ prefix: `sub/${d}/`, cursor: c, limit: 1000, include: ['customMetadata'] });
+      const r = await env.HW.list({ prefix: `sub/${d}/`, cursor: c, limit: 1000, include: ['customMetadata', 'httpMetadata'] });
       for (const o of r.objects) {
         const m = o.customMetadata || {};
+        let student = dec(m.student);
+        // 이름을 알려 주기 전에 카카오로 보낸 숙제는, 나중에 등록된 이름으로 채워서 보여 줍니다.
+        if (!student && m.kakao) {
+          if (!names.has(m.kakao)) names.set(m.kakao, ((await kakaoUser(env, m.kakao)) || {}).student || '');
+          student = names.get(m.kakao);
+        }
         items.push({
           key: o.key, size: o.size, uploaded: o.uploaded,
-          student: dec(m.student), cls: dec(m.cls), memo: dec(m.memo),
+          student, cls: dec(m.cls), memo: dec(m.memo),
           filename: dec(m.filename), checked: checked.has(o.key),
+          type: (o.httpMetadata && o.httpMetadata.contentType) || '',
+          via: m.via || '',
         });
       }
       c = r.truncated ? r.cursor : undefined;
@@ -289,6 +302,173 @@ async function resFile(env, url) {
   return new Response(obj.body, { headers: h });
 }
 
+// ---------- 카카오 채널 숙제 ----------
+/*
+ * 카카오 챗봇(폴백 블록)에 연결한 스킬이 부르는 곳입니다.
+ * 카카오는 '200 + 카카오 형식 JSON' 이 아니면 이유 없이 실패로 보므로, 문제가 있어도 카카오 형식으로 답합니다.
+ * 카카오는 5초 안에 답을 받아야 해서, 파일 저장이 3초 안에 안 끝나면 먼저 답하고 저장은 뒤에서 마칩니다.
+ */
+const KAKAO_WAIT_MS = 3000;
+const KAKAO_MAX = 95 * 1024 * 1024;
+const KAKAO_HOST = /(^|\.)(kakaocdn\.net|kakao\.com|daumcdn\.net)$/i;
+const MEDIA_EXT = /^(m4a|mp3|aac|wav|amr|ogg|3gp|caf|mp4|mov|m4v|webm|jpg|jpeg|png|gif|heic|webp)$/;
+const TYPE_BY_EXT = {
+  m4a: 'audio/mp4', mp3: 'audio/mpeg', aac: 'audio/aac', wav: 'audio/wav', amr: 'audio/amr', ogg: 'audio/ogg',
+  '3gp': 'video/3gpp', caf: 'audio/x-caf', mp4: 'video/mp4', mov: 'video/quicktime', m4v: 'video/mp4', webm: 'video/webm',
+  jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', heic: 'image/heic', webp: 'image/webp',
+};
+const EXT_BY_TYPE = {
+  'audio/mp4': 'm4a', 'audio/x-m4a': 'm4a', 'audio/m4a': 'm4a', 'audio/mpeg': 'mp3', 'audio/aac': 'aac', 'audio/wav': 'wav',
+  'audio/x-wav': 'wav', 'audio/amr': 'amr', 'audio/ogg': 'ogg', 'video/mp4': 'mp4', 'video/quicktime': 'mov',
+  'video/3gpp': '3gp', 'video/webm': 'webm', 'image/jpeg': 'jpg', 'image/png': 'png', 'image/gif': 'gif',
+  'image/heic': 'heic', 'image/webp': 'webp',
+};
+
+async function kakao(request, env, ctx, p, url) {
+  const isPost = request.method === 'POST';
+  const fail = (msg, status) => isPost ? kReply([kText('[설정 확인] ' + msg)]) : json({ ok: false, error: msg }, status);
+  if (!env.KAKAO_SKILL_KEY) return fail('gorae-homework 워커에 KAKAO_SKILL_KEY 가 없습니다.', 503);
+  let key = p.slice('/hw/kakao/'.length);
+  try { key = decodeURIComponent(key); } catch (_) { /* 그대로 비교 */ }
+  const keyOk = safeEqual(key.trim(), String(env.KAKAO_SKILL_KEY).trim());
+  console.log('[kakao] ' + request.method + ' 도착 · 열쇠 ' + (keyOk ? '맞음' : '틀림'));
+  if (!keyOk) return fail('스킬 주소 끝의 열쇠가 워커의 KAKAO_SKILL_KEY 와 다릅니다.', 404);
+  if (!isPost) return json({ ok: true, message: '카카오 숙제 창구가 열려 있습니다. 카카오 스킬 주소로 쓰세요.' });
+
+  let body = null;
+  try { body = JSON.parse(await request.text()); } catch (_) { /* 아래에서 안내 */ }
+  if (!body || typeof body !== 'object') return kReply([kText('메시지를 읽지 못했어요. 한 번만 다시 보내 주세요.')]);
+  try {
+    return await kakaoHandle(body, env, ctx, url.origin);
+  } catch (e) {
+    console.log('[kakao] 오류 ' + (e && e.stack || e));
+    return kReply([kText('잠시 문제가 생겼어요. 조금 뒤에 다시 보내 주세요.')]);
+  }
+}
+
+async function kakaoHandle(body, env, ctx, origin) {
+  const req = body.userRequest || {};
+  const uid = String((req.user || {}).id || '');
+  const who = uid ? await kakaoHash(uid) : '';
+  const utter = String(req.utterance || '').trim();
+  const info = who ? await kakaoUser(env, who) : null;
+  const name = (info && info.student) || '';
+  const uploadLink = origin + '/hw' + (name ? '?name=' + encodeURIComponent(name) : '');
+  const askName = '처음 보내 주셨다면 아이 이름을 한 번만 알려 주세요.\n예) 이름 김고래';
+
+  // 1) 이름 등록: "이름 김고래" / "등록 김고래"
+  // "이름이 뭐예요?" 같은 글까지 등록으로 보지 않도록, 낱말 뒤에 띄어쓰기나 : 가 있어야 합니다.
+  const m = utter.match(/^(?:이름|등록)(?:\s*[:：]\s*|\s+)(.+)$/);
+  if (m && who) {
+    const student = clean(m[1].replace(/\s*학생\s*$/, ''), 20);
+    if (!/^[가-힣A-Za-z][가-힣A-Za-z ]{1,14}$/.test(student)) return kReply([kText('아이 이름만 다시 알려 주세요.\n예) 이름 김고래')]);
+    await env.HW.put('kakao/users/' + who + '.json', JSON.stringify({ student, at: new Date().toISOString() }), {
+      httpMetadata: { contentType: 'application/json' },
+    });
+    return kReply([kText(student + ' 학생으로 등록했어요 😊\n이제 숙제 녹음·영상·사진을 이 채팅방에 보내 주시면 자동으로 접수됩니다.\n\n이름이 바뀌었거나 형제가 보낼 때는 다시 "이름 ○○○" 이라고 보내 주세요.')]);
+  }
+
+  // 2) 파일: 카카오 서버 주소로 온 사진·녹음·영상
+  const urls = kakaoMediaUrls(body);
+  if (urls.length) {
+    const job = Promise.all(urls.slice(0, 5).map(u => saveKakaoFile(env, u, who, name).catch(e => {
+      console.log('[kakao] 파일 저장 실패 ' + (e && e.message || e)); return null;
+    })));
+    const done = await Promise.race([job, new Promise(r => setTimeout(() => r(null), KAKAO_WAIT_MS))]);
+    if (!done) {
+      if (ctx && ctx.waitUntil) ctx.waitUntil(job);
+    } else if (!done.some(Boolean)) {
+      return kReply([kCard('파일을 받지 못했어요 😢', '번거로우시겠지만 아래 버튼을 눌러 숙제를 올려 주세요.', '숙제 올리기', uploadLink)]);
+    }
+    const head = name ? name + ' 학생 숙제 잘 받았어요 😊' : '숙제 파일 잘 받았어요 😊';
+    return kReply([kText(head + '\n선생님이 확인하고 피드백 드릴게요.' + (name ? '' : '\n\n' + askName))]);
+  }
+
+  // 3) 글: 선생님이 원생관리에서 볼 수 있게 남기고, 안내로 답합니다.
+  if (utter && who) {
+    const text = utter.slice(0, 2000);
+    await env.HW.put(`sub/${kstDay()}/${Date.now()}_${rand(6)}.txt`, text, {
+      httpMetadata: { contentType: 'text/plain; charset=utf-8' },
+      customMetadata: {
+        student: enc(name), cls: '', memo: enc(text.slice(0, 200)), filename: enc('카카오 메시지'),
+        size: String(new TextEncoder().encode(text).length), submittedAt: new Date().toISOString(),
+        via: 'kakao', kakao: who,
+      },
+    });
+  }
+  return kReply([kCard(
+    '메시지 잘 받았어요.',
+    '선생님이 확인하고 답장드릴게요.\n숙제 녹음·영상·사진은 이 채팅방에 바로 보내 주시거나 아래 버튼으로 올려 주세요.' + (name ? '' : '\n\n' + askName),
+    '숙제 올리기', uploadLink
+  )]);
+}
+
+/** 카카오 서버(kakaocdn 등)에 있는 파일 주소만 모읍니다. 학부모가 붙여 넣은 다른 사이트 주소는 글로 봅니다. */
+function kakaoMediaUrls(body) {
+  const req = body.userRequest || {};
+  const action = body.action || {};
+  const found = [];
+  const walk = (v) => {
+    if (typeof v === 'string') (v.match(/https?:\/\/[^\s"'<>,()]+/g) || []).forEach(u => found.push(u));
+    else if (Array.isArray(v)) v.forEach(walk);
+    else if (v && typeof v === 'object') Object.keys(v).forEach(k => walk(v[k]));
+  };
+  walk(req.utterance); walk(req.params); walk(action.params); walk(action.detailParams);
+  const out = [];
+  for (const u of found) {
+    let host = '';
+    try { host = new URL(u).hostname; } catch (_) { continue; }
+    if (KAKAO_HOST.test(host) && !out.includes(u)) out.push(u);
+  }
+  return out;
+}
+
+async function saveKakaoFile(env, u, who, name) {
+  const res = await fetch(u, { redirect: 'follow' });
+  if (!res.ok) { console.log('[kakao] 파일 응답 ' + res.status + ' ' + u); return null; }
+  const type = String(res.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+  const urlExt = ((u.split('?')[0].match(/\.([a-z0-9]{2,5})$/i) || [])[1] || '').toLowerCase();
+  const media = /^(audio|video|image)\//.test(type);
+  const loose = !type || type === 'application/octet-stream' || type === 'binary/octet-stream';
+  if (!media && !(loose && MEDIA_EXT.test(urlExt))) { console.log('[kakao] 파일 아님 ' + type + ' ' + u); return null; }
+  if (Number(res.headers.get('content-length')) > KAKAO_MAX) return null;
+  const buf = await res.arrayBuffer();
+  if (!buf.byteLength || buf.byteLength > KAKAO_MAX) return null;
+
+  const ext = (MEDIA_EXT.test(urlExt) ? urlExt : EXT_BY_TYPE[type]) || 'bin';
+  const contentType = media ? type : (TYPE_BY_EXT[ext] || 'application/octet-stream');
+  const kind = contentType.startsWith('audio/') ? '녹음' : contentType.startsWith('image/') ? '사진' : '영상';
+  const key = `sub/${kstDay()}/${Date.now()}_${rand(6)}.${ext}`;
+  await env.HW.put(key, buf, {
+    httpMetadata: { contentType },
+    customMetadata: {
+      student: enc(name), cls: '', memo: enc('카카오톡으로 보냄'), filename: enc('카카오_' + kind + '.' + ext),
+      size: String(buf.byteLength), submittedAt: new Date().toISOString(), via: 'kakao', kakao: who,
+    },
+  });
+  return key;
+}
+
+/** 카카오 사용자 번호는 그대로 두지 않고 줄여서 씁니다. */
+async function kakaoHash(uid) {
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('gorae-kakao:' + uid));
+  return [...new Uint8Array(d)].slice(0, 12).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function kakaoUser(env, who) {
+  if (!/^[0-9a-f]{24}$/.test(String(who))) return null;
+  const obj = await env.HW.get('kakao/users/' + who + '.json');
+  if (!obj) return null;
+  try { return JSON.parse(await new Response(obj.body).text()); } catch (_) { return null; }
+}
+
+function kText(t) { return { simpleText: { text: String(t).slice(0, 990) } }; }
+function kCard(title, description, label, link) {
+  return { textCard: { title: title.slice(0, 50), description: description.slice(0, 400),
+    buttons: [{ action: 'webLink', label, webLinkUrl: link }] } };
+}
+function kReply(outputs) { return json({ version: '2.0', template: { outputs } }); }
+
 // ---------- 유틸 ----------
 function json(o, status = 200) {
   return new Response(JSON.stringify(o), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } });
@@ -299,6 +479,7 @@ function html(s) {
 function clean(v, n) { return String(v || '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, n); }
 function enc(s) { return encodeURIComponent(s || ''); }
 function dec(s) { try { return decodeURIComponent(s || ''); } catch (_) { return s || ''; } }
+function kstDay() { return new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10); }
 function rand(n) { const a = crypto.getRandomValues(new Uint8Array(n)); return [...a].map(x => (x % 36).toString(36)).join(''); }
 function validKey(k) { return typeof k === 'string' && /^sub\/\d{4}-\d{2}-\d{2}\/[0-9]+_[a-z0-9]+\.[a-z0-9]{1,5}$/.test(k); }
 function validResKey(k) { return typeof k === 'string' && /^res\/[0-9]+_[a-z0-9]+\.[a-z0-9]{1,5}$/.test(k); }

@@ -141,6 +141,9 @@ node tests/worker.test.js
 - `/hw/admin/api/*` : 원생관리 "숙제 영상" 화면이 쓰는 창구 (`X-HW-Key` 머리글)
 - 바인딩: `HW` = R2 버킷 `gorae-homework`, 비밀값 `ADMIN_PASSWORD` (= 숙제 비밀번호)
 - 버킷 수명 규칙: 제출 영상 30일 뒤 자동 삭제, 끊긴 업로드 1일 뒤 정리
+- `/hw/kakao/<KAKAO_SKILL_KEY>` : 카카오 채널 챗봇 스킬 창구. 채널로 온 녹음·사진·영상은 `sub/` 에 숙제로,
+  글은 '카카오 메시지'로 저장하고 자동 답장합니다. 비밀값 `KAKAO_SKILL_KEY` 필요.
+  학부모 "이름 김고래" 등록 기록은 `kakao/users/` 에 둡니다(수명 규칙 대상 아님). 설치는 `docs/카카오-숙제-안내.md`
 
 ### 학원자료실 파일 (같은 워커 · 같은 버킷의 `res/` 폴더)
 

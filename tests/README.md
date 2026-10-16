@@ -26,6 +26,7 @@ node tests/bundle-check.js                   # dist 단일 파일이 제대로 �
 클라우드플레어 워커는 브라우저 없이 확인합니다. 정적 서버도 필요 없습니다.
 
 ```bash
+node tests/kakao-homework.test.mjs          # 카카오 채널 숙제 창구 (gorae-homework 워커)
 node tests/worker.test.js                    # 비밀번호 문지기 · 공개 통로 · 노션 창구
 ```
 
@@ -64,6 +65,8 @@ SHOT_DIR=/tmp/shots node tests/worksheet.test.js
 ```bash
 node tests/hwvideo-server.mjs &
 node tests/hwvideo.test.mjs
+node tests/kakao-hwvideo.test.mjs     # 카카오로 온 숙제가 대시보드·숙제 영상에 보이는지
+# ↑ 같은 서버에 기록이 쌓이면 건수 확인이 어긋납니다. 스크립트마다 서버를 새로 띄워 주세요.
 ```
 
 ## 태블릿 등하원 출결
