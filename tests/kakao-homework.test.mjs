@@ -74,6 +74,16 @@ t('틀린 열쇠로는 아무것도 저장 안 함', store.size === 0);
 r = await worker.fetch(new Request('https://staff.whalejinju.kr/hw/kakao/' + KEY + '/', { method: 'POST', body: '{}' }), env, ctx);
 t('주소 끝 / 는 봐줌', r.status === 200 && (await r.json()).version === '2.0');
 
+const noKey = async (e) => (await (await worker.fetch(new Request('https://staff.whalejinju.kr/hw/kakao/' + KEY), e, ctx)).json());
+let nk = await noKey({ HW });
+t('열쇠가 없으면 어디에 넣어야 하는지 안내', nk.ok === false && nk.error.includes('Variables and Secrets'), nk.error);
+nk = await noKey({ HW, 'KAKAO_SKILL_KEY ': KEY });
+t('이름 끝에 공백이 붙어도 찾아 씀', nk.ok === true);
+nk = await noKey({ HW, kakao_skill_key: KEY });
+t('소문자로 넣어도 찾아 씀', nk.ok === true);
+nk = await noKey({ HW, KAKAO_KEY: KEY });
+t('다른 이름으로 넣었으면 그 이름을 알려 줌 (값은 안 보임)', nk.error.includes('"KAKAO_KEY"') && !nk.error.includes(KEY), nk.error);
+
 /* ---------- 이름 모를 때 녹음 ---------- */
 s = await say(await kakao('http://talk.kakaocdn.net/dna/x/voice.m4a?credential=abc'));
 t('녹음 파일 접수 답장', s.text.includes('숙제 파일 잘 받았어요'), s.text);

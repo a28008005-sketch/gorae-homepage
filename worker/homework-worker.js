@@ -327,10 +327,17 @@ const EXT_BY_TYPE = {
 async function kakao(request, env, ctx, p, url) {
   const isPost = request.method === 'POST';
   const fail = (msg, status) => isPost ? kReply([kText('[설정 확인] ' + msg)]) : json({ ok: false, error: msg }, status);
-  if (!env.KAKAO_SKILL_KEY) return fail('gorae-homework 워커에 KAKAO_SKILL_KEY 가 없습니다.', 503);
+  const secret = kakaoSecret(env);
+  if (!secret) {
+    // 이름을 잘못 넣은 경우를 찾을 수 있게, 'KAKAO' 가 들어간 설정 이름만 (값 없이) 알려 줍니다.
+    const near = Object.keys(env || {}).filter(k => /kakao/i.test(k)).map(k => JSON.stringify(k));
+    return fail('gorae-homework 워커에 KAKAO_SKILL_KEY 가 없습니다. ' +
+      (near.length ? '비슷한 이름: ' + near.join(', ') + ' (값이 비어 있을 수 있습니다)'
+                   : '이 워커에 KAKAO 로 시작하는 설정이 하나도 없습니다. Settings → Variables and Secrets(빌드용 Build 변수가 아님)에 넣고 Deploy 해 주세요.'), 503);
+  }
   let key = p.slice('/hw/kakao/'.length);
   try { key = decodeURIComponent(key); } catch (_) { /* 그대로 비교 */ }
-  const keyOk = safeEqual(key.trim(), String(env.KAKAO_SKILL_KEY).trim());
+  const keyOk = safeEqual(key.trim(), secret);
   console.log('[kakao] ' + request.method + ' 도착 · 열쇠 ' + (keyOk ? '맞음' : '틀림'));
   if (!keyOk) return fail('스킬 주소 끝의 열쇠가 워커의 KAKAO_SKILL_KEY 와 다릅니다.', 404);
   if (!isPost) return json({ ok: true, message: '카카오 숙제 창구가 열려 있습니다. 카카오 스킬 주소로 쓰세요.' });
@@ -460,6 +467,14 @@ async function kakaoUser(env, who) {
   const obj = await env.HW.get('kakao/users/' + who + '.json');
   if (!obj) return null;
   try { return JSON.parse(await new Response(obj.body).text()); } catch (_) { return null; }
+}
+
+/** 대시보드에 붙여 넣다 이름 끝에 공백이 들어가거나 소문자로 넣은 경우도 찾아 씁니다. */
+function kakaoSecret(env) {
+  if (!env) return '';
+  if (env.KAKAO_SKILL_KEY) return String(env.KAKAO_SKILL_KEY).trim();
+  const k = Object.keys(env).find(n => n.replace(/\s+/g, '').toUpperCase() === 'KAKAO_SKILL_KEY');
+  return k && env[k] ? String(env[k]).trim() : '';
 }
 
 function kText(t) { return { simpleText: { text: String(t).slice(0, 990) } }; }
