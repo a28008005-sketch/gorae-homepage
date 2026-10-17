@@ -10,6 +10,7 @@
 | `staff.whalejinju.kr/**` | 학원 비밀번호를 확인합니다. 통과하면 30일간 다시 묻지 않습니다 |
 | `staff.whalejinju.kr/p/**` | 학부모 링크 전용 통로. 비밀번호를 묻지 않습니다 |
 | `staff.whalejinju.kr/api/notion/students` | 노션 학생 명부를 대신 읽어 옵니다 (로그인 필요) |
+| `staff.whalejinju.kr/api/notify/*` | 출결 태블릿의 등원·하원을 학부모님께 알림톡으로 보냅니다 (솔라피 · 로그인 필요). 설정은 `docs/태블릿-출결-안내.md` |
 
 ---
 
@@ -42,6 +43,8 @@ GitHub Pages 쪽 설정(`CNAME` 파일, Custom domain)은 **그대로 두시면 
    | `STAFF_PASSWORD` | Secret | 선생님들이 쓸 학원 비밀번호 |
    | `SESSION_SECRET` | Secret | 아무 긴 문자열 (쿠키 서명용) |
    | `NOTION_TOKEN` | Secret | 노션 연동을 쓸 때만 |
+   | `SOLAPI_API_KEY` · `SOLAPI_API_SECRET` | Secret | 등하원 카톡 알림을 쓸 때만 |
+   | `SOLAPI_SENDER` · `KAKAO_PFID` · `KAKAO_TPL_IN` · `KAKAO_TPL_OUT` | Text | 등하원 카톡 알림 — 발신번호 · 채널 pfId · 등원/하원 템플릿 ID |
    | `NAVER_CLIENT_ID` · `NAVER_CLIENT_SECRET` | Secret | 도서 조회(네이버 책)를 쓸 때만 |
    | `ALADIN_TTB_KEY` | Secret | 도서 조회(알라딘)를 쓸 때만 |
    | `NOTION_STUDENT_DB` | Text | `2c3e4c50882081c2b2c5ded6f7a8ba5a` |

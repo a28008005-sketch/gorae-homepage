@@ -237,6 +237,74 @@ t('토큰이 없으면 친절히 알려 줌', r.status === 503);
   globalThis.fetch = base;
 }
 
+/* ---------- 등하원 카톡 알림 (솔라피) ---------- */
+{
+  const base = globalThis.fetch;
+  const sent = [];
+  let solapiFail = '';
+  globalThis.fetch = async (input, init) => {
+    const u = typeof input === 'string' ? input : input.url;
+    if (u === 'https://api.solapi.com/messages/v4/send') {
+      sent.push({ auth: init.headers.authorization, body: JSON.parse(init.body) });
+      if (solapiFail) return new Response(JSON.stringify({ errorCode: 'ValidationError', errorMessage: solapiFail }), { status: 400 });
+      return new Response(JSON.stringify({ messageId: 'M' + sent.length, statusCode: '2000', statusMessage: '정상 접수' }));
+    }
+    return base(input, init);
+  };
+  const EN = {
+    ...ENV, SOLAPI_API_KEY: 'NCSKEY', SOLAPI_API_SECRET: 'SOLSECRET', SOLAPI_SENDER: '010-3803-8335',
+    KAKAO_PFID: 'KA01PF', KAKAO_TPL_IN: 'TPL_IN', KAKAO_TPL_OUT: 'TPL_OUT'
+  };
+  const post = (path, body, env = EN, ck = cookie) => worker.fetch(req(path, {
+    method: 'POST', headers: { 'content-type': 'application/json', cookie: ck }, body: JSON.stringify(body)
+  }), env, {});
+
+  r = await worker.fetch(req('/api/notify/status', { headers: { accept: 'application/json' } }), EN, {});
+  t('알림: 로그인 없이는 401', r.status === 401, String(r.status));
+
+  r = await worker.fetch(req('/api/notify/status', { headers: { cookie } }), ENV, {});
+  let nj = await r.json();
+  t('알림: 설정 전에는 빠진 값을 알려 줌', nj.ready === false && nj.missing.includes('솔라피 API Key') && nj.in === false, JSON.stringify(nj));
+
+  r = await worker.fetch(req('/api/notify/status', { headers: { cookie } }), EN, {});
+  nj = await r.json();
+  t('알림: 다 넣으면 준비 완료 · 열쇠는 안 보임', nj.ready && nj.in && nj.out && nj.sender === '010-****-8335' &&
+    !JSON.stringify(nj).includes('SOLSECRET'), JSON.stringify(nj));
+
+  r = await post('/api/notify/attendance', { kind: 'in', to: '010-1111-2222, 010 3333 4444', name: '김고래', time: '15:02', key: 'att1' });
+  nj = await r.json();
+  t('알림: 등원 → 두 번호 모두 발송', r.status === 200 && nj.ok && nj.sent === 2 && sent.length === 2, JSON.stringify(nj));
+  const m = sent[0].body.message;
+  t('알림: 등원 템플릿 · 학생명 · 시각 · 대체문자 켜짐',
+    m.to === '01011112222' && m.from === '01038038335' && m.kakaoOptions.pfId === 'KA01PF' &&
+    m.kakaoOptions.templateId === 'TPL_IN' && m.kakaoOptions.variables['#{학생명}'] === '김고래' &&
+    m.kakaoOptions.variables['#{시각}'] === '15:02' && m.kakaoOptions.disableSms === false, JSON.stringify(m));
+  t('알림: 솔라피 HMAC 인증 머리글', /^HMAC-SHA256 apiKey=NCSKEY, date=\S+, salt=[0-9a-f]{32}, signature=[0-9a-f]{64}$/.test(sent[0].auth), sent[0].auth);
+
+  sent.length = 0;
+  r = await post('/api/notify/attendance', { kind: 'out', to: '01055556666', name: '이웨일', time: '18:40', key: 'att2' });
+  t('알림: 하원은 하원 템플릿', r.status === 200 && sent[0].body.message.kakaoOptions.templateId === 'TPL_OUT');
+
+  r = await post('/api/notify/attendance', { kind: 'in', to: '02-123-4567', name: '김고래', key: 'att3' });
+  t('알림: 휴대폰이 아니면 400', r.status === 400, String(r.status));
+
+  r = await post('/api/notify/attendance', { kind: 'in', to: '01011112222', name: '김고래' }, { ...EN, KAKAO_TPL_IN: '' });
+  nj = await r.json();
+  t('알림: 템플릿 ID 가 없으면 503 · 무엇이 빠졌는지', r.status === 503 && nj.error.includes('등원 템플릿 ID'), JSON.stringify(nj));
+
+  solapiFail = '템플릿 내용이 일치하지 않습니다';
+  r = await post('/api/notify/attendance', { kind: 'in', to: '01011112222', name: '김고래', key: 'att4' });
+  nj = await r.json();
+  t('알림: 솔라피가 거절하면 502 와 이유', r.status === 502 && nj.error.includes('템플릿 내용'), JSON.stringify(nj));
+  solapiFail = '';
+
+  sent.length = 0;
+  r = await post('/api/notify/test', { kind: 'in', to: '010-9999-0000' });
+  t('알림: 시험 발송은 학생명 \'테스트\'', r.status === 200 && sent[0].body.message.kakaoOptions.variables['#{학생명}'] === '테스트');
+
+  globalThis.fetch = base;
+}
+
 /* ---------- 결과 ---------- */
 console.log('\n통과 ' + ok.length + '건 · 실패 ' + errs.length + '건');
 if (errs.length) { console.log('실패: ' + errs.join(', ')); process.exit(1); }

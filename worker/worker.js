@@ -8,6 +8,7 @@
  *  3. 노션 읽기 창구 — 노션 토큰을 브라우저에 두지 않고 여기서 대신 불러옵니다.
  *  4. 카카오 테스트 창구 — 카카오 채널로 온 메시지가 어떤 모양으로 넘어오는지 답장으로 보여 줍니다.
  *  5. 도서 조회 창구 — 책 ISBN 으로 네이버 책 · 알라딘에서 제목·지은이·표지를 찾아 줍니다.
+ *  6. 등하원 알림 창구 — 출결 태블릿에서 등원·하원을 누르면 학부모님께 카카오 알림톡을 보냅니다(솔라피).
  *
  * 화면 파일 자체는 그대로 GitHub Pages 에서 가져옵니다. 이 워커는 앞을 지킬 뿐입니다.
  *
@@ -33,6 +34,13 @@ export default {
     if (path === '/api/book') {
       if (!(await signedIn(request, env))) return json({ error: '로그인이 필요합니다.' }, 401);
       return bookLookup(url, env);
+    }
+
+    // --- 등하원 카톡 알림 창구 --------------------------------------------
+    // 솔라피 열쇠는 워커 비밀값에만 둡니다. 출결 태블릿은 로그인된 상태라 쿠키로 통과합니다.
+    if (path.startsWith('/api/notify/')) {
+      if (!(await signedIn(request, env))) return json({ error: '로그인이 필요합니다.' }, 401);
+      return notify(request, env, path);
     }
 
     // --- 카카오 챗봇 테스트 창구 -----------------------------------------
@@ -419,6 +427,142 @@ function cut(s, n) { return s.length > n ? s.slice(0, n - 1) + '…' : s; }
 /** 카카오 오픈빌더 응답 규격(2.0)의 글 한 줄짜리 답장 */
 function kakaoReply(text) {
   return json({ version: '2.0', template: { outputs: [{ simpleText: { text } }] } });
+}
+
+/* ---------- 등하원 카톡 알림 (솔라피 알림톡) ---------- */
+
+/**
+ * GET  /api/notify/status      무엇이 설정됐는지 (열쇠 값은 돌려주지 않습니다)
+ * POST /api/notify/attendance  { kind: 'in'|'out', to: '010-…, 010-…', name, time, key }
+ * POST /api/notify/test        { to, kind } — 설정 화면의 [시험 발송]
+ *
+ * 알림톡 문구는 카카오 심사를 받은 템플릿 그대로 나갑니다. 워커는 #{학생명} · #{시각} 두 칸만 채웁니다.
+ * 알림톡이 실패하면 솔라피가 같은 내용을 문자로 대신 보냅니다(SOLAPI_SENDER 가 등록된 발신번호일 때).
+ */
+const NOTIFY_KINDS = { in: 'KAKAO_TPL_IN', out: 'KAKAO_TPL_OUT' };
+const NOTIFY_NEEDS = ['SOLAPI_API_KEY', 'SOLAPI_API_SECRET', 'SOLAPI_SENDER', 'KAKAO_PFID'];
+const NOTIFY_LABEL = {
+  SOLAPI_API_KEY: '솔라피 API Key', SOLAPI_API_SECRET: '솔라피 API Secret',
+  SOLAPI_SENDER: '발신번호', KAKAO_PFID: '카카오 채널 pfId',
+  KAKAO_TPL_IN: '등원 템플릿 ID', KAKAO_TPL_OUT: '하원 템플릿 ID'
+};
+
+async function notify(request, env, path) {
+  if (path === '/api/notify/status') return json(notifyStatus(env));
+  if (request.method !== 'POST') return json({ error: '없는 경로입니다.' }, 404);
+
+  const body = await request.json().catch(() => ({}));
+  const kind = body.kind === 'out' ? 'out' : 'in';
+  const st = notifyStatus(env);
+  if (!st.ready || !st[kind]) {
+    return json({ error: '워커에 알림 설정이 덜 됐습니다: ' + st.missing.concat(st[kind] ? [] : [NOTIFY_LABEL[NOTIFY_KINDS[kind]]]).join(', ') }, 503);
+  }
+
+  const to = phonesOf(body.to);
+  if (!to.length) return json({ error: '학부모 휴대폰 번호가 올바르지 않습니다.' }, 400);
+
+  if (path === '/api/notify/test') {
+    const sent = await sendAll(env, kind, to, { name: '테스트', time: seoulHm() });
+    return json(sent, sent.ok ? 200 : 502);
+  }
+  if (path !== '/api/notify/attendance') return json({ error: '없는 경로입니다.' }, 404);
+
+  const name = String(body.name || '').trim().slice(0, 20);
+  const time = /^\d{1,2}:\d{2}$/.test(String(body.time || '')) ? String(body.time) : seoulHm();
+  if (!name) return json({ error: '학생 이름이 비어 있습니다.' }, 400);
+
+  // 태블릿이 인터넷 문제로 같은 요청을 다시 보내도 학부모님께 두 번 가지 않게 합니다.
+  const key = String(body.key || '').replace(/[^\w:-]/g, '').slice(0, 120);
+  const seenKey = key ? 'https://notify.gorae/' + kind + '/' + key : '';
+  const cache = typeof caches !== 'undefined' ? caches.default : null;
+  if (cache && seenKey && (await cache.match(seenKey))) return json({ ok: true, duplicate: true });
+
+  const sent = await sendAll(env, kind, to, { name, time });
+  if (sent.ok && cache && seenKey) {
+    await cache.put(seenKey, new Response('1', { headers: { 'cache-control': 'max-age=86400' } }));
+  }
+  return json(sent, sent.ok ? 200 : 502);
+}
+
+function notifyStatus(env) {
+  const missing = NOTIFY_NEEDS.filter(k => !String(env[k] || '').trim()).map(k => NOTIFY_LABEL[k]);
+  const sender = String(env.SOLAPI_SENDER || '').replace(/\D/g, '');
+  return {
+    ready: missing.length === 0,
+    missing,
+    in: !!String(env.KAKAO_TPL_IN || '').trim(),
+    out: !!String(env.KAKAO_TPL_OUT || '').trim(),
+    sender: sender ? sender.slice(0, 3) + '-****-' + sender.slice(-4) : ''
+  };
+}
+
+/** '010-1234-5678, 010 9876 5432' → ['01012345678', '01098765432'] (휴대폰만, 최대 3개) */
+function phonesOf(v) {
+  const text = Array.isArray(v) ? v.join(',') : String(v || '');
+  const out = [];
+  for (const m of text.matchAll(/01[016789][-.\s]?\d{3,4}[-.\s]?\d{4}(?!\d)/g)) {
+    const d = m[0].replace(/\D/g, '');
+    if (!out.includes(d)) out.push(d);
+  }
+  return out.slice(0, 3);
+}
+
+function seoulHm() {
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit', hour12: false
+  }).format(new Date());
+}
+
+async function sendAll(env, kind, to, vars) {
+  const results = [];
+  for (const num of to) results.push(await solapiSend(env, kind, num, vars));
+  const okCount = results.filter(r => r.ok).length;
+  return {
+    ok: okCount > 0,
+    sent: okCount,
+    total: results.length,
+    error: okCount === results.length ? undefined : results.filter(r => !r.ok).map(r => r.error).join(' / ')
+  };
+}
+
+async function solapiSend(env, kind, to, vars) {
+  const message = {
+    to,
+    from: String(env.SOLAPI_SENDER).replace(/\D/g, ''),
+    kakaoOptions: {
+      pfId: String(env.KAKAO_PFID).trim(),
+      templateId: String(env[NOTIFY_KINDS[kind]]).trim(),
+      variables: { '#{학생명}': vars.name, '#{시각}': vars.time },
+      disableSms: false
+    }
+  };
+  try {
+    const res = await fetch('https://api.solapi.com/messages/v4/send', {
+      method: 'POST',
+      headers: { authorization: await solapiAuth(env), 'content-type': 'application/json' },
+      body: JSON.stringify({ message })
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok) return { ok: false, error: j.errorMessage || j.errorCode || ('솔라피 오류 ' + res.status) };
+    // 2000 = 접수 완료. 그 밖의 값은 접수 단계에서 거절된 것입니다.
+    if (j.statusCode && String(j.statusCode) !== '2000') return { ok: false, error: j.statusMessage || j.statusCode };
+    return { ok: true, id: j.messageId || '' };
+  } catch (e) {
+    return { ok: false, error: '솔라피에 닿지 않습니다' };
+  }
+}
+
+/** 솔라피 HMAC-SHA256 인증 머리글 */
+async function solapiAuth(env) {
+  const date = new Date().toISOString();
+  const salt = [...crypto.getRandomValues(new Uint8Array(16))].map(b => b.toString(16).padStart(2, '0')).join('');
+  const key = await crypto.subtle.importKey(
+    'raw', new TextEncoder().encode(String(env.SOLAPI_API_SECRET).trim()),
+    { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+  );
+  const mac = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(date + salt));
+  const sig = [...new Uint8Array(mac)].map(b => b.toString(16).padStart(2, '0')).join('');
+  return 'HMAC-SHA256 apiKey=' + String(env.SOLAPI_API_KEY).trim() + ', date=' + date + ', salt=' + salt + ', signature=' + sig;
 }
 
 /* ---------- 거들기 ---------- */

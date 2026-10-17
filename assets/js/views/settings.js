@@ -273,6 +273,66 @@ Views.settings = (function () {
     });
   }
 
+  /* ---------- 등하원 카톡 알림 ---------- */
+  function notifyCard(ac) {
+    return '<div class="card"><div class="card-h"><h2>등하원 카톡 알림</h2></div><div class="card-b">' +
+      '<p class="hint" style="margin-top:0">출결 태블릿에서 아이가 <b>등원·하원</b>을 누르면 학생 명부의 ' +
+      '<b>학부모 연락처</b>로 카카오 알림톡이 갑니다. 알림톡이 안 되는 번호에는 문자로 대신 갑니다.</p>' +
+      '<div class="notify-state" id="n-state">발송 설정을 확인하는 중…</div>' +
+      '<div class="row" style="gap:14px">' +
+        '<label class="check' + (ac.notifyIn ? ' on' : '') + '"><input type="checkbox" id="n-in"' + (ac.notifyIn ? ' checked' : '') + '>등원 알림 보내기</label>' +
+        '<label class="check' + (ac.notifyOut ? ' on' : '') + '"><input type="checkbox" id="n-out"' + (ac.notifyOut ? ' checked' : '') + '>하원 알림 보내기</label>' +
+      '</div>' +
+      '<div class="section-title">시험 발송</div>' +
+      '<div class="row">' +
+        '<input type="tel" id="n-phone" placeholder="받을 휴대폰 번호" style="max-width:180px" value="' + U.esc(ac.phone || '') + '">' +
+        '<button class="btn sm" id="n-test-in">등원 문구로 보내기</button>' +
+        '<button class="btn sm" id="n-test-out">하원 문구로 보내기</button>' +
+      '</div>' +
+      '<p class="hint" style="margin:10px 0 0">학생 이름 자리에 \'테스트\'가 들어간 카톡이 갑니다. ' +
+        '솔라피 가입·카카오 채널·문구 심사는 <b>docs/태블릿-출결-안내.md</b> 의 \'카톡 알림\' 순서를 따라 주세요.</p>' +
+    '</div></div>';
+  }
+
+  function bindNotify(el) {
+    var box = el.querySelector('#n-state');
+    function paint(cls, html) { box.className = 'notify-state ' + cls; box.innerHTML = html; }
+    Notify.status().then(function (st) {
+      var miss = (st.missing || []).slice();
+      if (!st['in']) miss.push('등원 템플릿 ID');
+      if (!st.out) miss.push('하원 템플릿 ID');
+      if (st.ready && st['in'] && st.out) {
+        paint('ok', '발송 준비 완료 · 발신번호 ' + U.esc(st.sender));
+      } else if (st.ready) {
+        paint('', '솔라피 연결됨 · 아직 없는 것: ' + U.esc(miss.join(', ')));
+      } else {
+        paint('bad', '워커에 아직 넣지 않은 값: ' + U.esc(miss.join(', ')));
+      }
+    }, function (e) { paint('bad', U.esc(e.message)); });
+
+    function toggle(id, key) {
+      el.querySelector(id).addEventListener('change', function (e) {
+        var patch = {};
+        patch[key] = e.target.checked;
+        Store.saveAcademy(patch);
+        e.target.parentNode.classList.toggle('on', e.target.checked);
+        UI.toast((key === 'notifyIn' ? '등원' : '하원') + ' 알림을 ' + (e.target.checked ? '켰습니다.' : '껐습니다.'));
+      });
+    }
+    toggle('#n-in', 'notifyIn');
+    toggle('#n-out', 'notifyOut');
+
+    function test(kind) {
+      var to = el.querySelector('#n-phone').value.trim();
+      if (!to) { UI.toast('받을 번호를 넣어 주세요.', true); return; }
+      Notify.test(to, kind).then(function (j) {
+        UI.toast(j.error ? '일부만 보냈습니다: ' + j.error : '보냈습니다. 휴대폰 카톡을 확인해 주세요.', !!j.error);
+      }, function (e) { UI.toast('보내지 못했습니다: ' + e.message, true); });
+    }
+    el.querySelector('#n-test-in').addEventListener('click', function () { test('in'); });
+    el.querySelector('#n-test-out').addEventListener('click', function () { test('out'); });
+  }
+
   function render(el) {
     var ac = Store.get().academy;
     var c = counts();
@@ -340,6 +400,8 @@ Views.settings = (function () {
             '</div>' +
           '</div></div>' +
 
+          notifyCard(ac) +
+
           '<div class="card"><div class="card-h"><h2>여러 기기에서 함께 쓰기</h2></div><div class="card-b" id="cloud-box">' +
             cloudBox() +
           '</div></div>' +
@@ -356,6 +418,7 @@ Views.settings = (function () {
       '</div>';
 
     bindCloud(el, function () { render(el); });
+    bindNotify(el);
 
     el.querySelector('#a-save').addEventListener('click', function () {
       var times = el.querySelector('#a-times').value.split(',')

@@ -56,6 +56,7 @@
 .ci-title{margin:0;font-size:30px;font-weight:700;color:var(--ink)}
 .ci-time{color:var(--blue);font-variant-numeric:tabular-nums}
 .ci-line{margin:10px 0 0;font-size:20px;color:var(--muted)}
+.ci-told{display:inline-block;margin:16px 0 0;padding:6px 14px;border-radius:99px;font-size:16px;font-weight:600;color:#3c1e1e;background:#fee500}
 
 .ci-status{position:absolute;right:14px;bottom:12px;border:0;background:none;font-size:13px;color:var(--muted);
   padding:6px 8px 6px 20px;cursor:default;font-family:inherit}

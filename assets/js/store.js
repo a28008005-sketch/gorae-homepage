@@ -51,7 +51,9 @@ var Store = (function () {
       billingDay: 10,
       bankName: '',
       bankAccount: '',
-      bankHolder: ''
+      bankHolder: '',
+      notifyIn: false,          // 출결 태블릿에서 등원하면 학부모님께 카톡 (worker 의 솔라피 설정 필요)
+      notifyOut: false          // 하원하면 카톡
     },
     meta: {},
     classes: [],

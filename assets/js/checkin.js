@@ -25,8 +25,12 @@ var Checkin = (function () {
   /** 학부모 연락처 뒤 4자리가 같은 등록생 */
   function matches(last4) {
     return Store.students({ active: true }).filter(function (s) {
-      var p = digits(s.parentPhone);
-      return p.length >= DIGITS && p.slice(-DIGITS) === last4;
+      // 아버지·어머니 번호를 한 칸에 '010-…, 010-…' 로 적어도 둘 다 받습니다.
+      var list = String(s.parentPhone || '').match(/0\d{1,2}[-.\s]?\d{3,4}[-.\s]?\d{4}(?!\d)/g) || [s.parentPhone];
+      return list.some(function (one) {
+        var p = digits(one);
+        return p.length >= DIGITS && p.slice(-DIGITS) === last4;
+      });
     });
   }
 
@@ -178,8 +182,9 @@ var Checkin = (function () {
       checkIn: nowHm(now),
       checkInAt: now.toISOString()
     });
+    var told = Notify.queue(s, 'in', U.ymd(now), nowHm(now));
     Sync.push();
-    done(s, 'in', nowHm(now));
+    done(s, 'in', nowHm(now), told);
   }
 
   function askOut(s, rec) {
@@ -200,11 +205,13 @@ var Checkin = (function () {
     if (!s) { reset(); return; }
     var now = new Date();
     Store.setAttendance(s.id, U.ymd(now), { checkOut: nowHm(now), checkOutAt: now.toISOString() });
+    var told = Notify.queue(s, 'out', U.ymd(now), nowHm(now));
     Sync.push();
-    done(s, 'out', nowHm(now));
+    done(s, 'out', nowHm(now), told);
   }
 
-  function done(s, kind, time) {
+  /** told: 부모님께 카톡을 보내기로 했는지 */
+  function done(s, kind, time, told) {
     var ok = kind === 'in' || kind === 'out';
     beep(ok);
     var title = {
@@ -225,6 +232,7 @@ var Checkin = (function () {
         '<p class="ci-big">' + U.esc(s.name) + '</p>' +
         '<p class="ci-title">' + U.esc(title) + (ok ? ' <span class="ci-time">' + U.esc(time) + '</span>' : '') + '</p>' +
         '<p class="ci-line">' + U.esc(line) + '</p>' +
+        (told ? '<p class="ci-told">부모님께 카톡으로 알려 드렸어요</p>' : '') +
       '</div>';
     code = '';
     tick();
