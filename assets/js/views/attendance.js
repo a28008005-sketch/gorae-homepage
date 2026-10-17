@@ -26,6 +26,8 @@ Views.attendance = (function () {
           // 태블릿(등하원 출결)에서 찍힌 시각
           (r.checkIn ? '<br><span class="att-time">등원 ' + U.esc(r.checkIn) +
             (r.checkOut ? ' · 하원 ' + U.esc(r.checkOut) : '') + '</span>' : '') +
+          // 학부모님께 간 카톡 알림 결과 (등하원 카톡 알림을 켰을 때)
+          (window.Notify ? Notify.badge(r.notifyIn, '등원') + Notify.badge(r.notifyOut, '하원') : '') +
         '</span>' +
       '</div>' +
 

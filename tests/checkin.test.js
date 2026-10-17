@@ -124,10 +124,10 @@ const ok = (label, cond, extra = '') => { console.log(`  ${cond ? '✓' : '✗ �
   ok('등원 직후엔 "이미 등원" 안내', /이미 등원/.test(await T.textContent('.ci-title')));
   await T.evaluate(() => Checkin.reset());
 
-  // 등원을 20분 전으로 돌려 놓고 하원
+  // 등원을 60분 전으로 (하원은 등원 50분 뒤부터) 돌려 놓고 하원
   await T.evaluate(() => {
     var s = Store.students().filter(x => x.name === '이도윤')[0];
-    Store.setAttendance(s.id, U.ymd(), { checkInAt: new Date(Date.now() - 20 * 60000).toISOString() });
+    Store.setAttendance(s.id, U.ymd(), { checkInAt: new Date(Date.now() - 60 * 60000).toISOString() });
   });
   await type('5432');
   await T.click('.ci-name');

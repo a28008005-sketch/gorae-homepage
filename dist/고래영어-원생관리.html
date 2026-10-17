@@ -630,6 +630,13 @@ div.fld input[type=file]{font-size:13px;color:var(--ink);font-weight:400}
 
 /* 태블릿 등하원 시각 (출결 · 일일학습) */
 .att-time{display:inline-block;margin-top:3px;font-size:12px;font-weight:600;color:var(--mint);background:var(--mint-soft);padding:1px 7px;border-radius:99px;white-space:nowrap}
+/* 학부모 카톡 알림 결과 */
+.att-notify{display:inline-block;margin-top:3px;font-size:11px;font-weight:600;color:var(--muted);background:#eef1f4;padding:1px 7px;border-radius:99px;white-space:nowrap}
+.att-notify.ok{color:#3c1e1e;background:#fde96b}
+.att-notify.bad{color:var(--red,#a8453f);background:#f8e3e1}
+.notify-state{margin:0 0 12px;padding:10px 12px;border-radius:8px;font-size:13px;background:#f2f5f7;color:var(--ink)}
+.notify-state.ok{background:#e7f3ec}
+.notify-state.bad{background:#f8e3e1}
 
 /* ---------- 도서 대여: 표지 · 바코드 등록 ---------- */
 .bk-cell{display:flex;align-items:center;gap:10px}
@@ -1403,7 +1410,9 @@ var Store = (function () {
       billingDay: 10,
       bankName: '',
       bankAccount: '',
-      bankHolder: ''
+      bankHolder: '',
+      notifyIn: false,          // 출결 태블릿에서 등원하면 학부모님께 카톡 (worker 의 솔라피 설정 필요)
+      notifyOut: false          // 하원하면 카톡
     },
     meta: {},
     classes: [],
@@ -3637,6 +3646,143 @@ var AuthUI = (function () {
 
 </script>
 <script>
+/* ===== 등하원 카톡 알림 =====
+ * 출결 태블릿에서 등원·하원을 누르면 학부모님께 카카오 알림톡을 보냅니다.
+ * 실제 발송은 문지기 워커(worker/worker.js 의 /api/notify/*)가 솔라피로 합니다.
+ * 솔라피 열쇠는 워커에만 있고, 이 파일은 "누구에게 무엇을" 만 넘깁니다.
+ *
+ *  - 켜고 끄기: 설정 · 백업 → 등하원 카톡 알림 (academy.notifyIn / notifyOut)
+ *  - 인터넷이 잠깐 끊기면 태블릿에 담아 두었다가 다시 보냅니다. 30분이 지난 알림은 늦어서 버립니다.
+ *  - 결과는 그날 출결 기록의 notifyIn / notifyOut 에 남아 [출결 · 일일학습] 화면에 보입니다.
+ */
+var Notify = (function () {
+
+  var QUEUE_KEY = 'gorae-notify-queue';
+  var MAX_AGE_MS = 30 * 60000;
+  var busy = false;
+
+  function enabled(kind) {
+    var ac = Store.get().academy;
+    return kind === 'out' ? !!ac.notifyOut : !!ac.notifyIn;
+  }
+  function field(kind) { return kind === 'out' ? 'notifyOut' : 'notifyIn'; }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function hm() { var d = new Date(); return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+
+  function load() {
+    try { return JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]') || []; } catch (e) { return []; }
+  }
+  function keep(q) {
+    try { localStorage.setItem(QUEUE_KEY, JSON.stringify(q)); } catch (e) {}
+  }
+
+  /** 출결 기록에 발송 결과를 남깁니다. state: sending / sent / failed / skipped */
+  function mark(item, state, msg) {
+    var p = {};
+    p[field(item.kind)] = { state: state, msg: msg || '', at: hm() };
+    Store.setAttendance(item.sid, item.date, p);
+  }
+
+  /**
+   * 등원·하원 직후 부릅니다. 보내기로 했으면 true.
+   * @param {object} s     학생
+   * @param {string} kind  'in' | 'out'
+   */
+  function queue(s, kind, date, time) {
+    if (!enabled(kind)) return false;
+    var item = { sid: s.id, date: date, kind: kind, name: s.name, to: s.parentPhone || '', time: time, at: Date.now() };
+    if (!String(item.to).replace(/\D/g, '')) { mark(item, 'skipped', '학부모 연락처 없음'); return false; }
+    var rec = Store.attendanceFor(s.id, date);
+    item.key = (rec && rec.id) || (s.id + '-' + date);
+    var q = load();
+    q.push(item);
+    keep(q);
+    mark(item, 'sending');
+    flush();
+    return true;
+  }
+
+  function post(path, body) {
+    return fetch(path, {
+      method: 'POST', credentials: 'same-origin', cache: 'no-store',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body)
+    }).then(function (res) {
+      return res.json().catch(function () { return {}; }).then(function (j) {
+        if (!res.ok) {
+          var e = new Error(res.status === 401 ? '로그인이 풀렸습니다' : (j.error || ('서버 오류 ' + res.status)));
+          e.server = true;
+          throw e;
+        }
+        return j;
+      });
+    });
+  }
+
+  /** 담아 둔 알림을 하나씩 보냅니다. 인터넷이 안 되면 다음에 다시 시도합니다. */
+  function flush() {
+    if (busy) return Promise.resolve();
+    var q = load();
+    if (!q.length) return Promise.resolve();
+    var item = q[0];
+    if (Date.now() - item.at > MAX_AGE_MS) {
+      keep(q.slice(1));
+      mark(item, 'failed', '30분 넘게 보내지 못해 취소');
+      return flush();
+    }
+    busy = true;
+    return post('/api/notify/attendance', {
+      kind: item.kind, to: item.to, name: item.name, time: item.time, key: item.key
+    }).then(function (j) {
+      busy = false;
+      keep(load().slice(1));
+      mark(item, 'sent', j.error ? ('일부 실패: ' + j.error) : '');
+      return flush();
+    }, function (e) {
+      busy = false;
+      if (!e.server) return;            // 인터넷 문제 — 그대로 두었다가 다시 보냅니다
+      keep(load().slice(1));
+      mark(item, 'failed', e.message);
+      return flush();
+    });
+  }
+
+  /** 워커에 무엇이 설정됐는지 (설정 화면용) */
+  function status() {
+    return fetch('/api/notify/status', { credentials: 'same-origin', cache: 'no-store' }).then(function (res) {
+      if (res.status === 401) throw new Error('staff.whalejinju.kr 에 로그인한 화면에서만 확인할 수 있습니다.');
+      if (!res.ok) throw new Error('알림 창구가 아직 워커에 없습니다. (worker.js 를 새로 붙여 넣어 주세요)');
+      return res.json();
+    }).catch(function (e) {
+      if (e instanceof TypeError) throw new Error('워커에 닿지 않습니다. staff.whalejinju.kr 주소로 열었는지 확인해 주세요.');
+      throw e;
+    });
+  }
+
+  function test(to, kind) {
+    return post('/api/notify/test', { to: to, kind: kind === 'out' ? 'out' : 'in' });
+  }
+
+  /** 출결 화면에 붙일 작은 표시 */
+  function badge(n, label) {
+    if (!n || !n.state) return '';
+    var txt = { sending: '보내는 중', sent: '보냄', failed: '실패', skipped: '안 보냄' }[n.state] || '';
+    var cls = n.state === 'sent' ? 'ok' : (n.state === 'sending' ? '' : 'bad');
+    return ' <span class="att-notify ' + cls + '" title="' + U.esc((n.at ? n.at + ' ' : '') + (n.msg || '')) + '">' +
+      '카톡 ' + U.esc(label) + ' ' + txt + '</span>';
+  }
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener('online', function () { flush(); });
+    setInterval(function () { flush(); }, 60000);
+    document.addEventListener('DOMContentLoaded', function () { setTimeout(flush, 3000); });
+  }
+
+  return { queue: queue, flush: flush, status: status, test: test, enabled: enabled, badge: badge, pending: function () { return load().length; } };
+})();
+
+</script>
+<script>
 /* ===== 단어학습앱 데이터 받기 =====
  * 앱이 어떤 방식으로 만들어졌든 아래 형식만 맞추면 기록이 쌓입니다.
  *  1) JSON 파일 · 붙여넣기
@@ -5623,6 +5769,8 @@ Views.attendance = (function () {
           // 태블릿(등하원 출결)에서 찍힌 시각
           (r.checkIn ? '<br><span class="att-time">등원 ' + U.esc(r.checkIn) +
             (r.checkOut ? ' · 하원 ' + U.esc(r.checkOut) : '') + '</span>' : '') +
+          // 학부모님께 간 카톡 알림 결과 (등하원 카톡 알림을 켰을 때)
+          (window.Notify ? Notify.badge(r.notifyIn, '등원') + Notify.badge(r.notifyOut, '하원') : '') +
         '</span>' +
       '</div>' +
 
@@ -10973,6 +11121,66 @@ Views.settings = (function () {
     });
   }
 
+  /* ---------- 등하원 카톡 알림 ---------- */
+  function notifyCard(ac) {
+    return '<div class="card"><div class="card-h"><h2>등하원 카톡 알림</h2></div><div class="card-b">' +
+      '<p class="hint" style="margin-top:0">출결 태블릿에서 아이가 <b>등원·하원</b>을 누르면 학생 명부의 ' +
+      '<b>학부모 연락처</b>로 카카오 알림톡이 갑니다. 알림톡이 안 되는 번호에는 문자로 대신 갑니다.</p>' +
+      '<div class="notify-state" id="n-state">발송 설정을 확인하는 중…</div>' +
+      '<div class="row" style="gap:14px">' +
+        '<label class="check' + (ac.notifyIn ? ' on' : '') + '"><input type="checkbox" id="n-in"' + (ac.notifyIn ? ' checked' : '') + '>등원 알림 보내기</label>' +
+        '<label class="check' + (ac.notifyOut ? ' on' : '') + '"><input type="checkbox" id="n-out"' + (ac.notifyOut ? ' checked' : '') + '>하원 알림 보내기</label>' +
+      '</div>' +
+      '<div class="section-title">시험 발송</div>' +
+      '<div class="row">' +
+        '<input type="tel" id="n-phone" placeholder="받을 휴대폰 번호" style="max-width:180px" value="' + U.esc(ac.phone || '') + '">' +
+        '<button class="btn sm" id="n-test-in">등원 문구로 보내기</button>' +
+        '<button class="btn sm" id="n-test-out">하원 문구로 보내기</button>' +
+      '</div>' +
+      '<p class="hint" style="margin:10px 0 0">학생 이름 자리에 \'테스트\'가 들어간 카톡이 갑니다. ' +
+        '솔라피 가입·카카오 채널·문구 심사는 <b>docs/태블릿-출결-안내.md</b> 의 \'카톡 알림\' 순서를 따라 주세요.</p>' +
+    '</div></div>';
+  }
+
+  function bindNotify(el) {
+    var box = el.querySelector('#n-state');
+    function paint(cls, html) { box.className = 'notify-state ' + cls; box.innerHTML = html; }
+    Notify.status().then(function (st) {
+      var miss = (st.missing || []).slice();
+      if (!st['in']) miss.push('등원 템플릿 ID');
+      if (!st.out) miss.push('하원 템플릿 ID');
+      if (st.ready && st['in'] && st.out) {
+        paint('ok', '발송 준비 완료 · 발신번호 ' + U.esc(st.sender));
+      } else if (st.ready) {
+        paint('', '솔라피 연결됨 · 아직 없는 것: ' + U.esc(miss.join(', ')));
+      } else {
+        paint('bad', '워커에 아직 넣지 않은 값: ' + U.esc(miss.join(', ')));
+      }
+    }, function (e) { paint('bad', U.esc(e.message)); });
+
+    function toggle(id, key) {
+      el.querySelector(id).addEventListener('change', function (e) {
+        var patch = {};
+        patch[key] = e.target.checked;
+        Store.saveAcademy(patch);
+        e.target.parentNode.classList.toggle('on', e.target.checked);
+        UI.toast((key === 'notifyIn' ? '등원' : '하원') + ' 알림을 ' + (e.target.checked ? '켰습니다.' : '껐습니다.'));
+      });
+    }
+    toggle('#n-in', 'notifyIn');
+    toggle('#n-out', 'notifyOut');
+
+    function test(kind) {
+      var to = el.querySelector('#n-phone').value.trim();
+      if (!to) { UI.toast('받을 번호를 넣어 주세요.', true); return; }
+      Notify.test(to, kind).then(function (j) {
+        UI.toast(j.error ? '일부만 보냈습니다: ' + j.error : '보냈습니다. 휴대폰 카톡을 확인해 주세요.', !!j.error);
+      }, function (e) { UI.toast('보내지 못했습니다: ' + e.message, true); });
+    }
+    el.querySelector('#n-test-in').addEventListener('click', function () { test('in'); });
+    el.querySelector('#n-test-out').addEventListener('click', function () { test('out'); });
+  }
+
   function render(el) {
     var ac = Store.get().academy;
     var c = counts();
@@ -11040,6 +11248,8 @@ Views.settings = (function () {
             '</div>' +
           '</div></div>' +
 
+          notifyCard(ac) +
+
           '<div class="card"><div class="card-h"><h2>여러 기기에서 함께 쓰기</h2></div><div class="card-b" id="cloud-box">' +
             cloudBox() +
           '</div></div>' +
@@ -11056,6 +11266,7 @@ Views.settings = (function () {
       '</div>';
 
     bindCloud(el, function () { render(el); });
+    bindNotify(el);
 
     el.querySelector('#a-save').addEventListener('click', function () {
       var times = el.querySelector('#a-times').value.split(',')

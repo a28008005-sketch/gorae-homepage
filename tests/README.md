@@ -77,6 +77,7 @@ node tests/kakao-hwvideo.test.mjs     # 카카오로 온 숙제가 대시보드�
 ```bash
 curl -s http://127.0.0.1:8902/reset
 node tests/checkin.test.js
+node tests/checkin-notify.test.js        # 등하원 카톡 알림 (설정 · 발송 요청 · 끊김 재전송 · 출결 화면 표시)
 ```
 
 ## 학원자료실 파일 첨부
