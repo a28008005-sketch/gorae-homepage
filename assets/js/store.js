@@ -19,7 +19,7 @@ var Store = (function () {
   var SUBMIT_STATUS = ['미제출', '제출', '확인'];
   var BOOK_CATEGORIES = ['리더스', '챕터북', '노블', '논픽션', '그림책', '워크북'];
   // 학원자료실 — 노션 '고래영어 - 학원자료실' 의 분류를 그대로 씁니다.
-  var RESOURCE_CATEGORIES = ['원서', '워크시트', '책', '리포트', '학습앱'];
+  var RESOURCE_CATEGORIES = ['원서', '워크시트', '책', '리포트', '학습앱', '원본데일리테스트지QR'];
   // 영자신문 워크시트 — 노션 '영자신문 워크시트 마스터 목록' 의 값을 그대로 씁니다.
   var NEWS_LEVELS = ['K1', 'G2', 'G3-4', 'G5-6'];
   var NEWS_TOPICS = ['Space', 'Science', 'History', 'Animals', 'Environment', 'Sports',
