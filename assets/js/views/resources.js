@@ -102,7 +102,7 @@ Views.resources = (function () {
 
   /* ---------- 화면 ---------- */
   function tagOf(cat) {
-    var map = { '학습앱': 'blue', '워크시트': 'mint', '원서': 'ok', '책': 'ok', '리포트': 'warn' };
+    var map = { '학습앱': 'blue', '워크시트': 'mint', '원서': 'ok', '책': 'ok', '리포트': 'warn', '원본데일리테스트지QR': 'mint' };
     return map[cat] || 'gray';
   }
 
