@@ -15,7 +15,11 @@ fs.writeFileSync('/tmp/res-x.html', '<script>alert(1)</script>');
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
 const page = await ctx.newPage();
-await page.addInitScript(() => { window.GORAE_LOCAL_ONLY = true; });
+await page.addInitScript(() => {
+  window.GORAE_LOCAL_ONLY = true;
+  // 이 확인은 카드 보기 기준입니다. 폴더 보기는 resources-folders.test.mjs 에서 확인합니다.
+  try { localStorage.setItem('res.viewMode', 'card'); } catch (e) {}
+});
 const errors = []; page.on('pageerror', e => errors.push(String(e)));
 page.on('dialog', d => { errors.push('dialog:' + d.message()); d.dismiss(); });
 
