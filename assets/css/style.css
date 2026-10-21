@@ -731,3 +731,4 @@ div.fld input[type=file]{font-size:13px;color:var(--ink);font-weight:400}
 .csl-due a{color:inherit;text-decoration:none}
 .csl-due-t{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13.5px}
 .csl-parent{background:var(--mint-soft);border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:13px;line-height:1.6}
+.np-trash{margin-top:10px;display:flex;justify-content:flex-end}

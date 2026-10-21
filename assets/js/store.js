@@ -914,6 +914,23 @@ var Store = (function () {
     return rec.id;
   }
   function deleteNewsItem(id) { return softDelete('newsItems', 'news', id); }
+  /** 목록에서 지운 워크시트 (되살리기용) */
+  function deletedNewsItems() {
+    return get().newsItems.filter(function (n) { return n.deleted; });
+  }
+  /** 지운 워크시트를 다시 목록에 올립니다. 지움 표시만 걷어 내므로 다른 기기에도 전달됩니다. */
+  function restoreNewsItem(id) {
+    var list = get().newsItems;
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].id === id && list[i].deleted) {
+        list[i].deleted = false;
+        stamp(list[i]);
+        save({ kind: 'news', id: id });
+        return true;
+      }
+    }
+    return false;
+  }
 
   /* ---------- 학생별 영자신문 진도 ---------- */
   /**
@@ -1502,7 +1519,8 @@ var Store = (function () {
     newsLevelOf: newsLevelOf, newsProgressOf: newsProgressOf,
     newsProgressFor: newsProgressFor, setNewsProgress: setNewsProgress, newsPlan: newsPlan,
     resources: resources, resource: resource, saveResource: saveResource, deleteResource: deleteResource,
-    newsItems: newsItems, newsItem: newsItem, saveNewsItem: saveNewsItem, deleteNewsItem: deleteNewsItem, LOAN_DAYS: LOAN_DAYS,
+    newsItems: newsItems, newsItem: newsItem, saveNewsItem: saveNewsItem, deleteNewsItem: deleteNewsItem,
+    deletedNewsItems: deletedNewsItems, restoreNewsItem: restoreNewsItem, LOAN_DAYS: LOAN_DAYS,
     CLASS_COLORS: CLASS_COLORS,
     get: get, save: save, onChange: onChange, onRecordChange: onRecordChange,
     allRecords: allRecords, findRecord: findRecord, applyRemote: applyRemote, stampAll: stampAll,

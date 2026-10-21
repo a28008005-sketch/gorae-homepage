@@ -69,7 +69,9 @@ Views.news = (function () {
           linkBtn(n.sourceUrl, '원문URL') +
           linkBtn(n.worksheetUrl, '워크시트') +
           linkBtn(n.answersUrl, '정답지') +
-          '<button class="btn sm ghost" data-edit="' + n.id + '">수정</button>' +
+          '<button class="btn sm ghost" data-edit="' + n.id + '">수정</button> ' +
+          // 사진이 빠지는 등 잘못 만들어진 워크시트를 원장님이 바로 지울 수 있게 둡니다.
+          '<button class="btn sm danger" data-del="' + n.id + '">삭제</button>' +
         '</td>' +
       '</tr>';
     }).join('');
@@ -83,6 +85,50 @@ Views.news = (function () {
     if (!recs.length) return '';
     return '<div class="np-sub">' + (done ? '완료 ' + done + '명' : '') +
       (done && doing ? ' · ' : '') + (doing ? '진행중 ' + doing + '명' : '') + '</div>';
+  }
+
+  /** 지운 워크시트가 있으면 목록 아래에 되살리기 줄을 둡니다 */
+  function trashLink() {
+    var gone = Store.deletedNewsItems();
+    if (!gone.length) return '';
+    return '<div class="np-trash"><button class="btn sm ghost" id="n-trash">지운 워크시트 ' + gone.length + '건 · 되살리기</button></div>';
+  }
+
+  function confirmDelete(id, host) {
+    var n = Store.newsItem(id);
+    if (!n) return;
+    UI.confirm('<b>' + U.esc(n.title) + '</b> 워크시트를 원생관리 목록에서 지울까요?<br>' +
+      '노션 마스터 목록과 PDF 파일은 그대로 두고, 이 목록과 학생별 진도에서만 빠집니다.<br>' +
+      '잘못 지웠으면 목록 아래 <b>지운 워크시트 · 되살리기</b> 에서 다시 올릴 수 있습니다.', function () {
+      Store.deleteNewsItem(id);
+      UI.toast('지웠습니다.');
+      render(host);
+    }, { yes: '삭제', danger: true, title: '워크시트 삭제' });
+  }
+
+  function openTrash(host) {
+    function body() {
+      var gone = Store.deletedNewsItems();
+      if (!gone.length) return UI.emptyBox('지운 워크시트가 없습니다.', 'news');
+      return '<div class="np-list">' + gone.map(function (n) {
+        return '<div class="np-li"><div class="np-li-t"><b>' + U.esc(n.title) + '</b> <span class="tag blue">' + U.esc(n.level || '-') + '</span>' +
+          '<div class="np-sub">' + U.esc(n.topic || '') + (n.date ? ' · ' + U.esc(n.date) : '') + '</div></div>' +
+          '<button class="btn sm" data-restore="' + n.id + '">되살리기</button></div>';
+      }).join('') + '</div>';
+    }
+    UI.modal({
+      title: '지운 워크시트',
+      body: '<div id="n-trash-body">' + body() + '</div>',
+      footer: '<div class="sp"></div><button class="btn" data-close>닫기</button>',
+      onMount: function (w) {
+        UI.on(w, '[data-restore]', 'click', function (e, b) {
+          Store.restoreNewsItem(b.getAttribute('data-restore'));
+          UI.toast('다시 목록에 올렸습니다.');
+          w.querySelector('#n-trash-body').innerHTML = body();
+          render(host);
+        });
+      }
+    });
   }
 
   function tabsHtml() {
@@ -405,6 +451,7 @@ Views.news = (function () {
             '<thead><tr><th>기사</th><th>레벨</th><th>주제</th><th>상태</th><th>날짜</th><th></th></tr></thead>' +
             '<tbody id="n-rows">' + rows() + '</tbody>' +
           '</table></div>' +
+          trashLink() +
         '</div></div>' +
 
         '<div class="card"><div class="card-h"><h2>새 워크시트 만들기</h2></div>' +
@@ -433,6 +480,9 @@ Views.news = (function () {
       filter.status = btn.getAttribute('data-st'); render(el);
     });
     UI.on(el, '[data-edit]', 'click', function (e, btn) { openForm(btn.getAttribute('data-edit')); });
+    UI.on(el, '[data-del]', 'click', function (e, btn) { confirmDelete(btn.getAttribute('data-del'), el); });
+    var trash = el.querySelector('#n-trash');
+    if (trash) trash.addEventListener('click', function () { openTrash(el); });
 
     var q = el.querySelector('#n-q');
     q.addEventListener('input', function () {
