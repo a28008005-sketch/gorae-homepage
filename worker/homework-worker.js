@@ -309,6 +309,8 @@ async function resFile(env, url) {
  * 카카오는 5초 안에 답을 받아야 해서, 파일 저장이 3초 안에 안 끝나면 먼저 답하고 저장은 뒤에서 마칩니다.
  */
 const KAKAO_WAIT_MS = 3000;
+// 카카오 스킬 주소 끝 열쇠의 SHA-256 지문. 열쇠를 바꾸려면 워커 비밀값 KAKAO_SKILL_KEY 를 넣으면 그쪽이 우선합니다.
+const KAKAO_KEY_SHA256 = '6702d1fae83efb5612a0daf77657b821863e9dc5f8df6eeb4b9e4992542b108f';
 const KAKAO_MAX = 95 * 1024 * 1024;
 const KAKAO_HOST = /(^|\.)(kakaocdn\.net|kakao\.com|daumcdn\.net)$/i;
 const MEDIA_EXT = /^(m4a|mp3|aac|wav|amr|ogg|3gp|caf|mp4|mov|m4v|webm|jpg|jpeg|png|gif|heic|webp)$/;
@@ -327,11 +329,15 @@ const EXT_BY_TYPE = {
 async function kakao(request, env, ctx, p, url) {
   const isPost = request.method === 'POST';
   const fail = (msg, status) => isPost ? kReply([kText('[설정 확인] ' + msg)]) : json({ ok: false, error: msg }, status);
-  if (!env.KAKAO_SKILL_KEY) return fail('gorae-homework 워커에 KAKAO_SKILL_KEY 가 없습니다.', 503);
+  // 열쇠 확인: 워커 비밀값(KAKAO_SKILL_KEY)이 있으면 그것과, 없으면 코드에 적어 둔 '열쇠의 지문(SHA-256)'과 맞춥니다.
+  // 지문만으로는 열쇠를 거꾸로 알아낼 수 없어서, 저장소가 공개돼 있어도 안전합니다.
   let key = p.slice('/hw/kakao/'.length);
   try { key = decodeURIComponent(key); } catch (_) { /* 그대로 비교 */ }
-  const keyOk = safeEqual(key.trim(), String(env.KAKAO_SKILL_KEY).trim());
-  console.log('[kakao] ' + request.method + ' 도착 · 열쇠 ' + (keyOk ? '맞음' : '틀림'));
+  key = key.trim();
+  const secret = kakaoSecret(env);
+  const keyOk = secret ? safeEqual(key, secret)
+    : safeEqual(await sha256hex(key), String((env && env.KAKAO_SKILL_KEY_SHA256) || KAKAO_KEY_SHA256));
+  console.log('[kakao] ' + request.method + ' 도착 · 열쇠 ' + (keyOk ? '맞음' : '틀림') + (secret ? ' (비밀값)' : ' (지문)'));
   if (!keyOk) return fail('스킬 주소 끝의 열쇠가 워커의 KAKAO_SKILL_KEY 와 다릅니다.', 404);
   if (!isPost) return json({ ok: true, message: '카카오 숙제 창구가 열려 있습니다. 카카오 스킬 주소로 쓰세요.' });
 
@@ -460,6 +466,19 @@ async function kakaoUser(env, who) {
   const obj = await env.HW.get('kakao/users/' + who + '.json');
   if (!obj) return null;
   try { return JSON.parse(await new Response(obj.body).text()); } catch (_) { return null; }
+}
+
+async function sha256hex(text) {
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return [...new Uint8Array(d)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/** 대시보드에 붙여 넣다 이름 끝에 공백이 들어가거나 소문자로 넣은 경우도 찾아 씁니다. */
+function kakaoSecret(env) {
+  if (!env) return '';
+  if (env.KAKAO_SKILL_KEY) return String(env.KAKAO_SKILL_KEY).trim();
+  const k = Object.keys(env).find(n => n.replace(/\s+/g, '').toUpperCase() === 'KAKAO_SKILL_KEY');
+  return k && env[k] ? String(env[k]).trim() : '';
 }
 
 function kText(t) { return { simpleText: { text: String(t).slice(0, 990) } }; }

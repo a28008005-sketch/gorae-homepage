@@ -74,6 +74,21 @@ t('틀린 열쇠로는 아무것도 저장 안 함', store.size === 0);
 r = await worker.fetch(new Request('https://staff.whalejinju.kr/hw/kakao/' + KEY + '/', { method: 'POST', body: '{}' }), env, ctx);
 t('주소 끝 / 는 봐줌', r.status === 200 && (await r.json()).version === '2.0');
 
+const crypto = await import('node:crypto');
+const hashOf = (k) => crypto.createHash('sha256').update(k).digest('hex');
+const openWith = async (e, k) => (await (await worker.fetch(new Request('https://staff.whalejinju.kr/hw/kakao/' + k), e, ctx)).json());
+let nk = await openWith({ HW, KAKAO_SKILL_KEY_SHA256: hashOf('fp-key-1') }, 'fp-key-1');
+t('비밀값이 없어도 코드의 지문으로 열쇠 확인', nk.ok === true, JSON.stringify(nk));
+nk = await openWith({ HW, KAKAO_SKILL_KEY_SHA256: hashOf('fp-key-1') }, 'other');
+t('지문과 다른 열쇠는 막힘', nk.ok === false && nk.error.includes('다릅니다'));
+nk = await openWith({ HW }, 'anything');
+t('아무 설정이 없어도 "없습니다" 대신 열쇠 확인으로 동작', nk.ok === false && !nk.error.includes('없습니다'), nk.error);
+nk = await openWith({ HW, 'KAKAO_SKILL_KEY ': KEY }, KEY);
+t('비밀값 이름 끝에 공백이 붙어도 찾아 씀', nk.ok === true);
+nk = await openWith({ HW, kakao_skill_key: KEY }, KEY);
+t('비밀값을 소문자로 넣어도 찾아 씀', nk.ok === true);
+t('코드에 진짜 열쇠는 적혀 있지 않음', !(await import('node:fs')).readFileSync(new URL('../worker/homework-worker.js', import.meta.url), 'utf8').match(/gorae[0-9a-f]{24}/));
+
 /* ---------- 이름 모를 때 녹음 ---------- */
 s = await say(await kakao('http://talk.kakaocdn.net/dna/x/voice.m4a?credential=abc'));
 t('녹음 파일 접수 답장', s.text.includes('숙제 파일 잘 받았어요'), s.text);
