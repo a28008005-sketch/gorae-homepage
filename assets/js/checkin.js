@@ -237,8 +237,14 @@ var Checkin = (function () {
 
   /* ---------- 시계 · 상태 ---------- */
   var DAYS = ['일', '월', '화', '수', '목', '금', '토'];
+  var lastAuto = Date.now();   // 클라우드에서 최신 기록을 받은 뒤(boot)에 처음 확인합니다
   function tick() {
     var d = new Date();
+    // 하원을 안 누르고 간 아이는 등원 뒤 정해진 시간(기본 90분)이 지나면 자동 하원 (카톡 없음). 30초마다 확인합니다.
+    if (d.getTime() - lastAuto > 30000) {
+      lastAuto = d.getTime();
+      if (Store.autoCheckout(d)) Sync.push();
+    }
     var c = document.getElementById('ci-clock');
     if (c) {
       var h = d.getHours() % 12 || 12;
@@ -327,6 +333,7 @@ var Checkin = (function () {
     });
     Sync.init().then(function () {
       AuthUI.gate();
+      lastAuto = 0;   // 최신 기록을 받았으니 바로 자동 하원을 확인합니다
       tick();
     });
 

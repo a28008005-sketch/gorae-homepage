@@ -144,6 +144,18 @@ var App = (function () {
       if (!isPublicRoute()) AuthUI.gate();
       refreshBrand();
       rerender();
+      // 태블릿이 꺼져 있던 날도 빠지지 않게, 원생관리 화면에서도 자동 하원을 채웁니다 (카톡 없음).
+      if (!isPublicRoute()) {
+        var auto = function () {
+          if (!Store.autoCheckout()) return;
+          Sync.push();
+          // 선생님이 비고를 쓰는 중이면 화면을 다시 그리지 않습니다 (입력이 끊기지 않게).
+          var a = document.activeElement;
+          if (!a || !/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) rerender();
+        };
+        auto();
+        setInterval(auto, 60000);
+      }
     });
   }
 
