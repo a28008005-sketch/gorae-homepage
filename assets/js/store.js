@@ -53,7 +53,8 @@ var Store = (function () {
       bankAccount: '',
       bankHolder: '',
       notifyIn: false,          // 출결 태블릿에서 등원하면 학부모님께 카톡 (worker 의 솔라피 설정 필요)
-      notifyOut: false          // 하원하면 카톡
+      notifyOut: false,         // 하원하면 카톡
+      autoCheckoutMin: 90       // 태블릿 등원 뒤 하원을 안 누르면 이만큼 지나 자동 하원 (0 이면 끔)
     },
     meta: {},
     classes: [],
@@ -397,6 +398,39 @@ var Store = (function () {
     stamp(rec);
     save({ kind: 'attendance', id: rec.id });
     return rec;
+  }
+
+  /** 자동 하원까지의 분. 예전에 저장된 학원 정보에는 값이 없어서 기본 90분으로 봅니다. */
+  function autoCheckoutMin() {
+    var v = get().academy.autoCheckoutMin;
+    if (v === undefined || v === null || v === '') return DEFAULTS.academy.autoCheckoutMin;
+    return Math.max(Number(v) || 0, 0);
+  }
+
+  /**
+   * 태블릿에서 등원만 하고 하원을 안 누른 기록에 하원 시각을 채웁니다 (카톡은 보내지 않습니다).
+   * 하원 시각은 '지금'이 아니라 '등원 시각 + 정해진 분'이라,
+   * 태블릿과 선생님 PC 가 동시에 돌려도 같은 값이 되어 서로 덮어써도 문제가 없습니다.
+   * @returns {number} 자동 하원 처리한 수
+   */
+  function autoCheckout(now) {
+    var min = autoCheckoutMin();
+    if (!min) return 0;
+    now = now || new Date();
+    var due = alive(get().attendance).filter(function (r) {
+      if (!r.checkIn || r.checkOut || !r.checkInAt) return false;
+      var at = new Date(r.checkInAt).getTime();
+      return !isNaN(at) && at + min * 60000 <= now.getTime();
+    });
+    due.forEach(function (r) {
+      var out = new Date(new Date(r.checkInAt).getTime() + min * 60000);
+      setAttendance(r.studentId, r.date, {
+        checkOut: (out.getHours() < 10 ? '0' : '') + out.getHours() + ':' + (out.getMinutes() < 10 ? '0' : '') + out.getMinutes(),
+        checkOutAt: out.toISOString(),
+        checkOutAuto: true
+      });
+    });
+    return due.length;
   }
   /** 수업 태도 항목 켜고 끄기 */
   function toggleAttitude(studentId, date, state) {
@@ -1529,6 +1563,7 @@ var Store = (function () {
     studentsOnDay: studentsOnDay,
     attendanceOn: attendanceOn, attendanceFor: attendanceFor, attendanceRange: attendanceRange,
     setAttendance: setAttendance, toggleFlag: toggleFlag,
+    autoCheckout: autoCheckout, autoCheckoutMin: autoCheckoutMin,
     isIssue: isIssue, toggleAttitude: toggleAttitude,
     classes: classes, klass: klass, saveClass: saveClass, deleteClass: deleteClass,
     studentsInClass: studentsInClass, scheduleOf: scheduleOf,

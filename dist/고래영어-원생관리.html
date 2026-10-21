@@ -630,6 +630,7 @@ div.fld input[type=file]{font-size:13px;color:var(--ink);font-weight:400}
 
 /* 태블릿 등하원 시각 (출결 · 일일학습) */
 .att-time{display:inline-block;margin-top:3px;font-size:12px;font-weight:600;color:var(--mint);background:var(--mint-soft);padding:1px 7px;border-radius:99px;white-space:nowrap}
+.att-time.auto{color:var(--muted);background:#eef1f4}
 /* 학부모 카톡 알림 결과 */
 .att-notify{display:inline-block;margin-top:3px;font-size:11px;font-weight:600;color:var(--muted);background:#eef1f4;padding:1px 7px;border-radius:99px;white-space:nowrap}
 .att-notify.ok{color:#3c1e1e;background:#fde96b}
@@ -1556,7 +1557,8 @@ var Store = (function () {
       bankAccount: '',
       bankHolder: '',
       notifyIn: false,          // 출결 태블릿에서 등원하면 학부모님께 카톡 (worker 의 솔라피 설정 필요)
-      notifyOut: false          // 하원하면 카톡
+      notifyOut: false,         // 하원하면 카톡
+      autoCheckoutMin: 90       // 태블릿 등원 뒤 하원을 안 누르면 이만큼 지나 자동 하원 (0 이면 끔)
     },
     meta: {},
     classes: [],
@@ -1900,6 +1902,39 @@ var Store = (function () {
     stamp(rec);
     save({ kind: 'attendance', id: rec.id });
     return rec;
+  }
+
+  /** 자동 하원까지의 분. 예전에 저장된 학원 정보에는 값이 없어서 기본 90분으로 봅니다. */
+  function autoCheckoutMin() {
+    var v = get().academy.autoCheckoutMin;
+    if (v === undefined || v === null || v === '') return DEFAULTS.academy.autoCheckoutMin;
+    return Math.max(Number(v) || 0, 0);
+  }
+
+  /**
+   * 태블릿에서 등원만 하고 하원을 안 누른 기록에 하원 시각을 채웁니다 (카톡은 보내지 않습니다).
+   * 하원 시각은 '지금'이 아니라 '등원 시각 + 정해진 분'이라,
+   * 태블릿과 선생님 PC 가 동시에 돌려도 같은 값이 되어 서로 덮어써도 문제가 없습니다.
+   * @returns {number} 자동 하원 처리한 수
+   */
+  function autoCheckout(now) {
+    var min = autoCheckoutMin();
+    if (!min) return 0;
+    now = now || new Date();
+    var due = alive(get().attendance).filter(function (r) {
+      if (!r.checkIn || r.checkOut || !r.checkInAt) return false;
+      var at = new Date(r.checkInAt).getTime();
+      return !isNaN(at) && at + min * 60000 <= now.getTime();
+    });
+    due.forEach(function (r) {
+      var out = new Date(new Date(r.checkInAt).getTime() + min * 60000);
+      setAttendance(r.studentId, r.date, {
+        checkOut: (out.getHours() < 10 ? '0' : '') + out.getHours() + ':' + (out.getMinutes() < 10 ? '0' : '') + out.getMinutes(),
+        checkOutAt: out.toISOString(),
+        checkOutAuto: true
+      });
+    });
+    return due.length;
   }
   /** 수업 태도 항목 켜고 끄기 */
   function toggleAttitude(studentId, date, state) {
@@ -3032,6 +3067,7 @@ var Store = (function () {
     studentsOnDay: studentsOnDay,
     attendanceOn: attendanceOn, attendanceFor: attendanceFor, attendanceRange: attendanceRange,
     setAttendance: setAttendance, toggleFlag: toggleFlag,
+    autoCheckout: autoCheckout, autoCheckoutMin: autoCheckoutMin,
     isIssue: isIssue, toggleAttitude: toggleAttitude,
     classes: classes, klass: klass, saveClass: saveClass, deleteClass: deleteClass,
     studentsInClass: studentsInClass, scheduleOf: scheduleOf,
@@ -5929,8 +5965,9 @@ Views.attendance = (function () {
         '<span class="gr">' + U.esc(sc.className || s.grade || '') +
           (sc.time ? ' · ' + U.esc(sc.time) : '') + '</span>' +
           // 태블릿(등하원 출결)에서 찍힌 시각
-          (r.checkIn ? '<br><span class="att-time">등원 ' + U.esc(r.checkIn) +
-            (r.checkOut ? ' · 하원 ' + U.esc(r.checkOut) : '') + '</span>' : '') +
+          (r.checkIn ? '<br><span class="att-time">등원 ' + U.esc(r.checkIn) + '</span>' +
+            (r.checkOut ? ' <span class="att-time' + (r.checkOutAuto ? ' auto" title="하원을 누르지 않아 등원 뒤 자동으로 하원 처리됨' : '') + '">하원 ' +
+              U.esc(r.checkOut) + (r.checkOutAuto ? ' 자동' : '') + '</span>' : '') : '') +
           // 학부모님께 간 카톡 알림 결과 (등하원 카톡 알림을 켰을 때)
           (window.Notify ? Notify.badge(r.notifyIn, '등원') + Notify.badge(r.notifyOut, '하원') : '') +
         '</span>' +
@@ -11584,6 +11621,13 @@ Views.settings = (function () {
         '<label class="check' + (ac.notifyIn ? ' on' : '') + '"><input type="checkbox" id="n-in"' + (ac.notifyIn ? ' checked' : '') + '>등원 알림 보내기</label>' +
         '<label class="check' + (ac.notifyOut ? ' on' : '') + '"><input type="checkbox" id="n-out"' + (ac.notifyOut ? ' checked' : '') + '>하원 알림 보내기</label>' +
       '</div>' +
+      '<div class="section-title">자동 하원</div>' +
+      '<div class="row">' +
+        '<span>태블릿 등원 뒤</span>' +
+        '<input type="number" id="n-auto" min="0" max="600" step="10" style="width:90px" value="' + Store.autoCheckoutMin() + '">' +
+        '<span>분이 지나도 하원을 안 누르면 자동 하원</span>' +
+      '</div>' +
+      '<p class="hint" style="margin:6px 0 0">그 전에 아이가 하원을 누르면 누른 시각으로 기록됩니다. 자동 하원은 카톡을 보내지 않습니다. 0 이면 끕니다.</p>' +
       '<div class="section-title">시험 발송</div>' +
       '<div class="row">' +
         '<input type="tel" id="n-phone" placeholder="받을 휴대폰 번호" style="max-width:180px" value="' + U.esc(ac.phone || '') + '">' +
@@ -11622,6 +11666,13 @@ Views.settings = (function () {
     }
     toggle('#n-in', 'notifyIn');
     toggle('#n-out', 'notifyOut');
+
+    el.querySelector('#n-auto').addEventListener('change', function (e) {
+      var min = Math.min(Math.max(parseInt(e.target.value, 10) || 0, 0), 600);
+      e.target.value = min;
+      Store.saveAcademy({ autoCheckoutMin: min });
+      UI.toast(min ? '등원 ' + min + '분 뒤 자동 하원으로 정했습니다.' : '자동 하원을 껐습니다.');
+    });
 
     function test(kind) {
       var to = el.querySelector('#n-phone').value.trim();
@@ -11942,6 +11993,18 @@ var App = (function () {
       if (!isPublicRoute()) AuthUI.gate();
       refreshBrand();
       rerender();
+      // 태블릿이 꺼져 있던 날도 빠지지 않게, 원생관리 화면에서도 자동 하원을 채웁니다 (카톡 없음).
+      if (!isPublicRoute()) {
+        var auto = function () {
+          if (!Store.autoCheckout()) return;
+          Sync.push();
+          // 선생님이 비고를 쓰는 중이면 화면을 다시 그리지 않습니다 (입력이 끊기지 않게).
+          var a = document.activeElement;
+          if (!a || !/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) rerender();
+        };
+        auto();
+        setInterval(auto, 60000);
+      }
     });
   }
 

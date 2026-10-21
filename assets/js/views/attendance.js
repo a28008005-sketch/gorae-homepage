@@ -24,8 +24,9 @@ Views.attendance = (function () {
         '<span class="gr">' + U.esc(sc.className || s.grade || '') +
           (sc.time ? ' · ' + U.esc(sc.time) : '') + '</span>' +
           // 태블릿(등하원 출결)에서 찍힌 시각
-          (r.checkIn ? '<br><span class="att-time">등원 ' + U.esc(r.checkIn) +
-            (r.checkOut ? ' · 하원 ' + U.esc(r.checkOut) : '') + '</span>' : '') +
+          (r.checkIn ? '<br><span class="att-time">등원 ' + U.esc(r.checkIn) + '</span>' +
+            (r.checkOut ? ' <span class="att-time' + (r.checkOutAuto ? ' auto" title="하원을 누르지 않아 등원 뒤 자동으로 하원 처리됨' : '') + '">하원 ' +
+              U.esc(r.checkOut) + (r.checkOutAuto ? ' 자동' : '') + '</span>' : '') : '') +
           // 학부모님께 간 카톡 알림 결과 (등하원 카톡 알림을 켰을 때)
           (window.Notify ? Notify.badge(r.notifyIn, '등원') + Notify.badge(r.notifyOut, '하원') : '') +
         '</span>' +

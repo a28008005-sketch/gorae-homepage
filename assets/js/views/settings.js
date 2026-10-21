@@ -283,6 +283,13 @@ Views.settings = (function () {
         '<label class="check' + (ac.notifyIn ? ' on' : '') + '"><input type="checkbox" id="n-in"' + (ac.notifyIn ? ' checked' : '') + '>등원 알림 보내기</label>' +
         '<label class="check' + (ac.notifyOut ? ' on' : '') + '"><input type="checkbox" id="n-out"' + (ac.notifyOut ? ' checked' : '') + '>하원 알림 보내기</label>' +
       '</div>' +
+      '<div class="section-title">자동 하원</div>' +
+      '<div class="row">' +
+        '<span>태블릿 등원 뒤</span>' +
+        '<input type="number" id="n-auto" min="0" max="600" step="10" style="width:90px" value="' + Store.autoCheckoutMin() + '">' +
+        '<span>분이 지나도 하원을 안 누르면 자동 하원</span>' +
+      '</div>' +
+      '<p class="hint" style="margin:6px 0 0">그 전에 아이가 하원을 누르면 누른 시각으로 기록됩니다. 자동 하원은 카톡을 보내지 않습니다. 0 이면 끕니다.</p>' +
       '<div class="section-title">시험 발송</div>' +
       '<div class="row">' +
         '<input type="tel" id="n-phone" placeholder="받을 휴대폰 번호" style="max-width:180px" value="' + U.esc(ac.phone || '') + '">' +
@@ -321,6 +328,13 @@ Views.settings = (function () {
     }
     toggle('#n-in', 'notifyIn');
     toggle('#n-out', 'notifyOut');
+
+    el.querySelector('#n-auto').addEventListener('change', function (e) {
+      var min = Math.min(Math.max(parseInt(e.target.value, 10) || 0, 0), 600);
+      e.target.value = min;
+      Store.saveAcademy({ autoCheckoutMin: min });
+      UI.toast(min ? '등원 ' + min + '분 뒤 자동 하원으로 정했습니다.' : '자동 하원을 껐습니다.');
+    });
 
     function test(kind) {
       var to = el.querySelector('#n-phone').value.trim();

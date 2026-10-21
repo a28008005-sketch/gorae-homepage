@@ -619,6 +619,7 @@ div.fld input[type=file]{font-size:13px;color:var(--ink);font-weight:400}
 
 /* 태블릿 등하원 시각 (출결 · 일일학습) */
 .att-time{display:inline-block;margin-top:3px;font-size:12px;font-weight:600;color:var(--mint);background:var(--mint-soft);padding:1px 7px;border-radius:99px;white-space:nowrap}
+.att-time.auto{color:var(--muted);background:#eef1f4}
 /* 학부모 카톡 알림 결과 */
 .att-notify{display:inline-block;margin-top:3px;font-size:11px;font-weight:600;color:var(--muted);background:#eef1f4;padding:1px 7px;border-radius:99px;white-space:nowrap}
 .att-notify.ok{color:#3c1e1e;background:#fde96b}

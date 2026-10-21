@@ -162,7 +162,7 @@ const ok = (label, cond, extra = '') => { console.log(`  ${cond ? '✓' : '✗ �
     var row = document.querySelector('.att-row[data-sid="' + s.id + '"]');
     return row ? row.textContent : '';
   });
-  ok('원생관리 출결 화면에 등원·하원 시각', /등원 \d\d:\d\d · 하원 \d\d:\d\d/.test(rowText));
+  ok('원생관리 출결 화면에 등원·하원 시각', /등원 \d\d:\d\d\s*하원 \d\d:\d\d/.test(rowText));
   const onBtn = await A.evaluate(() => {
     var s = Store.students().filter(x => x.name === '김하늘')[0];
     var b = document.querySelector('.att-row[data-sid="' + s.id + '"] [data-status="출석"]');
