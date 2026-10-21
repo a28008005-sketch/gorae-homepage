@@ -5,28 +5,48 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>고래영어 등하원 출결</title>
 <meta name="robots" content="noindex">
-<meta name="theme-color" content="#0a2033">
+<meta name="theme-color" content="#1f5bea">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="고래 출결">
 <link rel="manifest" href="checkin.webmanifest" crossorigin="use-credentials">
 <link rel="icon" href="assets/img/checkin-icon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="assets/img/checkin-icon.svg">
+<link rel="apple-touch-icon" href="assets/img/checkin-icon-192.png">
 <link rel="stylesheet" href="assets/css/style.css?v=596e1940">
-<link rel="stylesheet" href="assets/css/checkin.css?v=b385294d">
+<link rel="stylesheet" href="assets/css/checkin.css?v=700871e0">
 </head>
 <body class="ci-body">
 
 <div class="ci-app" id="ci-app">
-  <section class="ci-side">
-    <div class="ci-brand"><span data-icon="whale" data-icon-size="34"></span><span id="ci-academy">고래영어</span></div>
-    <div class="ci-clock" id="ci-clock">--:--</div>
-    <div class="ci-date" id="ci-date"></div>
-    <p class="ci-hello">안녕하세요!<br>학원에 오면 <b>등원</b>, 집에 갈 때 <b>하원</b>을 눌러요.</p>
-    <div class="ci-count" id="ci-count"></div>
+  <section class="ci-left">
+    <header class="ci-top">
+      <span class="ci-logo"><span data-icon="whale" data-icon-size="26"></span></span>
+      <span class="ci-academy" id="ci-academy">고래영어학원</span>
+      <button class="ci-gear" id="ci-gear" type="button" aria-label="설정 (2초간 길게 누르기)">
+        <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </header>
+    <div class="ci-main">
+      <div class="ci-date" id="ci-date"></div>
+      <div class="ci-clock"><span class="ci-ampm" id="ci-ampm"></span><span class="ci-hm" id="ci-clock">--:--</span></div>
+      <section class="ci-panel" id="ci-panel"></section>
+    </div>
+    <footer class="ci-foot">
+      <span class="ci-count" id="ci-count"></span>
+      <button class="ci-status" id="ci-status" type="button"></button>
+    </footer>
   </section>
-  <section class="ci-panel" id="ci-panel"></section>
-  <button class="ci-status" id="ci-status" type="button"></button>
+  <section class="ci-right">
+    <p class="ci-guide">출결번호 4자리를 눌러주세요</p>
+    <div class="ci-pad" id="ci-pad">
+      <button class="ci-key" data-k="1">1</button><button class="ci-key" data-k="2">2</button><button class="ci-key" data-k="3">3</button>
+      <button class="ci-key" data-k="4">4</button><button class="ci-key" data-k="5">5</button><button class="ci-key" data-k="6">6</button>
+      <button class="ci-key" data-k="7">7</button><button class="ci-key" data-k="8">8</button><button class="ci-key" data-k="9">9</button>
+      <button class="ci-key fn" data-k="clear" aria-label="모두 지우기">C</button>
+      <button class="ci-key" data-k="0">0</button>
+      <button class="ci-key fn" data-k="back" aria-label="한 글자 지우기"><svg viewBox="0 0 24 24" width="46" height="46" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/><line x1="18" y1="9" x2="12" y2="15"/><line x1="12" y1="9" x2="18" y2="15"/></svg></button>
+    </div>
+  </section>
 </div>
 
 <div id="modal-root"></div>
@@ -40,6 +60,6 @@
 <script src="assets/js/sync.js?v=429877b4"></script>
 <script src="assets/js/auth-ui.js?v=4d90571b"></script>
 <script src="assets/js/notify.js?v=34a1d039"></script>
-<script src="assets/js/checkin.js?v=ad7562f1"></script>
+<script src="assets/js/checkin.js?v=fde22cf2"></script>
 </body>
 </html>

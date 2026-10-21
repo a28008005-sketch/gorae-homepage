@@ -80,25 +80,17 @@ var Checkin = (function () {
   function dots() {
     var out = '';
     for (var i = 0; i < DIGITS; i++) {
-      out += '<span class="ci-dot' + (i < code.length ? ' on' : '') + '">' +
+      out += '<span class="ci-dot' + (i < code.length ? ' on' : (i === code.length ? ' cur' : '')) + '">' +
         (i < code.length ? U.esc(code[i]) : '') + '</span>';
     }
     return out;
   }
 
   function showPad(message, bad) {
-    var keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'clear', '0', 'back'];
+    // 번호판은 오른쪽 파란 영역에 늘 떠 있고, 여기(왼쪽)에는 4칸만 그립니다.
     $('#ci-panel').innerHTML =
-      '<p class="ci-ask">학부모님 휴대폰 번호<br><b>뒤 4자리</b>를 눌러 주세요</p>' +
       '<div class="ci-dots' + (bad ? ' shake' : '') + '" id="ci-dots">' + dots() + '</div>' +
-      '<p class="ci-msg' + (bad ? ' bad' : '') + '" id="ci-msg">' + (message ? U.esc(message) : '&nbsp;') + '</p>' +
-      '<div class="ci-pad">' +
-        keys.map(function (k) {
-          if (k === 'clear') return '<button class="ci-key fn" data-k="clear">지우기</button>';
-          if (k === 'back') return '<button class="ci-key fn" data-k="back" aria-label="한 글자 지우기">←</button>';
-          return '<button class="ci-key" data-k="' + k + '">' + k + '</button>';
-        }).join('') +
-      '</div>';
+      '<p class="ci-msg' + (bad ? ' bad' : '') + '" id="ci-msg">' + (message ? U.esc(message) : '&nbsp;') + '</p>';
   }
 
   function refreshDots() {
@@ -109,7 +101,11 @@ var Checkin = (function () {
   }
 
   function press(k) {
-    if (!$('#ci-dots')) return;          // 번호판이 아닌 화면에서는 무시
+    if (!$('#ci-dots')) {
+      // 이름 고르기·완료 화면에서 다음 아이가 숫자를 누르면 바로 처음부터 새로 받습니다.
+      if (!/^[0-9]$/.test(k)) return;
+      reset();
+    }
     if (k === 'clear') { code = ''; refreshDots(); return; }
     if (k === 'back') { code = code.slice(0, -1); refreshDots(); return; }
     if (!/^[0-9]$/.test(k) || code.length >= DIGITS) return;
@@ -250,7 +246,12 @@ var Checkin = (function () {
       if (Store.autoCheckout(d)) Sync.push();
     }
     var c = document.getElementById('ci-clock');
-    if (c) c.textContent = nowHm(d);
+    if (c) {
+      var h = d.getHours() % 12 || 12;
+      c.innerHTML = pad(h) + '<span class="colon">:</span>' + pad(d.getMinutes());
+    }
+    var ap = document.getElementById('ci-ampm');
+    if (ap) ap.textContent = d.getHours() < 12 ? '오전' : '오후';
     var t = document.getElementById('ci-date');
     if (t) t.textContent = (d.getMonth() + 1) + '월 ' + d.getDate() + '일 ' + DAYS[d.getDay()] + '요일';
     var n = document.getElementById('ci-count');
@@ -285,6 +286,7 @@ var Checkin = (function () {
   function bind() {
     root.addEventListener('click', function (e) {
       var b = e.target.closest('button');
+      if (b && b.id === 'ci-gear') return;
       if (!b) return;
       if (b.hasAttribute('data-k')) { press(b.getAttribute('data-k')); return; }
       if (b.classList.contains('ci-name')) { choose(b.getAttribute('data-sid')); return; }
@@ -300,20 +302,26 @@ var Checkin = (function () {
       else if (e.key === 'Escape') reset();
     });
 
-    // 상태 표시를 2초간 누르면 동기화 상태 창(로그아웃 · 지금 동기화)이 열립니다.
+    // 톱니바퀴(또는 아래 상태 표시)를 2초간 누르면 동기화 상태 창(로그아웃 · 지금 동기화)이 열립니다.
     // 아이들이 실수로 누르지 않도록 길게 눌러야 열리게 했습니다.
-    var st = document.getElementById('ci-status');
-    var holdTimer = null;
-    function hold() { holdTimer = setTimeout(function () { AuthUI.openPanel(); }, 2000); }
-    function release() { clearTimeout(holdTimer); }
-    st.addEventListener('pointerdown', hold);
-    st.addEventListener('pointerup', release);
-    st.addEventListener('pointerleave', release);
+    [document.getElementById('ci-gear'), document.getElementById('ci-status')].forEach(function (el) {
+      var holdTimer = null;
+      function hold() {
+        el.classList.add('holding');
+        holdTimer = setTimeout(function () { el.classList.remove('holding'); AuthUI.openPanel(); }, 2000);
+      }
+      function release() { clearTimeout(holdTimer); el.classList.remove('holding'); }
+      el.addEventListener('pointerdown', hold);
+      el.addEventListener('pointerup', release);
+      el.addEventListener('pointerleave', release);
+      el.addEventListener('pointercancel', release);
+    });
   }
 
   function boot() {
     root = document.getElementById('ci-app');
-    document.getElementById('ci-academy').textContent = Store.get().academy.name + ' ' + (Store.get().academy.campus || '');
+    var nm = String(Store.get().academy.name || '고래영어').trim();
+    document.getElementById('ci-academy').textContent = /학원$/.test(nm) ? nm : nm + '학원';
     bind();
     showPad();
     tick();
