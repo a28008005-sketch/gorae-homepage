@@ -4,10 +4,27 @@
   "start_url": "checkin.html",
   "scope": "./",
   "display": "fullscreen",
-  "orientation": "any",
-  "background_color": "#0a2033",
-  "theme_color": "#0a2033",
+  "orientation": "landscape",
+  "background_color": "#1f5bea",
+  "theme_color": "#1f5bea",
   "icons": [
-    { "src": "assets/img/checkin-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+    {
+      "src": "assets/img/checkin-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/img/checkin-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/img/checkin-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
   ]
 }
