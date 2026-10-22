@@ -129,7 +129,8 @@ const ok = (label, cond, extra = '') => { console.log(`  ${cond ? '✓' : '✗ �
   const r3 = await rec('방금등원');
   ok('90분이 안 지난 아이는 아직 학원에', !r3.checkOut);
   ok('자동 하원은 카톡을 보내지 않음', notifyCalls.length === callsBefore && !notifyCalls.some(c => c.kind === 'out'), String(notifyCalls.length - callsBefore));
-  ok('태블릿 인원 표시에 반영', /지금 학원에 1명/.test(await T.textContent('#ci-count')), await T.textContent('#ci-count'));
+  ok('지금 학원에 남은 아이는 1명', (await T.evaluate(() =>
+    Store.attendanceOn(U.ymd()).filter(r => r.checkIn && !r.checkOut).length)) === 1);
 
   // 자동 하원된 아이가 다시 누르면 "이미 하원"
   await type('0001');
