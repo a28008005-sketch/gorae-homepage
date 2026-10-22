@@ -10,10 +10,10 @@
 /* ---------- 왼쪽 ---------- */
 .ci-left{position:relative;display:flex;flex-direction:column;background:var(--ci-left);padding:22px 30px 14px;min-height:0}
 .ci-top{display:flex;align-items:center;gap:12px}
-.ci-logo{width:52px;height:52px;border-radius:50%;background:#fff;box-shadow:0 1px 5px rgba(0,0,0,.14);
-  display:flex;align-items:center;justify-content:center;overflow:hidden}
-.ci-logo img{width:42px;height:42px;display:block;margin-top:1px}
-.ci-academy{font-size:20px;font-weight:700;color:var(--ci-ink);letter-spacing:-.3px}
+/* 학원 로고 (고래영어 WHALE ENGLISH 가로형) + 캠퍼스 이름 */
+.ci-logo{display:block;height:clamp(52px,7.6vh,68px);width:auto}
+.ci-academy{padding-left:16px;border-left:2px solid #c3ccd5;font-size:20px;font-weight:700;color:#003c70;letter-spacing:-.3px}
+.ci-academy:empty{display:none}
 .ci-gear{margin-left:auto;border:0;background:none;color:#3a4048;padding:8px;cursor:pointer;line-height:0;border-radius:50%}
 .ci-gear.holding{background:rgba(31,91,234,.12);color:var(--ci-blue)}
 

@@ -320,8 +320,8 @@ var Checkin = (function () {
 
   function boot() {
     root = document.getElementById('ci-app');
-    var nm = String(Store.get().academy.name || '고래영어').trim();
-    document.getElementById('ci-academy').textContent = /학원$/.test(nm) ? nm : nm + '학원';
+    // 로고에 '고래영어'가 들어 있으니 옆에는 캠퍼스 이름만 씁니다.
+    document.getElementById('ci-academy').textContent = String(Store.get().academy.campus || '').trim();
     bind();
     showPad();
     tick();
