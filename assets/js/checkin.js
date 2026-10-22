@@ -320,8 +320,6 @@ var Checkin = (function () {
 
   function boot() {
     root = document.getElementById('ci-app');
-    var nm = String(Store.get().academy.name || '고래영어').trim();
-    document.getElementById('ci-academy').textContent = /학원$/.test(nm) ? nm : nm + '학원';
     bind();
     showPad();
     tick();
