@@ -16,6 +16,7 @@ var Sync = (function () {
   var DEFAULT_URL = 'https://olzyfwiurfgaxctdemxa.supabase.co';
   var DEFAULT_KEY = 'sb_publishable_Iox5QRLACYO6FEhTtneQHQ_dsmucgv_';
 
+  var FULL_PULL_V = 1;   // 2026-10-26 고래 포인트(point) 추가
   var cfg = { mode: 'local', url: '', anonKey: '', lastPulledAt: '', pending: [], lastUser: null };
   var transport = null;
   var user = null;
@@ -120,11 +121,17 @@ var Sync = (function () {
   function pull() {
     if (!isCloud() || !signedIn() || busy) return Promise.resolve(0);
     busy = true;
-    return transport.fetchSince(cfg.lastPulledAt || null).then(function (rows) {
+    // 새 종류의 기록(고래 포인트)을 읽게 된 뒤 처음 한 번은 그 종류만 처음부터 받습니다.
+    // 예전 화면은 모르는 종류를 건너뛰고 받은 시각만 앞으로 옮겨 두었기 때문입니다.
+    var catchUp = cfg.lastPulledAt && cfg.fullPullV !== FULL_PULL_V
+      ? transport.fetchSince(null, 'point').then(function (rows) { Store.applyRemote(rows); })
+      : Promise.resolve();
+    return catchUp.then(function () { return transport.fetchSince(cfg.lastPulledAt || null); }).then(function (rows) {
       var newest = cfg.lastPulledAt || '';
       rows.forEach(function (r) { if (r.updatedAt && r.updatedAt > newest) newest = r.updatedAt; });
       var applied = Store.applyRemote(rows);
       cfg.lastPulledAt = newest;
+      cfg.fullPullV = FULL_PULL_V;
       saveCfg();
       setStatus('online');
       if (applied && window.App && App.rerender) App.rerender();

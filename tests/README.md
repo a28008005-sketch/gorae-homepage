@@ -20,6 +20,8 @@ node tests/library-books.test.js             # 바코드(ISBN) 등록 · 도서 
 node tests/worksheet.test.js                 # 워크시트 레벨 판정·생성·대여 연동
 node tests/library-reading.test.js           # 도서 대여 탭 · 학생별 독서 현황 · 권장 레벨 · 북리포트 상태 · 워크시트 자료실
 node tests/grades-counsel.test.js            # 성적 관리 (통계·학부모 리포트 합침) · 시험 기록 가져오기 · 상담 이력 · 팔로우업
+node tests/points.test.mjs                   # 고래 포인트 · 사용(빼기)·적립·내역 지우기·잔액 전부 고래카드로 (hwvideo-server 필요)
+node tests/resources-voca-install.test.mjs   # 학원자료실 · 보카 앱 설치 안내 · 학부모 안내문 복사 (hwvideo-server 필요)
 node tests/bundle-check.js                   # dist 단일 파일이 제대로 동작하는지
 ```
 

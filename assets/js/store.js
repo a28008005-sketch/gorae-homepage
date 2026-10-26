@@ -73,7 +73,8 @@ var Store = (function () {
     newsItems: [],    // 영자신문 워크시트 목록
     newsProgress: [], // 학생별 영자신문 진도 (기사마다 진행중·완료)
     grades: [],       // 시험 성적 (본사 성적 목록에서 가져온 기록)
-    counsels: []      // 학생별 상담 이력 (후속 상담으로 이어집니다)
+    counsels: [],     // 학생별 상담 이력 (후속 상담으로 이어집니다)
+    points: []        // 고래 포인트 — 보카 앱 적립(워커가 넣음)과 원장님 사용·적립 한 줄씩
   };
 
   var data = null;
@@ -87,7 +88,7 @@ var Store = (function () {
     homework: 'homeworks', submission: 'submissions',
     vocab: 'vocabLogs', book: 'books', loan: 'loans',
     resource: 'resources', news: 'newsItems', newsprog: 'newsProgress',
-    grade: 'grades', counsel: 'counsels'
+    grade: 'grades', counsel: 'counsels', point: 'points'
   };
 
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
@@ -325,6 +326,7 @@ var Store = (function () {
     kill(d.payments, 'payment', function (p) { return p.studentId === id; });
     kill(d.submissions, 'submission', function (x) { return x.studentId === id; });
     kill(d.vocabLogs, 'vocab', function (v) { return v.studentId === id; });
+    kill(d.points, 'point', function (p) { return p.studentId === id; });
     kill(d.loans, 'loan', function (l) { return l.studentId === id; });
     kill(d.newsProgress, 'newsprog', function (x) { return x.studentId === id; });
     kill(d.grades, 'grade', function (g) { return g.studentId === id; });
@@ -839,6 +841,49 @@ var Store = (function () {
       lastDate: list.length ? list[0].date : ''
     };
   }
+
+  /* ---------- 고래 포인트 ----------
+   * 보카 앱에서 하루 학습을 끝내면 워커가 적립 줄(source: whaley-voca)을 넣습니다.
+   * 원장님이 마켓데이·고래카드로 바꿔 주면 음수 줄(source: staff)로 뺍니다.
+   * 잔액은 줄을 모두 더한 값입니다. 규칙은 dailytest 저장소 worker/hello-world.js 의 POINT_RULES 와 같게 둡니다. */
+  var POINT_RULES = { won: 10, day: 8, high: 2, highPct: 90, streak: 7, streakBonus: 10, monthCap: 300 };
+  function points(opts) {
+    opts = opts || {};
+    var list = alive(get().points).slice();
+    if (opts.studentId) list = list.filter(function (p) { return p.studentId === opts.studentId; });
+    if (opts.month) list = list.filter(function (p) { return String(p.date || '').slice(0, 7) === opts.month; });
+    return list.sort(function (a, b) {
+      if (a.date !== b.date) return a.date < b.date ? 1 : -1;
+      return String(a.updatedAt || '') < String(b.updatedAt || '') ? 1 : -1;
+    });
+  }
+  /** 한 학생의 잔액 · 이번 달 앱 적립 · 이번 달 사용 */
+  function pointSummary(studentId, month) {
+    month = month || U.ymd().slice(0, 7);
+    var balance = 0, earned = 0, used = 0, last = '';
+    points({ studentId: studentId }).forEach(function (p) {
+      var n = Number(p.amount) || 0;
+      balance += n;
+      if (String(p.date || '').slice(0, 7) === month) {
+        if (n < 0) used += -n;
+        else if (p.source === 'whaley-voca') earned += n;
+      }
+      if (p.source === 'whaley-voca' && n > 0 && p.date > last) last = p.date;
+    });
+    return { balance: balance, earned: earned, used: used, lastEarned: last };
+  }
+  function savePoint(p) {
+    var d = get();
+    p.id = p.id || U.uid('pt');
+    p.date = p.date || U.ymd();
+    p.amount = Math.round(Number(p.amount) || 0);
+    p.source = p.source || 'staff';
+    d.points.push(p);
+    stamp(p);
+    save({ kind: 'point', id: p.id });
+    return p.id;
+  }
+  function deletePoint(id) { return softDelete('points', 'point', id); }
 
   /* ---------- 도서 대여 ---------- */
   function books(opts) {
@@ -1577,6 +1622,7 @@ var Store = (function () {
     deleteHomework: deleteHomework, homeworkProgress: homeworkProgress,
     vocabLogs: vocabLogs, saveVocabLog: saveVocabLog, deleteVocabLog: deleteVocabLog,
     vocabSummary: vocabSummary,
+    POINT_RULES: POINT_RULES, points: points, pointSummary: pointSummary, savePoint: savePoint, deletePoint: deletePoint,
     books: books, book: book, bookByCode: bookByCode, booksByIsbn: booksByIsbn, saveBook: saveBook, deleteBook: deleteBook,
     loans: loans, openLoanOf: openLoanOf, bookStatus: bookStatus,
     lendBook: lendBook, returnBook: returnBook, deleteLoan: deleteLoan,

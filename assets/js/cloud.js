@@ -75,9 +75,10 @@ var Cloud = (function () {
         return need().auth.signOut();
       },
 
-      /** since 이후에 바뀐 레코드만 받아옵니다. */
-      fetchSince: function (since) {
+      /** since 이후에 바뀐 레코드만 받아옵니다. kind 를 주면 그 종류만 받습니다. */
+      fetchSince: function (since, kind) {
         var q = need().from(TABLE).select('kind,id,data,updated_at,deleted');
+        if (kind) q = q.eq('kind', kind);
         // gte 로 겹쳐 받습니다. 같은 밀리초에 쓰인 레코드를 놓치지 않기 위해서이고,
         // 병합은 멱등이라 중복으로 받아도 문제가 없습니다.
         if (since) q = q.gte('updated_at', since);
