@@ -65,10 +65,67 @@ Views.resources = (function () {
   ];
 
   function seedOnce() {
-    if (!Store.markOnce('resourcesSeeded')) return;
-    // 이미 직접 넣어 두신 자료가 있으면 건드리지 않습니다.
-    if (Store.resources().length) return;
-    SEED.forEach(function (r) { Store.saveResource(JSON.parse(JSON.stringify(r))); });
+    if (Store.markOnce('resourcesSeeded')) {
+      // 이미 직접 넣어 두신 자료가 있으면 건드리지 않습니다.
+      if (!Store.resources().length) SEED.forEach(function (r) { Store.saveResource(JSON.parse(JSON.stringify(r))); });
+    }
+    addVocaInstall();
+  }
+
+  /* ---------- 웨일리 보카 설치 안내 (2026-10-26 추가) ----------
+   * 학습앱 > 스마트단어장 보카앱 폴더에 설치 안내 페이지와 학부모 안내문을 넣습니다.
+   * 안내문은 [학부모 안내문 복사] 버튼으로 그대로 복사해 카톡·문자로 보낼 수 있습니다.
+   * 다른 기기에서 이미 넣었으면(같은 주소가 있으면) 다시 넣지 않습니다. */
+  var VOCA_APP = 'https://a28008005-sketch.github.io/dailytest/voca/';
+  var VOCA_INSTALL = VOCA_APP + 'install.html';
+  var VOCA_FOLDER = '스마트단어장 보카앱';
+  var VOCA_NOTICE = [
+    '안녕하세요, 고래영어 초전캠퍼스입니다.',
+    '',
+    '아이들이 집에서도 단어 학습을 바로 이어갈 수 있도록 웨일리 보카 앱 설치 방법을 안내드립니다. 한 번 설치해 두시면 홈 화면의 고래 아이콘만 눌러 바로 학습을 시작할 수 있습니다. 앱스토어를 거치지 않는 방식이라 따로 가입하거나 결제하실 것은 없습니다.',
+    '',
+    '📲 설치 안내 페이지',
+    VOCA_INSTALL,
+    '',
+    '[안드로이드(갤럭시 등)]',
+    '크롬이나 삼성 인터넷으로 주소를 열고, 화면의 [📲 이 기기에 앱으로 설치하기]를 누른 뒤 [설치]를 눌러 주세요.',
+    '버튼이 보이지 않으면 오른쪽 위 ⋮ 메뉴에서 [앱 설치] 또는 [홈 화면에 추가]를 눌러 주시면 됩니다.',
+    '',
+    '[아이폰·아이패드]',
+    '꼭 사파리(Safari)로 주소를 열어 주세요. 공유 버튼(네모에 위쪽 화살표)을 누르고 [홈 화면에 추가] → [추가]를 누르시면 됩니다.',
+    '',
+    '※ 카카오톡 안에서 링크를 여시면 설치가 되지 않습니다. 오른쪽 위 메뉴에서 [다른 브라우저로 열기]를 눌러 주세요.',
+    '',
+    '[로그인 방법]',
+    '앱을 열면 번호 화면이 나옵니다. 학원에 등록하신 부모님 휴대폰 번호 뒤 4자리를 눌러 주세요. 출석할 때 쓰는 번호와 같습니다.',
+    '형제·자매가 함께 다니면 번호를 누른 뒤 아이 이름을 고르면 됩니다.',
+    '',
+    '번호를 눌러도 들어가지지 않으면 학원에 등록된 연락처가 다를 수 있으니 편하게 알려 주세요. 바로 확인해 드리겠습니다.',
+    '',
+    '고래영어 초전캠퍼스 010-3803-8335'
+  ].join('\n');
+
+  function addVocaInstall() {
+    var all = Store.resources();
+    // 클라우드에서 자료를 아직 못 받아 왔을 때는 기다립니다. (보카 앱 자료가 있는 폴더를 알아야 해서)
+    if (!all.length) return;
+    if (all.some(function (r) { return String(r.url || '').indexOf('/dailytest/voca/install.html') >= 0; })) return;
+    if (!Store.markOnce('vocaInstallAdded')) return;
+
+    // 보카 앱 자료가 이미 다른 폴더에 있으면 그 폴더에, 없으면 새 폴더로 같이 묶습니다.
+    var app = all.filter(function (r) { return String(r.url || '').replace(/index\.html$/, '') === VOCA_APP; })[0];
+    var folder = (app && String(app.folder || '').trim()) || VOCA_FOLDER;
+    if (app && !String(app.folder || '').trim()) Store.saveResource({ id: app.id, folder: folder });
+
+    Store.saveResource({
+      title: '웨일리 보카 앱 설치 안내 (학부모용)',
+      category: '학습앱',
+      folder: folder,
+      desc: '휴대폰·태블릿 홈 화면에 보카 앱을 설치하는 방법(QR·A4 인쇄 가능). 로그인은 학부모 연락처 뒤 4자리. [학부모 안내문 복사]로 카톡·문자 안내문을 바로 보낼 수 있습니다.',
+      url: VOCA_INSTALL,
+      notice: VOCA_NOTICE,
+      date: U.ymd()
+    });
   }
 
   /* ---------- 파일 주고받기 ---------- */
@@ -246,6 +303,7 @@ Views.resources = (function () {
       btns += '<a class="btn sm' + (f ? '' : ' primary') + '" href="' + U.esc(r.url) + '" target="_blank" rel="noopener">' + (f ? '링크' : '열기 →') + '</a>' +
               (f ? '' : '<button class="btn sm" data-copy="' + U.esc(r.url) + '">링크 복사</button>');
     }
+    if (r.notice) btns += '<button class="btn sm" data-notice="' + U.esc(r.id) + '">학부모 안내문 복사</button>';
     if (!btns) btns = '<span class="hint">링크·파일이 없습니다</span>';
     return btns;
   }
@@ -554,6 +612,11 @@ Views.resources = (function () {
     UI.on(el, '[data-edit]', 'click', function (e, btn) { openForm(btn.getAttribute('data-edit')); });
     UI.on(el, '[data-copy]', 'click', function (e, btn) {
       U.copy(btn.getAttribute('data-copy')).then(function () { UI.toast('링크를 복사했습니다.'); });
+    });
+    UI.on(el, '[data-notice]', 'click', function (e, btn) {
+      var r = Store.resources().filter(function (x) { return x.id === btn.getAttribute('data-notice'); })[0];
+      if (!r || !r.notice) return;
+      U.copy(r.notice).then(function () { UI.toast('학부모 안내문을 복사했습니다. 카톡·문자에 붙여 넣으세요.'); });
     });
 
     // 폴더를 열고 닫은 상태를 기억합니다. (toggle 은 버블링되지 않아 capture 로 받습니다)
