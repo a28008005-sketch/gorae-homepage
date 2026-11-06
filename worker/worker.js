@@ -488,8 +488,11 @@ async function notify(request, env, path) {
 }
 
 /**
- * POST /api/notify/message  { to: '010-…, 010-…', text, subject? }
- * 솔라피 문자(장문 LMS)로 그대로 보냅니다. 발신번호(SOLAPI_SENDER)가 솔라피에 등록돼 있어야 합니다.
+ * POST /api/notify/message  { to, text, subject?, video?: { name, range, path } }
+ *  - video 가 있고 워커에 KAKAO_TPL_VIDEO(학습 영상 알림톡 템플릿 ID)가 있으면 → 카카오 알림톡으로 먼저 보냅니다.
+ *    카톡을 못 받는 번호(카톡 미사용·채널 차단 등)는 솔라피가 같은 내용을 문자로 대신 보냅니다(disableSms:false).
+ *  - 템플릿이 아직 없으면 → text 를 문자(장문 LMS)로 보냅니다.
+ * 템플릿 변수: #{학생명} · #{범위} · #{영상}  (영상 = '<id>/<서명>', 주소는 https://staff.whalejinju.kr/hw/v/#{영상})
  */
 async function sendMessage(request, env) {
   const need = ['SOLAPI_API_KEY', 'SOLAPI_API_SECRET', 'SOLAPI_SENDER'].filter(k => !String(env[k] || '').trim());
@@ -500,9 +503,17 @@ async function sendMessage(request, env) {
   const text = String(body.text || '').trim().slice(0, 1000);
   if (!text) return json({ error: '보낼 내용이 비어 있습니다.' }, 400);
   const subject = String(body.subject || '고래영어 안내').trim().slice(0, 30);
+  const v = body.video || null;
+  const tpl = String(env.KAKAO_TPL_VIDEO || '').trim();
+  const pfId = String(env.KAKAO_PFID || '').trim();
+  const useKakao = !!(v && tpl && pfId && /^[0-9]+_[a-z0-9]+\/[0-9a-f]{32}$/.test(String(v.path || '')));
   const results = [];
   for (const num of to) {
-    const message = { to: num, from: String(env.SOLAPI_SENDER).replace(/\D/g, ''), text, subject, type: 'LMS' };
+    const from = String(env.SOLAPI_SENDER).replace(/\D/g, '');
+    const message = useKakao
+      ? { to: num, from, kakaoOptions: { pfId, templateId: tpl, disableSms: false,
+          variables: { '#{학생명}': String(v.name || '').slice(0, 20), '#{범위}': String(v.range || '').slice(0, 40), '#{영상}': String(v.path) } } }
+      : { to: num, from, text, subject, type: 'LMS' };
     try {
       const res = await fetch('https://api.solapi.com/messages/v4/send', {
         method: 'POST',
@@ -518,7 +529,7 @@ async function sendMessage(request, env) {
     }
   }
   const sent = results.filter(r => r.ok).length;
-  return json({ ok: sent > 0, sent, total: results.length, error: sent === results.length ? undefined : results.filter(r => !r.ok).map(r => r.error).join(' / ') }, sent > 0 ? 200 : 502);
+  return json({ ok: sent > 0, sent, total: results.length, via: useKakao ? 'kakao' : 'sms', error: sent === results.length ? undefined : results.filter(r => !r.ok).map(r => r.error).join(' / ') }, sent > 0 ? 200 : 502);
 }
 
 function notifyStatus(env) {
@@ -529,6 +540,7 @@ function notifyStatus(env) {
     missing,
     in: !!String(env.KAKAO_TPL_IN || '').trim(),
     out: !!String(env.KAKAO_TPL_OUT || '').trim(),
+    video: !!String(env.KAKAO_TPL_VIDEO || '').trim() && !!String(env.KAKAO_PFID || '').trim(),
     sender: sender ? sender.slice(0, 3) + '-****-' + sender.slice(-4) : ''
   };
 }

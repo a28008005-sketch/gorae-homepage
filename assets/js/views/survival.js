@@ -120,7 +120,7 @@ Views.survival = (function () {
           ' · ' + (i.done || 0) + '/' + (i.total || i.cards || 0) + '문장' +
           (i.durationSec ? ' · ' + dur(i.durationSec) : '') +
           (i.answer === 'hide' ? ' · 정답 숨김(실전)' : '') +
-          (sent ? ' · <span style="color:#296b4d;font-weight:700">학부모 전송 ' + U.esc(when(sent.at)) + '</span>' : '') +
+          (sent ? ' · <span style="color:#296b4d;font-weight:700">학부모 전송' + ({ kakao: '(카톡)', sms: '(문자)', copy: '(복사)' }[sent.how] || '') + ' ' + U.esc(when(sent.at)) + '</span>' : '') +
         '</div>' +
       '</div>' +
       (hasVideo(i)
@@ -205,7 +205,7 @@ Views.survival = (function () {
   function play(i) {
     UI.modal({
       title: i.name + ' · ' + range(i), wide: true,
-      body: '<video controls playsinline autoplay src="' + U.esc(i.share.replace('?', '/video?')) + '" style="width:100%;max-height:70vh;background:#000;border-radius:10px"></video>',
+      body: '<video controls playsinline autoplay src="' + U.esc(i.share + '/video') + '" style="width:100%;max-height:70vh;background:#000;border-radius:10px"></video>',
       footer: '<button class="btn mint" id="sv-m-send">학부모 전송</button><div class="sp"></div><button class="btn" data-close>닫기</button>',
       onMount: function (w) { w.querySelector('#sv-m-send').addEventListener('click', function () { UI.close(); send(i); }); }
     });
@@ -221,10 +221,17 @@ Views.survival = (function () {
         (phone ? '' : '<p class="hint" style="margin:0;color:#a8453f">학생 명부에 ' + U.esc(i.name) + ' 학생의 학부모 연락처가 없습니다. 번호를 직접 넣어 주세요.</p>') +
         '<label style="display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:700">보낼 내용' +
           '<textarea id="sv-text" rows="8" style="font:inherit;font-size:14px;line-height:1.6;padding:10px;border:1px solid #dfe5ec;border-radius:8px">' + U.esc(message(i)) + '</textarea></label>' +
-        '<p class="hint" style="margin:0">문자(장문)로 발송됩니다. 영상 링크는 비밀번호 없이 열리지만 주소를 아는 사람만 볼 수 있습니다.</p></div>',
+        '<p class="hint" id="sv-how" style="margin:0;line-height:1.6">발송 방법을 확인하는 중…</p>' +
+        '<p class="hint" style="margin:0">영상 링크는 비밀번호 없이 열리지만 주소를 아는 사람만 볼 수 있습니다.</p></div>',
       footer: '<button class="btn" id="sv-copy-msg">내용 복사 (카톡용)</button><div class="sp"></div>' +
         '<button class="btn" data-close>취소</button><button class="btn primary" id="sv-go">문자 보내기</button>',
       onMount: function (w) {
+        var how = w.querySelector('#sv-how');
+        fetch('/api/notify/status', { credentials: 'same-origin', cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (st) {
+          how.innerHTML = st && st.video
+            ? '<b style="color:#296b4d">카카오 알림톡으로 먼저 보내고</b>, 카톡을 못 받는 번호는 <b>문자로 자동 전환</b>됩니다. (알림톡은 승인된 문구로 나가고, 아래 내용은 쓰이지 않습니다)'
+            : '학습 영상 알림톡 템플릿이 아직 등록되지 않아 <b>문자(장문)</b>로 보냅니다. 템플릿 ID를 워커에 넣으면 카톡 우선으로 바뀝니다.';
+        }).catch(function () { how.textContent = '문자(장문)로 보냅니다.'; });
         w.querySelector('#sv-copy-msg').addEventListener('click', function () {
           copy(w.querySelector('#sv-text').value, '내용을 복사했습니다. 카톡에 붙여 넣어 보내세요.');
           call(API + '/api/sv/sent', { method: 'POST', body: { id: i.id, to: '', how: 'copy' } }).then(function (j) { mergeRec(j.rec); });
@@ -232,10 +239,10 @@ Views.survival = (function () {
         w.querySelector('#sv-go').addEventListener('click', function () {
           var to = w.querySelector('#sv-to').value, text = w.querySelector('#sv-text').value;
           var b = this; b.disabled = true; b.textContent = '보내는 중…';
-          call('/api/notify/message', { method: 'POST', body: { to: to, text: text, subject: '고래영어 학습 영상' } })
+          call('/api/notify/message', { method: 'POST', body: { to: to, text: text, subject: '고래영어 학습 영상', video: { name: i.name, range: range(i).replace(/ · /g, ' '), path: i.kpath } } })
             .then(function (r) {
-              return call(API + '/api/sv/sent', { method: 'POST', body: { id: i.id, to: to, how: 'sms' } }).then(function (j) {
-                mergeRec(j.rec); UI.close(); UI.toast('학부모님께 보냈습니다. (' + r.sent + '/' + r.total + ')'); App.rerender();
+              return call(API + '/api/sv/sent', { method: 'POST', body: { id: i.id, to: to, how: r.via || 'sms' } }).then(function (j) {
+                mergeRec(j.rec); UI.close(); UI.toast((r.via === 'kakao' ? '카카오 알림톡으로 보냈습니다' : '문자로 보냈습니다') + ' (' + r.sent + '/' + r.total + ')'); App.rerender();
               });
             })
             .catch(function (e) { b.disabled = false; b.textContent = '문자 보내기'; UI.toast(e.message, true); });

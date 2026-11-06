@@ -35,7 +35,7 @@ export default {
     const p = url.pathname.replace(/\/+$/, '') || '/';
     try {
       if (p.startsWith('/hw/api/sv/')) return withCors(request, await svPublic(request, env, url, p));
-      if (p.startsWith('/hw/sv/')) return svWatch(request, env, url, p);
+      if (p.startsWith('/hw/sv/') || p.startsWith('/hw/v/')) return svWatch(request, env, url, p);
       if (p.startsWith('/hw/kakao/')) return kakao(request, env, ctx, p, url);
       if (p === '/hw') return html(submitPage());
       if (p === '/hw/api/start' && request.method === 'POST') return start(request, env);
@@ -385,7 +385,7 @@ async function svList(env, url) {
       try { rec = JSON.parse((o.customMetadata || {}).j || 'null'); } catch (_) { rec = null; }
       if (!rec) { try { rec = JSON.parse(await (await env.HW.get(o.key)).text()); } catch (_) { rec = null; } }
       if (!rec || String(rec.date) < from) continue;
-      if (rec.video && rec.video.ok) rec.share = `/hw/sv/${rec.id}?s=${await svSig(rec.id, env)}`;
+      if (rec.video && rec.video.ok) { const sg = await svSig(rec.id, env); rec.share = `/hw/v/${rec.id}/${sg}`; rec.kpath = `${rec.id}/${sg}`; }
       items.push(rec);
     }
     cursor = r.truncated ? r.cursor : undefined;
@@ -412,13 +412,19 @@ async function svDelete(request, env) {
 
 /** 학부모용 영상 보기 — 주소의 서명이 맞아야만 열립니다. */
 async function svWatch(request, env, url, p) {
-  const m = p.match(/^\/hw\/sv\/([0-9]+_[a-z0-9]+)(\/video)?$/);
-  if (!m || !env.ADMIN_PASSWORD) return new Response('Not found', { status: 404 });
-  const id = m[1];
-  if (!safeEqual(String(url.searchParams.get('s') || ''), await svSig(id, env))) return new Response('링크가 올바르지 않습니다.', { status: 403, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+  // 두 가지 주소 모양을 받습니다: /hw/v/<id>/<서명>[/video]  (알림톡 버튼용)  ·  /hw/sv/<id>[/video]?s=<서명>
+  let m = p.match(/^\/hw\/v\/([0-9]+_[a-z0-9]+)\/([0-9a-f]{32})(\/video)?$/);
+  let id, sig, isVideo;
+  if (m) { id = m[1]; sig = m[2]; isVideo = !!m[3]; }
+  else {
+    m = p.match(/^\/hw\/sv\/([0-9]+_[a-z0-9]+)(\/video)?$/);
+    if (m) { id = m[1]; sig = String(url.searchParams.get('s') || ''); isVideo = !!m[2]; }
+  }
+  if (!id || !env.ADMIN_PASSWORD) return new Response('Not found', { status: 404 });
+  if (!safeEqual(sig, await svSig(id, env))) return new Response('링크가 올바르지 않습니다.', { status: 403, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
   const rec = await svGet(env, id);
   if (!rec || !rec.video || !rec.video.ok) return new Response('영상을 찾지 못했습니다.', { status: 404, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
-  if (m[2]) {
+  if (isVideo) {
     const range = request.headers.get('Range');
     const head = await env.HW.head(rec.video.key);
     if (!head) return new Response('없음', { status: 404 });
@@ -439,7 +445,7 @@ async function svWatch(request, env, url, p) {
   }
   const esc = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const title = `${rec.name} · 센텐스뱅크 ${rec.level} Vol.${rec.vol}${rec.unit ? ' Unit ' + rec.unit : ''}`;
-  const src = `/hw/sv/${id}/video?s=${url.searchParams.get('s')}`;
+  const src = `/hw/v/${id}/${sig}/video`;
   return html(`<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex"><title>${esc(title)}</title>
 <meta property="og:title" content="${esc(rec.name)}의 센텐스뱅크 서바이벌 영상"><meta property="og:description" content="고래영어 초전캠퍼스 · ${esc(rec.date)}">
