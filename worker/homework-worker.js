@@ -8,6 +8,18 @@
 //   GET  /hw/admin/res?key=...[&dl=1]            파일 열기 / 내려받기
 // ★ 버킷 수명 규칙(30일 자동 삭제)은 sub/ 폴더에만 걸려 있어야 합니다. 버킷 전체에 걸면 자료 파일도 지워집니다.
 //
+// 센텐스뱅크 서바이벌 (학습패드 앱 dailytest/cards/survival.html 이 부르는 곳, 2026-11 추가)
+//   POST /hw/api/sv/log                 연습 기록 남기기 (영상 없음)
+//   POST /hw/api/sv/start               실전 녹화 영상 올리기 시작 → 기록 하나 생김
+//   PUT  /hw/api/sv/part?key=&uploadId=&n=   영상 조각
+//   POST /hw/api/sv/complete            영상 올리기 끝
+//   GET  /hw/sv/<id>?s=서명              학부모용 영상 보기 화면 (비밀번호 없이, 서명이 맞아야 열림)
+//   GET  /hw/sv/<id>/video?s=서명        그 영상 파일
+//   GET  /hw/admin/api/sv/list?days=90  기록 목록 (원생관리 로그인 필요)
+//   POST /hw/admin/api/sv/sent {id,to}  학부모 전송 표시
+//   POST /hw/admin/api/sv/delete {id}   기록·영상 지우기
+//   기록은 sv/log/<id>.json, 영상은 sv/vid/<id>.<확장자> 에 둡니다. sv/ 폴더는 자동 삭제 규칙을 걸지 않습니다.
+//
 // 카카오 채널 숙제 (카카오 챗봇 스킬이 부르는 곳, 비밀값 KAKAO_SKILL_KEY 필요)
 //   POST /hw/kakao/<KAKAO_SKILL_KEY>   채널로 온 파일은 sub/ 에 숙제로 저장, 글은 '카카오 메시지'로 저장, 자동 답장
 //   학부모가 "이름 김고래" 라고 한 번 보내면 그 카카오 계정 = 그 학생으로 기억합니다 (kakao/users/ 폴더, 지우지 않음)
@@ -22,6 +34,8 @@ export default {
     const url = new URL(request.url);
     const p = url.pathname.replace(/\/+$/, '') || '/';
     try {
+      if (p.startsWith('/hw/api/sv/')) return withCors(request, await svPublic(request, env, url, p));
+      if (p.startsWith('/hw/sv/')) return svWatch(request, env, url, p);
       if (p.startsWith('/hw/kakao/')) return kakao(request, env, ctx, p, url);
       if (p === '/hw') return html(submitPage());
       if (p === '/hw/api/start' && request.method === 'POST') return start(request, env);
@@ -49,6 +63,9 @@ export default {
         if (p === '/hw/admin/api/res/upload' && request.method === 'PUT') return resUpload(request, env, url);
         if (p === '/hw/admin/api/res/delete' && request.method === 'POST') return resDelete(request, env);
         if (p === '/hw/admin/res') return resFile(env, url);
+        if (p === '/hw/admin/api/sv/list') return svList(env, url);
+        if (p === '/hw/admin/api/sv/sent' && request.method === 'POST') return svSent(request, env);
+        if (p === '/hw/admin/api/sv/delete' && request.method === 'POST') return svDelete(request, env);
       }
       return new Response('Not found', { status: 404 });
     } catch (e) {
@@ -256,6 +273,185 @@ async function file(request, env, url) {
   }
   h.set('Content-Length', String(obj.size));
   return new Response(obj.body, { headers: h });
+}
+
+// ---------- 센텐스뱅크 서바이벌 ----------
+const SV_MAX = 500 * 1024 * 1024;   // 영상 한 개 최대 500MB
+const SV_ORIGINS = ['https://a28008005-sketch.github.io', 'https://staff.whalejinju.kr'];
+const SV_LEVELS = ['240', '520', '860', '1240', '1680'];
+
+function corsHeaders(request) {
+  const o = request.headers.get('Origin') || '';
+  if (!SV_ORIGINS.includes(o) && !/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(o)) return null;
+  return { 'Access-Control-Allow-Origin': o, 'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type', 'Access-Control-Max-Age': '86400', Vary: 'Origin' };
+}
+function withCors(request, res) {
+  const h = corsHeaders(request);
+  if (!h) return res;
+  const out = new Response(res.body, res);
+  Object.keys(h).forEach(k => out.headers.set(k, h[k]));
+  return out;
+}
+const svId = () => `${Date.now()}_${rand(8)}`;
+const validSvId = id => typeof id === 'string' && /^[0-9]+_[a-z0-9]+$/.test(id);
+const svLogKey = id => `sv/log/${id}.json`;
+
+/** 앱이 보낸 값을 정리합니다. 이름·레벨이 없으면 받지 않습니다. */
+function svRecord(b) {
+  const name = clean(b.name, 20);
+  const level = String(b.level || '');
+  const vol = Number(b.vol);
+  if (!name) return { error: '학생 이름이 없습니다.' };
+  if (!SV_LEVELS.includes(level) || !(vol >= 1 && vol <= 6)) return { error: '레벨·권이 올바르지 않습니다.' };
+  const n = (v, max) => { const x = Number(v); return Number.isFinite(x) && x >= 0 && x <= max ? Math.round(x) : 0; };
+  return {
+    name, code: clean(b.code, 20), level, vol, unit: n(b.unit, 4),
+    mode: b.mode === 'real' ? 'real' : 'practice',
+    cards: n(b.cards, 200), done: n(b.done, 200), total: n(b.total, 200),
+    durationSec: n(b.durationSec, 7200), answer: b.answer === 'hide' ? 'hide' : 'show',
+    date: kstDay(), at: new Date().toISOString(), video: null, sent: [],
+  };
+}
+async function svPut(env, rec) {
+  const meta = JSON.stringify(rec);
+  await env.HW.put(svLogKey(rec.id), meta, {
+    httpMetadata: { contentType: 'application/json' },
+    customMetadata: meta.length < 1800 ? { j: meta } : {},
+  });
+}
+async function svGet(env, id) {
+  if (!validSvId(id)) return null;
+  const o = await env.HW.get(svLogKey(id));
+  if (!o) return null;
+  try { return JSON.parse(await o.text()); } catch (_) { return null; }
+}
+async function svSig(id, env) { return (await hmac('sv:' + id, env)).slice(0, 32); }
+
+async function svPublic(request, env, url, p) {
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204 });
+  if (p === '/hw/api/sv/log' && request.method === 'POST') {
+    const rec = svRecord(await request.json().catch(() => ({})));
+    if (rec.error) return json({ ok: false, error: rec.error }, 400);
+    rec.id = svId();
+    await svPut(env, rec);
+    return json({ ok: true, id: rec.id });
+  }
+  if (p === '/hw/api/sv/start' && request.method === 'POST') {
+    const b = await request.json().catch(() => ({}));
+    const rec = svRecord(b);
+    if (rec.error) return json({ ok: false, error: rec.error }, 400);
+    const size = Number(b.size) || 0;
+    const type = clean(b.type, 60).split(';')[0];
+    if (!size || size > SV_MAX) return json({ ok: false, error: '영상 크기를 확인해 주세요. (최대 500MB)' }, 400);
+    if (!/^video\/(mp4|webm|quicktime)$/.test(type)) return json({ ok: false, error: '영상 형식이 올바르지 않습니다.' }, 400);
+    rec.id = svId();
+    rec.mode = 'real';
+    const key = `sv/vid/${rec.id}.${type === 'video/webm' ? 'webm' : type === 'video/quicktime' ? 'mov' : 'mp4'}`;
+    const mpu = await env.HW.createMultipartUpload(key, { httpMetadata: { contentType: type } });
+    rec.video = { key, size, type, ok: false };
+    await svPut(env, rec);
+    return json({ ok: true, id: rec.id, key, uploadId: mpu.uploadId, partSize: PART_SIZE });
+  }
+  if (p === '/hw/api/sv/part' && request.method === 'PUT') {
+    const key = url.searchParams.get('key');
+    const uploadId = url.searchParams.get('uploadId');
+    const n = Number(url.searchParams.get('n'));
+    if (!validSvVid(key) || !uploadId || !(n >= 1 && n <= 100)) return json({ ok: false, error: 'bad request' }, 400);
+    const res = await env.HW.resumeMultipartUpload(key, uploadId).uploadPart(n, request.body);
+    return json({ ok: true, partNumber: res.partNumber, etag: res.etag });
+  }
+  if (p === '/hw/api/sv/complete' && request.method === 'POST') {
+    const b = await request.json().catch(() => ({}));
+    const rec = await svGet(env, b.id);
+    if (!rec || !rec.video || rec.video.key !== b.key || !b.uploadId || !Array.isArray(b.parts)) return json({ ok: false, error: 'bad request' }, 400);
+    await env.HW.resumeMultipartUpload(b.key, b.uploadId).complete(b.parts.map(x => ({ partNumber: Number(x.partNumber), etag: String(x.etag) })));
+    rec.video.ok = true;
+    await svPut(env, rec);
+    return json({ ok: true, id: rec.id });
+  }
+  return json({ ok: false, error: 'not found' }, 404);
+}
+function validSvVid(k) { return typeof k === 'string' && /^sv\/vid\/[0-9]+_[a-z0-9]+\.(mp4|webm|mov)$/.test(k); }
+
+async function svList(env, url) {
+  const days = Math.min(Number(url.searchParams.get('days')) || 90, 400);
+  const from = new Date(Date.now() + 9 * 3600 * 1000 - days * 86400000).toISOString().slice(0, 10);
+  const items = [];
+  let cursor;
+  do {
+    const r = await env.HW.list({ prefix: 'sv/log/', cursor, limit: 1000, include: ['customMetadata'] });
+    for (const o of r.objects) {
+      let rec = null;
+      try { rec = JSON.parse((o.customMetadata || {}).j || 'null'); } catch (_) { rec = null; }
+      if (!rec) { try { rec = JSON.parse(await (await env.HW.get(o.key)).text()); } catch (_) { rec = null; } }
+      if (!rec || String(rec.date) < from) continue;
+      if (rec.video && rec.video.ok) rec.share = `/hw/sv/${rec.id}?s=${await svSig(rec.id, env)}`;
+      items.push(rec);
+    }
+    cursor = r.truncated ? r.cursor : undefined;
+  } while (cursor);
+  items.sort((a, b) => (a.at < b.at ? 1 : -1));
+  return json({ ok: true, items });
+}
+async function svSent(request, env) {
+  const b = await request.json().catch(() => ({}));
+  const rec = await svGet(env, b.id);
+  if (!rec) return json({ ok: false, error: '기록을 찾지 못했습니다.' }, 404);
+  rec.sent = (rec.sent || []).concat([{ at: new Date().toISOString(), to: clean(b.to, 40), how: clean(b.how, 10) }]).slice(-10);
+  await svPut(env, rec);
+  return json({ ok: true, rec });
+}
+async function svDelete(request, env) {
+  const b = await request.json().catch(() => ({}));
+  const rec = await svGet(env, b.id);
+  if (!rec) return json({ ok: true });
+  if (rec.video && validSvVid(rec.video.key)) await env.HW.delete(rec.video.key);
+  await env.HW.delete(svLogKey(rec.id));
+  return json({ ok: true });
+}
+
+/** 학부모용 영상 보기 — 주소의 서명이 맞아야만 열립니다. */
+async function svWatch(request, env, url, p) {
+  const m = p.match(/^\/hw\/sv\/([0-9]+_[a-z0-9]+)(\/video)?$/);
+  if (!m || !env.ADMIN_PASSWORD) return new Response('Not found', { status: 404 });
+  const id = m[1];
+  if (!safeEqual(String(url.searchParams.get('s') || ''), await svSig(id, env))) return new Response('링크가 올바르지 않습니다.', { status: 403, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+  const rec = await svGet(env, id);
+  if (!rec || !rec.video || !rec.video.ok) return new Response('영상을 찾지 못했습니다.', { status: 404, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+  if (m[2]) {
+    const range = request.headers.get('Range');
+    const head = await env.HW.head(rec.video.key);
+    if (!head) return new Response('없음', { status: 404 });
+    const total = head.size;
+    const h = new Headers({ 'Content-Type': rec.video.type || 'video/mp4', 'Accept-Ranges': 'bytes', 'Cache-Control': 'private, max-age=3600' });
+    const r = range && range.match(/bytes=(\d*)-(\d*)/);
+    if (r) {
+      let s = r[1] === '' ? total - Number(r[2]) : Number(r[1]);
+      let e = r[1] === '' || r[2] === '' ? total - 1 : Math.min(Number(r[2]), total - 1);
+      const obj = await env.HW.get(rec.video.key, { range: { offset: s, length: e - s + 1 } });
+      h.set('Content-Range', `bytes ${s}-${e}/${total}`);
+      h.set('Content-Length', String(e - s + 1));
+      return new Response(obj.body, { status: 206, headers: h });
+    }
+    const obj = await env.HW.get(rec.video.key);
+    h.set('Content-Length', String(total));
+    return new Response(obj.body, { headers: h });
+  }
+  const esc = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const title = `${rec.name} · 센텐스뱅크 ${rec.level} Vol.${rec.vol}${rec.unit ? ' Unit ' + rec.unit : ''}`;
+  const src = `/hw/sv/${id}/video?s=${url.searchParams.get('s')}`;
+  return html(`<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex"><title>${esc(title)}</title>
+<meta property="og:title" content="${esc(rec.name)}의 센텐스뱅크 서바이벌 영상"><meta property="og:description" content="고래영어 초전캠퍼스 · ${esc(rec.date)}">
+<style>body{margin:0;background:#0b1f5e;color:#fff;font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",sans-serif}
+.w{max-width:900px;margin:0 auto;padding:20px 16px 40px}.b{font-size:13px;letter-spacing:.12em;opacity:.75;font-weight:700}
+h1{font-size:24px;margin:6px 0 4px}p{margin:0 0 16px;opacity:.85;font-size:14px;line-height:1.6}
+video{width:100%;border-radius:12px;background:#000;display:block}.f{margin-top:18px;font-size:13px;opacity:.7}</style></head>
+<body><div class="w"><div class="b">WHALE ENGLISH · SENTENCE BANK SURVIVAL</div>
+<h1>${esc(rec.name)}의 센텐스뱅크 서바이벌</h1>
+<p>Level ${esc(rec.level)} · Vol.${esc(rec.vol)}${rec.unit ? ' · Unit ' + esc(rec.unit) : ''} · ${esc(rec.date)}${rec.done ? ' · ' + esc(rec.done) + '문장 도전' : ''}<br>한글 카드를 보고 영어로 바로 말하는 모습이에요. 많이 칭찬해 주세요!</p>
+<video src="${src}" controls playsinline preload="metadata"></video>
+<div class="f">고래영어 초전캠퍼스 · 010-3803-8335</div></div></body></html>`);
 }
 
 // ---------- 학원자료실 파일 ----------

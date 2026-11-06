@@ -50,6 +50,7 @@ Views.dashboard = (function () {
         vols + '</div>';
     }).join('');
     return '<div class="card"><div class="card-h"><h2>센텐스뱅크 서바이벌 영상</h2><div class="sp"></div>' +
+        '<a class="btn" href="#/survival">학생별 기록 · 영상 전송</a>' +
         '<a class="btn primary" target="_blank" rel="noopener" href="' + SURVIVAL + '">앱 열기 →</a></div>' +
       '<div class="card-b">' +
         '<p style="margin:0 0 12px;font-size:13px;line-height:1.6;color:#5d6b7a">교재 한 권을 끝낸 날, 레벨·권을 눌러 바로 시작하세요. 카드가 교재 순서대로 나오고 영어 질문 → 학생 대답 → 정답 음성 순서로 진행됩니다. ' +

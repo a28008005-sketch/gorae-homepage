@@ -451,6 +451,9 @@ async function notify(request, env, path) {
   if (path === '/api/notify/status') return json(notifyStatus(env));
   if (request.method !== 'POST') return json({ error: '없는 경로입니다.' }, 404);
 
+  // 학습 영상 링크처럼 템플릿이 없는 안내는 문자(LMS)로 보냅니다. (2026-11 추가 · 센텐스뱅크 서바이벌)
+  if (path === '/api/notify/message') return sendMessage(request, env);
+
   const body = await request.json().catch(() => ({}));
   const kind = body.kind === 'out' ? 'out' : 'in';
   const st = notifyStatus(env);
@@ -482,6 +485,40 @@ async function notify(request, env, path) {
     await cache.put(seenKey, new Response('1', { headers: { 'cache-control': 'max-age=86400' } }));
   }
   return json(sent, sent.ok ? 200 : 502);
+}
+
+/**
+ * POST /api/notify/message  { to: '010-…, 010-…', text, subject? }
+ * 솔라피 문자(장문 LMS)로 그대로 보냅니다. 발신번호(SOLAPI_SENDER)가 솔라피에 등록돼 있어야 합니다.
+ */
+async function sendMessage(request, env) {
+  const need = ['SOLAPI_API_KEY', 'SOLAPI_API_SECRET', 'SOLAPI_SENDER'].filter(k => !String(env[k] || '').trim());
+  if (need.length) return json({ error: '워커에 문자 설정이 덜 됐습니다: ' + need.map(k => NOTIFY_LABEL[k]).join(', ') }, 503);
+  const body = await request.json().catch(() => ({}));
+  const to = phonesOf(body.to);
+  if (!to.length) return json({ error: '학부모 휴대폰 번호가 올바르지 않습니다.' }, 400);
+  const text = String(body.text || '').trim().slice(0, 1000);
+  if (!text) return json({ error: '보낼 내용이 비어 있습니다.' }, 400);
+  const subject = String(body.subject || '고래영어 안내').trim().slice(0, 30);
+  const results = [];
+  for (const num of to) {
+    const message = { to: num, from: String(env.SOLAPI_SENDER).replace(/\D/g, ''), text, subject, type: 'LMS' };
+    try {
+      const res = await fetch('https://api.solapi.com/messages/v4/send', {
+        method: 'POST',
+        headers: { authorization: await solapiAuth(env), 'content-type': 'application/json' },
+        body: JSON.stringify({ message })
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) results.push({ ok: false, error: j.errorMessage || j.errorCode || ('솔라피 오류 ' + res.status) });
+      else if (j.statusCode && String(j.statusCode) !== '2000') results.push({ ok: false, error: j.statusMessage || j.statusCode });
+      else results.push({ ok: true });
+    } catch (e) {
+      results.push({ ok: false, error: '솔라피에 닿지 않습니다' });
+    }
+  }
+  const sent = results.filter(r => r.ok).length;
+  return json({ ok: sent > 0, sent, total: results.length, error: sent === results.length ? undefined : results.filter(r => !r.ok).map(r => r.error).join(' / ') }, sent > 0 ? 200 : 502);
 }
 
 function notifyStatus(env) {
