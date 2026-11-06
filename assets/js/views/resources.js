@@ -70,6 +70,23 @@ Views.resources = (function () {
       if (!Store.resources().length) SEED.forEach(function (r) { Store.saveResource(JSON.parse(JSON.stringify(r))); });
     }
     addVocaInstall();
+    fixSurvivalLinks();
+  }
+
+  /* ---------- 센텐스뱅크 서바이벌 영상 주소 바꾸기 (2026-11-06) ----------
+   * 처음에 claude.ai 임시 페이지로 넣었던 30건을 교재 카드 원본으로 만든 새 화면 주소로 바꿉니다.
+   * 이미 바뀐 자료는 건드리지 않으니 여러 기기에서 열어도 한 번만 바뀝니다. */
+  var SURVIVAL = 'https://a28008005-sketch.github.io/dailytest/cards/survival.html';
+  function fixSurvivalLinks() {
+    Store.resources().forEach(function (r) {
+      var m = String(r.url || '').match(/claude\.ai\/artifact\/[A-Za-z0-9]+#lv(\d+)-v([1-6])$/);
+      if (!m) return;
+      Store.saveResource({
+        id: r.id,
+        url: SURVIVAL + '?lv=' + m[1] + '&v=' + m[2],
+        desc: '교재 카드 ' + m[1] + ' Vol.' + m[2] + '을 순서대로 — 영어 질문(Say it in English!) → 학생 대답 → 정답 원어민 음성. 학생 이름 넣고 시작하면 전체화면 영상이 됩니다. 스페이스바 멈춤, ←→ 이전/다음.'
+      });
+    });
   }
 
   /* ---------- 웨일리 보카 설치 안내 (2026-10-26 추가) ----------

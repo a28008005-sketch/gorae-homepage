@@ -30,6 +30,34 @@ Views.dashboard = (function () {
     '</div>';
   }
 
+  /* ---------- 센텐스뱅크 서바이벌 영상 (2026-11-06 추가) ----------
+   * 교재 한 권을 끝낸 날 바로 띄울 수 있게 레벨·권 버튼을 대시보드에 둡니다.
+   * 화면은 GitHub Pages(dailytest/cards/survival.html)에 있고, 학습패드에는 앱으로 설치됩니다. */
+  var SURVIVAL = 'https://a28008005-sketch.github.io/dailytest/cards/survival.html';
+  var SURVIVAL_LV = [
+    { id: '240', color: '#ffed04', ink: '#003C70' }, { id: '520', color: '#f28e02', ink: '#fff' },
+    { id: '860', color: '#c6002e', ink: '#fff' }, { id: '1240', color: '#00a9ec', ink: '#fff' },
+    { id: '1680', color: '#283b8d', ink: '#fff' }
+  ];
+  function survivalCard() {
+    var rows = SURVIVAL_LV.map(function (l) {
+      var vols = '';
+      for (var v = 1; v <= 6; v++) {
+        vols += '<a class="btn sm" target="_blank" rel="noopener" href="' + SURVIVAL + '?lv=' + l.id + '&v=' + v + '">Vol.' + v + '</a>';
+      }
+      return '<div class="row" style="gap:6px;margin-bottom:8px">' +
+        '<span style="display:inline-block;min-width:58px;text-align:center;border-radius:999px;padding:4px 10px;font-weight:800;font-size:13px;background:' + l.color + ';color:' + l.ink + '">' + l.id + '</span>' +
+        vols + '</div>';
+    }).join('');
+    return '<div class="card"><div class="card-h"><h2>센텐스뱅크 서바이벌 영상</h2><div class="sp"></div>' +
+        '<a class="btn primary" target="_blank" rel="noopener" href="' + SURVIVAL + '">앱 열기 →</a></div>' +
+      '<div class="card-b">' +
+        '<p style="margin:0 0 12px;font-size:13px;line-height:1.6;color:#5d6b7a">교재 한 권을 끝낸 날, 레벨·권을 눌러 바로 시작하세요. 카드가 교재 순서대로 나오고 영어 질문 → 학생 대답 → 정답 음성 순서로 진행됩니다. ' +
+        '학습패드에서는 처음 연 화면의 <b>📲 이 학습패드에 앱으로 설치</b> 버튼(아이패드는 사파리 공유 → 홈 화면에 추가)으로 홈 화면에 앱을 만들어 두면 됩니다.</p>' +
+        rows +
+      '</div></div>';
+  }
+
   /** 민감한 현황 카드 (하단) */
   function sensitiveCards() {
     var all = Store.students();
@@ -239,6 +267,9 @@ Views.dashboard = (function () {
 
       // 주요 현황 요약 (상단)
       mainCards() +
+
+      // 센텐스뱅크 서바이벌 영상 바로가기
+      survivalCard() +
 
       // 카카오 채널 · 제출 링크로 오늘 들어온 숙제 (목록은 숙제 영상 화면이 불러옵니다)
       '<div class="card"><div class="card-h"><h2>오늘 들어온 숙제 · 카톡</h2><div class="sp"></div>' +
