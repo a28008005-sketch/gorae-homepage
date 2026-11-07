@@ -18,7 +18,7 @@ const HW = {
   put: async (k, b, o) => { const body = b == null || typeof b === 'string' ? Buffer.from(b || '') : b instanceof ArrayBuffer ? Buffer.from(new Uint8Array(b)) : Buffer.from(await new Response(b).arrayBuffer()); store.set(k, { body, meta: o || {}, uploaded: new Date() }); return { size: body.length }; },
   delete: async (k) => store.delete(k),
   head: async (k) => store.has(k) ? { size: store.get(k).body.length } : null,
-  get: async (k, o) => { const s = store.get(k); if (!s) return null; let b = s.body; if (o?.range) b = b.subarray(o.range.offset, o.range.offset + o.range.length); return { body: b, size: s.body.length, httpMetadata: s.meta?.httpMetadata, customMetadata: s.meta?.customMetadata }; },
+  get: async (k, o) => { const s = store.get(k); if (!s) return null; let b = s.body; if (o?.range) b = b.subarray(o.range.offset, o.range.offset + o.range.length); return { body: b, size: s.body.length, httpMetadata: s.meta?.httpMetadata, customMetadata: s.meta?.customMetadata, text: async () => b.toString('utf8'), writeHttpMetadata: (h) => { if (s.meta?.httpMetadata?.contentType) h.set('Content-Type', s.meta.httpMetadata.contentType); } }; },
 };
 // 원생관리 문지기 흉내: gorae_staff=ok 쿠키면 로그인된 것으로 봅니다.
 const GATE = { fetch: async (u, init) => new Response('{}', { status: /gorae_staff=ok/.test((init && init.headers && init.headers.cookie) || '') ? 503 : 401 }) };

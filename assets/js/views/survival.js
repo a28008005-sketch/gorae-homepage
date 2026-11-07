@@ -1,32 +1,41 @@
 /* ===== 센텐스뱅크 서바이벌 기록 =====
  *
- * 학습패드 앱(dailytest/cards/survival.html)에서 아이가 연습하거나 실전 녹화를 하면
+ * 학습패드 앱(dailytest/cards/survival.html · 파닉스는 phonics.html)에서 아이가 연습하거나 실전 녹화를 하면
  * gorae-homework 워커(R2 의 sv/ 폴더)에 기록이 쌓입니다. 이 화면은 그 기록을 학생별로 보여 주고,
  * 실전 영상은 [학부모 전송] 한 번으로 학부모님 휴대폰에 문자(영상 링크)로 보냅니다.
  *  - 기록 목록·영상: /hw/admin/api/sv/*  (원생관리 로그인 쿠키로 통과)
  *  - 문자 발송:     /api/notify/message  (gorae-staff-gate 워커 → 솔라피 문자)
+ * 파닉스카드 서바이벌(level 'Phonics')도 같은 곳에 쌓여 여기서 함께 보고 보냅니다. (2026-11-07)
+ * 화면을 열어 두면 20초마다 새 기록을 확인합니다(실시간 현황).
  */
 window.Views = window.Views || {};
 Views.survival = (function () {
 
   var API = '/hw/admin';
   var APP = 'https://a28008005-sketch.github.io/dailytest/cards/survival.html';
+  var APP_PH = 'https://a28008005-sketch.github.io/dailytest/cards/phonics.html';
+  var LIVE_MS = 20000;
+  var kind = '';            // '' 전체 · 'sb' 센텐스뱅크 · 'ph' 파닉스카드
+  var liveTimer = null, lastSig = '', lastAt = 0, viewEl = null;
   var days = '30';
   var q = '';
   var mode = '';
   var items = null;
   var loadError = '';
 
-  function title() { return '센텐스뱅크 서바이벌'; }
+  function title() { return '센텐스뱅크 · 파닉스카드 서바이벌'; }
   function sub() {
     if (!items) return '학습패드 앱의 연습·실전 녹화 기록';
     var vids = items.filter(hasVideo);
     var unsent = vids.filter(function (i) { return !(i.sent && i.sent.length); }).length;
-    return '기록 ' + items.length + '건 · 실전 영상 ' + vids.length + '건 · 미전송 ' + unsent + '건';
+    var ph = items.filter(isPh).length;
+    return '기록 ' + items.length + '건 (센텐스뱅크 ' + (items.length - ph) + ' · 파닉스카드 ' + ph + ') · 실전 영상 ' + vids.length + '건 · 미전송 ' + unsent + '건';
   }
 
   function onServer() { return /^https?:$/.test(location.protocol); }
   function hasVideo(i) { return !!(i.video && i.video.ok && i.share); }
+  function isPh(i) { return i.level === 'Phonics'; }
+  function kindName(i) { return isPh(i) ? '파닉스카드' : '센텐스뱅크'; }
 
   function call(url, opts) {
     opts = opts || {};
@@ -45,17 +54,46 @@ Views.survival = (function () {
     });
   }
 
-  function load(el) {
+  function sig(list) { return list.map(function (i) { return i.id + ':' + (i.video && i.video.ok ? 1 : 0) + ':' + (i.sent ? i.sent.length : 0); }).join('|'); }
+  function load(el, quiet) {
     loadError = '';
+    var before = items;
     return call(API + '/api/sv/list?days=' + days).then(function (j) {
-      items = j.items || [];
+      var next = j.items || [];
+      lastAt = Date.now();
+      var s2 = sig(next);
+      if (quiet && s2 === lastSig) { stamp(el); return; }   // 바뀐 게 없으면 화면은 그대로
+      if (quiet && before) {
+        var seen = {}; before.forEach(function (i) { seen[i.id] = 1; });
+        next.filter(function (i) { return !seen[i.id]; }).slice(0, 3).forEach(function (i) {
+          UI.toast('새 기록 · ' + i.name + ' ' + kindName(i) + ' ' + (i.mode === 'real' ? '실전 녹화' : '연습'));
+        });
+      }
+      items = next; lastSig = s2;
+      // 창을 띄워 두었거나 검색 중이면 그 위를 덮지 않습니다
+      if (quiet && (document.querySelector('.modal-wrap') || (document.activeElement && document.activeElement.id === 'sv-q'))) { App.setSub(sub()); return; }
+      App.setSub(sub());
+      draw(el);
     }).catch(function (e) {
+      if (quiet) return;            // 실시간 확인이 한 번 실패해도 보던 화면은 그대로
       items = null; loadError = e.message;
-    }).then(function () {
       App.setSub(sub());
       draw(el);
     });
   }
+  function stamp(el) {
+    var b = el && el.querySelector('#sv-live');
+    if (b && lastAt) b.innerHTML = '<i></i>실시간 · ' + new Date(lastAt).toLocaleTimeString('ko-KR', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' 확인';
+  }
+  function startLive(el) {
+    stopLive();
+    liveTimer = setInterval(function () {
+      if (!el || !document.body.contains(el) || location.hash.indexOf('#/survival') !== 0) { stopLive(); return; }
+      if (document.hidden) return;
+      load(el, true);
+    }, LIVE_MS);
+  }
+  function stopLive() { if (liveTimer) clearInterval(liveTimer); liveTimer = null; }
 
   /* ---------- 학생 명부와 맞추기 ---------- */
   function norm(s) { return String(s || '').replace(/\s+/g, ''); }
@@ -69,7 +107,7 @@ Views.survival = (function () {
     return new Date(iso).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   }
   function dur(sec) { sec = Number(sec) || 0; var m = Math.floor(sec / 60), s = sec % 60; return m ? m + '분 ' + s + '초' : s + '초'; }
-  function range(i) { return i.level + ' · Vol.' + i.vol + (i.unit ? ' · Unit ' + i.unit : ''); }
+  function range(i) { return (isPh(i) ? 'Whale Phonics' : i.level) + ' · Vol.' + i.vol + (i.unit ? ' · Unit ' + i.unit : ''); }
   function shareUrl(i) { return (onServer() ? location.origin : 'https://staff.whalejinju.kr') + i.share; }
 
   /* ---------- 화면 ---------- */
@@ -78,6 +116,8 @@ Views.survival = (function () {
       if (mode === 'real' && i.mode !== 'real') return false;
       if (mode === 'practice' && i.mode === 'real') return false;
       if (mode === 'unsent' && !(hasVideo(i) && !(i.sent && i.sent.length))) return false;
+      if (kind === 'ph' && !isPh(i)) return false;
+      if (kind === 'sb' && isPh(i)) return false;
       return !q || norm(i.name).indexOf(norm(q)) >= 0;
     });
   }
@@ -89,7 +129,8 @@ Views.survival = (function () {
       var b = by[k] || (by[k] = { name: i.name, practice: 0, real: 0, last: '', vols: {} });
       if (i.mode === 'real') b.real++; else b.practice++;
       if (!b.last || i.at > b.last) b.last = i.at;
-      b.vols[i.level + ' Vol.' + i.vol] = (b.vols[i.level + ' Vol.' + i.vol] || 0) + 1;
+      var vk = (isPh(i) ? '파닉스 ' : i.level + ' ') + 'Vol.' + i.vol;
+      b.vols[vk] = (b.vols[vk] || 0) + 1;
     });
     var rows = Object.keys(by).map(function (k) { return by[k]; }).sort(function (a, b) { return a.last < b.last ? 1 : -1; });
     if (!rows.length) return '';
@@ -114,10 +155,10 @@ Views.survival = (function () {
     return '<div class="sub-row" data-id="' + U.esc(i.id) + '" style="flex-wrap:wrap;gap:10px">' +
       '<div style="flex:1;min-width:220px">' +
         '<b>' + U.esc(i.name) + '</b>' + (s ? '' : ' <span class="tag gray" title="학생 명부에 같은 이름이 없습니다">명부에 없음</span>') +
-        ' ' + tag + vstate +
+        ' <span class="tag ' + (isPh(i) ? 'ok' : 'gray') + '">' + kindName(i) + '</span> ' + tag + vstate +
         ' <span class="tag blue">' + U.esc(range(i)) + '</span>' +
         '<div class="hint" style="margin-top:4px">' + U.esc(when(i.at)) +
-          ' · ' + (i.done || 0) + '/' + (i.total || i.cards || 0) + '문장' +
+          ' · ' + (i.done || 0) + '/' + (i.total || i.cards || 0) + (isPh(i) ? '단어' : '문장') +
           (i.durationSec ? ' · ' + dur(i.durationSec) : '') +
           (i.answer === 'hide' ? ' · 정답 숨김(실전)' : '') +
           (sent ? ' · <span style="color:#296b4d;font-weight:700">학부모 전송' + ({ kakao: '(카톡)', sms: '(문자)', copy: '(복사)' }[sent.how] || '') + ' ' + U.esc(when(sent.at)) + '</span>' : '') +
@@ -134,7 +175,7 @@ Views.survival = (function () {
 
   function listHtml() {
     var list = filtered();
-    if (!list.length) return UI.emptyBox(items.length ? '조건에 맞는 기록이 없습니다.' : '아직 기록이 없습니다. 학습패드 앱에서 학생 번호로 들어가 연습해 보세요.', 'inbox');
+    if (!list.length) return UI.emptyBox(items.length ? '조건에 맞는 기록이 없습니다.' : '아직 기록이 없습니다. 학습패드 앱(센텐스뱅크 · 파닉스카드)에서 학생 번호로 들어가 연습해 보세요.', 'inbox');
     var out = '', day = '';
     list.forEach(function (i) {
       if (i.date !== day) { day = i.date; out += '<div class="att-label" style="margin:14px 0 6px;font-weight:600">' + U.esc(day) + '</div>'; }
@@ -144,12 +185,14 @@ Views.survival = (function () {
   }
 
   function appCard() {
-    return '<div class="card" style="margin-top:16px"><div class="card-h"><h2>학습패드 앱</h2><div class="sp"></div>' +
-        '<a class="btn primary" target="_blank" rel="noopener" href="' + APP + '">앱 열기 →</a></div>' +
+    return '<div class="card" style="margin-top:16px"><div class="card-h" style="flex-wrap:wrap"><h2>학습패드 앱</h2><div class="sp"></div>' +
+        '<a class="btn primary" target="_blank" rel="noopener" href="' + APP + '">센텐스뱅크 카드 →</a>' +
+        '<a class="btn mint" target="_blank" rel="noopener" href="' + APP_PH + '">파닉스카드 →</a></div>' +
       '<div class="card-b"><p class="hint" style="margin:0;line-height:1.7">' +
         '앱 첫 화면에서 <b>학부모 휴대폰 뒤 4자리</b>로 학생을 고르면 그 학생 이름으로 기록이 남습니다. ' +
         '<b>연습</b>은 횟수·범위만 남고, <b>실전 녹화</b>는 카드 화면과 아이 얼굴·목소리가 한 영상으로 녹화되어 여기에 올라옵니다. ' +
-        '[학부모 전송]을 누르면 학생 명부의 학부모 연락처로 영상 링크가 문자로 갑니다.</p></div></div>';
+        '[학부모 전송]을 누르면 학생 명부의 학부모 연락처로 영상 링크가 갑니다. ' +
+        '파닉스카드 앱의 기록도 이 화면에 함께 올라오고, 화면을 열어 두면 ' + (LIVE_MS / 1000) + '초마다 새 기록을 확인합니다.</p></div></div>';
   }
 
   function draw(el) {
@@ -168,10 +211,18 @@ Views.survival = (function () {
     var unsent = vids.filter(function (i) { return !(i.sent && i.sent.length); }).length;
     var list = filtered();
 
+    var today = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
+    var todays = items.filter(function (i) { return i.date === today; });
+    var cnt = function (a, ph) { return a.filter(function (i) { return isPh(i) === ph; }).length; };
+    var wp = week.filter(function (i) { return i.mode !== 'real'; });
     el.innerHTML =
-      '<div class="grid g-3" style="margin-bottom:16px">' +
-        '<div class="stat"><div class="lbl">최근 7일 연습</div><div class="val">' + week.filter(function (i) { return i.mode !== 'real'; }).length + '<small>회</small></div></div>' +
-        '<div class="stat"><div class="lbl">실전 영상</div><div class="val">' + vids.length + '<small>개</small></div><div class="sub">최근 ' + days + '일</div></div>' +
+      '<div class="sv-kinds"><div class="seg">' + [['', '전체'], ['sb', '센텐스뱅크'], ['ph', '파닉스카드']].map(function (k) {
+          return '<button data-kind="' + k[0] + '" class="' + (kind === k[0] ? 'on' : '') + '">' + k[1] + '</button>'; }).join('') + '</div>' +
+        '<span class="sv-live" id="sv-live"><i></i>실시간</span></div>' +
+      '<div class="grid g-4" style="margin-bottom:16px">' +
+        '<div class="stat"><div class="lbl">오늘 도전</div><div class="val">' + todays.length + '<small>건</small></div><div class="sub">센텐스뱅크 ' + cnt(todays, false) + ' · 파닉스 ' + cnt(todays, true) + '</div></div>' +
+        '<div class="stat"><div class="lbl">최근 7일 연습</div><div class="val">' + wp.length + '<small>회</small></div><div class="sub">센텐스뱅크 ' + cnt(wp, false) + ' · 파닉스 ' + cnt(wp, true) + '</div></div>' +
+        '<div class="stat"><div class="lbl">실전 영상</div><div class="val">' + vids.length + '<small>개</small></div><div class="sub">최근 ' + days + '일 · 파닉스 ' + cnt(vids, true) + '</div></div>' +
         '<div class="stat accent"><div class="lbl">학부모 미전송</div><div class="val">' + unsent + '<small>개</small></div></div>' +
       '</div>' +
       summary(list) +
@@ -185,6 +236,7 @@ Views.survival = (function () {
       '</div><div class="card-b" id="sv-list">' + listHtml() + '</div></div>' +
       appCard();
     bind(el);
+    stamp(el);
   }
 
   /* ---------- 동작 ---------- */
@@ -197,6 +249,9 @@ Views.survival = (function () {
   }
 
   function message(i) {
+    if (isPh(i)) return '[고래영어] ' + i.name + ' 학생이 파닉스카드 ' + range(i).replace(/ · /g, ' ') + ' 서바이벌에 도전했어요!\n' +
+      '그림 카드를 보고 영어 단어로 바로 말하는 모습을 영상으로 담았습니다. 많이 칭찬해 주세요.\n\n' +
+      '영상 보기\n' + shareUrl(i) + '\n\n고래영어 초전캠퍼스';
     return '[고래영어] ' + i.name + ' 학생이 센텐스뱅크 ' + range(i).replace(/ · /g, ' ') + ' 서바이벌에 도전했어요!\n' +
       '한글 카드를 보고 바로 영어로 말하는 모습을 영상으로 담았습니다. 많이 칭찬해 주세요.\n\n' +
       '영상 보기\n' + shareUrl(i) + '\n\n고래영어 초전캠퍼스';
@@ -239,7 +294,7 @@ Views.survival = (function () {
         w.querySelector('#sv-go').addEventListener('click', function () {
           var to = w.querySelector('#sv-to').value, text = w.querySelector('#sv-text').value;
           var b = this; b.disabled = true; b.textContent = '보내는 중…';
-          call('/api/notify/message', { method: 'POST', body: { to: to, text: text, subject: '고래영어 학습 영상', video: { name: i.name, range: range(i).replace(/ · /g, ' '), path: i.kpath } } })
+          call('/api/notify/message', { method: 'POST', body: { to: to, text: text, subject: '고래영어 학습 영상', video: { name: i.name, range: (isPh(i) ? '파닉스카드 ' : '') + range(i).replace(/ · /g, ' '), path: i.kpath } } })
             .then(function (r) {
               return call(API + '/api/sv/sent', { method: 'POST', body: { id: i.id, to: to, how: r.via || 'sms' } }).then(function (j) {
                 mergeRec(j.rec); UI.close(); UI.toast((r.via === 'kakao' ? '카카오 알림톡으로 보냈습니다' : '문자로 보냈습니다') + ' (' + r.sent + '/' + r.total + ')'); App.rerender();
@@ -274,6 +329,7 @@ Views.survival = (function () {
   function bind(el) {
     var qi = el.querySelector('#sv-q');
     if (qi) qi.addEventListener('input', function () { q = qi.value; el.querySelector('#sv-list').innerHTML = listHtml(); });
+    Array.prototype.forEach.call(el.querySelectorAll('[data-kind]'), function (b) { b.addEventListener('click', function () { kind = b.getAttribute('data-kind'); draw(el); }); });
     Array.prototype.forEach.call(el.querySelectorAll('[data-mode]'), function (b) { b.addEventListener('click', function () { mode = b.getAttribute('data-mode'); draw(el); }); });
     Array.prototype.forEach.call(el.querySelectorAll('[data-days]'), function (b) { b.addEventListener('click', function () { days = b.getAttribute('data-days'); items = null; draw(el); load(el); }); });
     var rl = el.querySelector('#sv-reload'); if (rl) rl.addEventListener('click', function () { items = null; draw(el); load(el); });
@@ -288,8 +344,9 @@ Views.survival = (function () {
   }
 
   function render(el) {
+    viewEl = el;
     draw(el);
-    if (onServer()) load(el);
+    if (onServer()) { load(el).then(function () { lastSig = items ? sig(items) : ''; }); startLive(el); }
   }
 
   return { title: title, sub: sub, render: render };

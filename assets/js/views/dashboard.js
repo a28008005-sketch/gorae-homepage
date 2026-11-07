@@ -50,7 +50,7 @@ Views.dashboard = (function () {
         '<span style="display:inline-block;min-width:58px;text-align:center;border-radius:999px;padding:4px 10px;font-weight:800;font-size:13px;background:' + l.color + ';color:' + l.ink + '">' + l.id + '</span>' +
         vols + '</div>';
     }).join('');
-    return '<div class="card"><div class="card-h"><h2>센텐스뱅크 서바이벌 영상</h2><div class="sp"></div>' +
+    return '<div class="card"><div class="card-h"><h2>센텐스뱅크 · 파닉스카드 서바이벌 영상</h2><div class="sp"></div>' +
         '<a class="btn" href="#/survival">학생별 기록 · 영상 전송</a>' +
         '<a class="btn primary" target="_blank" rel="noopener" href="' + SURVIVAL + '">앱 열기 →</a></div>' +
       '<div class="card-b">' +

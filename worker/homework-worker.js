@@ -9,6 +9,7 @@
 // ★ 버킷 수명 규칙(30일 자동 삭제)은 sub/ 폴더에만 걸려 있어야 합니다. 버킷 전체에 걸면 자료 파일도 지워집니다.
 //
 // 센텐스뱅크 서바이벌 (학습패드 앱 dailytest/cards/survival.html 이 부르는 곳, 2026-11 추가)
+// 파닉스카드 서바이벌 (dailytest/cards/phonics.html, level 'Phonics') 도 같은 곳에 쌓입니다 (2026-11-07)
 //   POST /hw/api/sv/log                 연습 기록 남기기 (영상 없음)
 //   POST /hw/api/sv/start               실전 녹화 영상 올리기 시작 → 기록 하나 생김
 //   PUT  /hw/api/sv/part?key=&uploadId=&n=   영상 조각
@@ -278,7 +279,11 @@ async function file(request, env, url) {
 // ---------- 센텐스뱅크 서바이벌 ----------
 const SV_MAX = 500 * 1024 * 1024;   // 영상 한 개 최대 500MB
 const SV_ORIGINS = ['https://a28008005-sketch.github.io', 'https://staff.whalejinju.kr'];
-const SV_LEVELS = ['240', '520', '860', '1240', '1680'];
+const SV_LEVELS = ['Phonics', '240', '520', '860', '1240', '1680'];
+/** 학부모 화면에 쓰는 이름: 파닉스는 '파닉스카드 Vol.3', 센텐스뱅크는 '센텐스뱅크 240 Vol.2' */
+const svKind = rec => rec.level === 'Phonics'
+  ? { name: '파닉스카드', badge: 'PHONICS CARD SURVIVAL', range: `Whale Phonics Vol.${rec.vol}`, what: '그림 카드를 보고 영어 단어로 바로 말하는 모습이에요.', unit: '단어' }
+  : { name: '센텐스뱅크', badge: 'SENTENCE BANK SURVIVAL', range: `${rec.level} Vol.${rec.vol}`, what: '한글 카드를 보고 영어로 바로 말하는 모습이에요.', unit: '문장' };
 
 function corsHeaders(request) {
   const o = request.headers.get('Origin') || '';
@@ -444,18 +449,19 @@ async function svWatch(request, env, url, p) {
     return new Response(obj.body, { headers: h });
   }
   const esc = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const title = `${rec.name} · 센텐스뱅크 ${rec.level} Vol.${rec.vol}${rec.unit ? ' Unit ' + rec.unit : ''}`;
+  const K = svKind(rec);
+  const title = `${rec.name} · ${K.name} ${K.range}${rec.unit ? ' Unit ' + rec.unit : ''}`;
   const src = `/hw/v/${id}/${sig}/video`;
   return html(`<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex"><title>${esc(title)}</title>
-<meta property="og:title" content="${esc(rec.name)}의 센텐스뱅크 서바이벌 영상"><meta property="og:description" content="고래영어 초전캠퍼스 · ${esc(rec.date)}">
+<meta property="og:title" content="${esc(rec.name)}의 ${K.name} 서바이벌 영상"><meta property="og:description" content="고래영어 초전캠퍼스 · ${esc(rec.date)}">
 <style>body{margin:0;background:#0b1f5e;color:#fff;font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",sans-serif}
 .w{max-width:900px;margin:0 auto;padding:20px 16px 40px}.b{font-size:13px;letter-spacing:.12em;opacity:.75;font-weight:700}
 h1{font-size:24px;margin:6px 0 4px}p{margin:0 0 16px;opacity:.85;font-size:14px;line-height:1.6}
 video{width:100%;border-radius:12px;background:#000;display:block}.f{margin-top:18px;font-size:13px;opacity:.7}</style></head>
-<body><div class="w"><div class="b">WHALE ENGLISH · SENTENCE BANK SURVIVAL</div>
-<h1>${esc(rec.name)}의 센텐스뱅크 서바이벌</h1>
-<p>Level ${esc(rec.level)} · Vol.${esc(rec.vol)}${rec.unit ? ' · Unit ' + esc(rec.unit) : ''} · ${esc(rec.date)}${rec.done ? ' · ' + esc(rec.done) + '문장 도전' : ''}<br>한글 카드를 보고 영어로 바로 말하는 모습이에요. 많이 칭찬해 주세요!</p>
+<body><div class="w"><div class="b">WHALE ENGLISH · ${K.badge}</div>
+<h1>${esc(rec.name)}의 ${K.name} 서바이벌</h1>
+<p>${esc(K.range)}${rec.unit ? ' · Unit ' + esc(rec.unit) : ''} · ${esc(rec.date)}${rec.done ? ' · ' + esc(rec.done) + K.unit + ' 도전' : ''}<br>${K.what} 많이 칭찬해 주세요!</p>
 <video src="${src}" controls playsinline preload="metadata"></video>
 <div class="f">고래영어 초전캠퍼스 · 010-3803-8335</div></div></body></html>`);
 }
