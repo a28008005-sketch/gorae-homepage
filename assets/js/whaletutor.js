@@ -223,8 +223,9 @@ var WT = (function () {
     var f = function () {
       var T = '__STAFF__', D = __DAYS__;
       if (location.hostname.indexOf('cloubot.com') < 0) { alert('웨일튜터 관리자 화면(whale.cloubot.com)에 로그인한 뒤 눌러 주세요.'); return; }
+      // 새 창이 막히는 기기(태블릿 등)는 모은 기록을 창 이름에 담아 이 창에서 현황판으로 넘어갑니다
       var w = window.open(T + '/#/board?wt=1', 'gorae_wt');
-      if (!w) { alert('새 창이 막혔어요. 주소창의 팝업 차단 표시를 눌러 허용한 뒤 다시 눌러 주세요.'); return; }
+      var same = !w || w === window;
       var bar = document.createElement('div');
       bar.style.cssText = 'position:fixed;z-index:2147483647;left:50%;top:18px;transform:translateX(-50%);background:#003C70;color:#fff;padding:14px 22px;border-radius:12px;font:700 15px sans-serif;box-shadow:0 8px 30px rgba(0,0,0,.3)';
       document.body.appendChild(bar);
@@ -249,6 +250,7 @@ var WT = (function () {
         var L = v[1] && v[1].data; L = Array.isArray(L) ? L : (L && L.list) || [];
         var pay = { type: 'gorae-wt', v: 1, at: new Date().toISOString(), days: out,
           students: L.map(function (s) { return [s.student_id, s.student_name || s.name, s.current_bookcode || '', s.current_short_name || '', String(s.book_start_datetime || '').slice(0, 10)]; }) };
+        if (same) { say('현황판으로 넘어갑니다…'); window.name = 'gorae-wt:' + JSON.stringify(pay); location.href = T + '/#/board?wt=1'; return; }
         var done = false, n = 0;
         addEventListener('message', function (e) {
           if (e.origin !== T) return;

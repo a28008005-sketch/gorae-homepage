@@ -879,7 +879,7 @@ Views.board = (function () {
   function wtReceive(data, source) {
     if (window.Sync && Sync.isCloud && Sync.isCloud() && !Sync.signedIn()) {
       wtPending = { data: data, source: source };
-      try { source.postMessage('gorae-wt-login', WT.ORIGIN); } catch (e) {}
+      try { if (source) source.postMessage('gorae-wt-login', WT.ORIGIN); } catch (e) {}
       setTimeout(function () { if (wtPending) { var p = wtPending; wtPending = null; wtReceive(p.data, p.source); } }, 2000);
       return;
     }
@@ -896,8 +896,18 @@ Views.board = (function () {
         (res.unknown.length ? '<p class="hint">현황판 등록생 명단에 없는 웨일튜터 학생: ' + res.unknown.map(esc).join(', ') + '</p>' : ''),
         footer: '<button class="btn primary" data-close>확인</button>' });
     }
-    try { source.postMessage('gorae-wt-ack', WT.ORIGIN); } catch (e) {}
+    try { if (source) source.postMessage('gorae-wt-ack', WT.ORIGIN); } catch (e) {}
   }
+  // 새 창이 막혀 같은 창으로 넘어온 경우: 기록이 창 이름(window.name)에 담겨 옵니다
+  (function () {
+    var nm = '';
+    try { nm = window.name || ''; } catch (e) {}
+    if (nm.indexOf('gorae-wt:') !== 0) return;
+    try { window.name = ''; } catch (e) {}
+    var data = null;
+    try { data = JSON.parse(nm.slice(9)); } catch (e) {}
+    if (data && data.type === 'gorae-wt') setTimeout(function () { wtReceive(data, null); }, 1200);
+  })();
   window.addEventListener('message', function (e) {
     if (e.origin !== WT.ORIGIN || !e.data || e.data.type !== 'gorae-wt') return;
     wtReceive(e.data, e.source);

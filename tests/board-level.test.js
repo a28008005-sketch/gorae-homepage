@@ -105,6 +105,13 @@ const SHOT = process.env.SHOT_DIR || '.';
   ok('북마크 버튼 (javascript:)', /^javascript:/.test(href) && href.length > 1000);
   await p.click('[data-bm]'); await p.waitForTimeout(200);
   ok('북마크 버튼을 눌러도 실행 안 됨', !errs.length && await p.evaluate(() => location.hostname) === '127.0.0.1');
+  // 새 창이 막힌 기기: 같은 창으로 넘어오며 창 이름에 기록을 담아 옴
+  const nm = 'gorae-wt:' + JSON.stringify({ type: 'gorae-wt', at: 'name-path', days: { '2026-11-06': [['kid-c', 'WE-L0V2U1D1', 9, 10, 90, 1, 100, 100, '14:00']] },
+    students: [['kid-c', names[2], 'WE-L0V2', 'Whale phonics2/기본', '2026-11-01']] });
+  await p.evaluate(v => { window.name = v; }, nm);
+  await p.reload({ waitUntil: 'domcontentloaded' }); await p.waitForTimeout(2200);
+  const c3 = await p.evaluate(n => { const s = Store.students({ active: true }).find(x => x.name === n); return { r: Store.board(s.id), name: window.name }; }, names[2]);
+  ok('창 이름으로 넘어온 기록 저장', c3.r && c3.r.wt && c3.r.wt.id === 'kid-c' && c3.r.current.title === 'Whale Phonics 2' && c3.name === '', JSON.stringify(c3.r && c3.r.current));
   ok('콘솔 오류 없음', errs.length === 0, errs.join(' | '));
   await b.close();
 })();
