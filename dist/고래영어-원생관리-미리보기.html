@@ -5789,11 +5789,11 @@ Views.dashboard = (function () {
 <script>
 /* ===== 학습 현황판 (2026-11-07 추가) =====
  * 학생 명부의 등록생을 한 표로 보고, 학생마다
- *  - 웨일 프로그램 사용 여부 (웨일스튜던트 · 웨일튜터 3종 · 이북 · 스마트보타)
+ *  - 웨일 프로그램 사용 여부 (웨일스튜던트 · 웨일튜터 3종 · 이북 · 스마트보카)
  *  - 센텐스뱅크 레벨·진도
  *  - 본사 교재 진도와 다음 교재 주문 알림 (80% 노랑 · 90% 빨강 · 주문완료 파랑)
  *  - 보유 교재 (부교재·예습·복습·문법·단어)
- *  - 주간 공통 숙제 (프랙시트북 · 데일리시트 10회) 와 개인 숙제 (ERLT · 원서 2권 · 추가 과제)
+ *  - 주간 공통 숙제 (프랙티스북 · 데일리시트 10회) 와 개인 숙제 (ERLT · 원서 2권 · 추가 과제)
  * 를 체크합니다. 기록은 Store 의 boards 컬렉션(학생 1명당 1줄)에 저장되고 sync.js 가 다른 기기로 보냅니다.
  */
 window.Views = window.Views || {};
@@ -5801,7 +5801,7 @@ Views.board = (function () {
 
   var PROGRAMS = [['ws', '웨일스튜던트', 'WS'], ['tg', '웨일튜터 · 고래영어', '튜터·고래'],
     ['to', '웨일튜터 · 오션라이팅', '튜터·오션'], ['tl', '웨일튜터 · 영어도서관', '튜터·도서관'],
-    ['eb', '이북', '이북'], ['sb', '스마트보타 앱', '보타']];
+    ['eb', '이북', '이북'], ['sb', '스마트보카 앱', '보카']];
   var MAT_TYPES = ['부교재', '예습', '복습', '문법', '단어', '기타'];
   var EXTRAS = [['news', '영자신문'], ['gram', '문법'], ['read', '독해'], ['voca', '단어'], ['exam', '시험대비']];
   var WARN = 80, URGENT = 90;
@@ -5939,7 +5939,7 @@ Views.board = (function () {
     var ord = st.filter(function (k) { return k === 'ordered'; }).length;
     return '<div class="bd-stats">' +
       '<div class="bd-stat"><span>등록생</span><b>' + list.length + '</b><small>학생 명부 기준</small></div>' +
-      '<div class="bd-stat"><span>이번 주 공통숙제 완료</span><b>' + done + '<small> / ' + list.length + '</small></b><small>프랙시트북 + 데일리 10회</small></div>' +
+      '<div class="bd-stat"><span>이번 주 공통숙제 완료</span><b>' + done + '<small> / ' + list.length + '</small></b><small>프랙티스북 + 데일리 10회</small></div>' +
       '<button class="bd-stat' + (urg ? ' bad' : warn ? ' warn' : '') + (filter.alertOnly ? ' on' : '') + '" data-act="alertonly">' +
         '<span>교재 주문 필요</span><b>' + (urg + warn) + '</b><small>지금 주문 ' + urg + ' · 준비 ' + warn +
         (filter.alertOnly ? ' · 눌러서 전체 보기' : ' · 눌러서 모아 보기') + '</small></button>' +
@@ -6033,7 +6033,7 @@ Views.board = (function () {
           '<td class="bd-bk">' + cellBook(s, r) + '</td>' +
           '<td class="bd-mat">' + cellMat(r) + '</td>' +
           '<td class="bd-hw"><div class="hw">' +
-            '<button class="bd-tog' + (w.practice ? ' on' : '') + '" data-act="practice" aria-pressed="' + w.practice + '"><i></i>프랙시트북</button>' +
+            '<button class="bd-tog' + (w.practice ? ' on' : '') + '" data-act="practice" aria-pressed="' + w.practice + '"><i></i>프랙티스북</button>' +
             '<span class="bd-daily' + (w.daily >= 10 ? ' full' : '') + '" style="--p:' + (w.daily * 10) + '%">' +
               '<button class="plus" data-act="daily" data-n="1" aria-label="데일리시트 읽기 1회 추가">데일리시트 <b>' + w.daily + '/10</b></button>' +
               '<button class="minus" data-act="daily" data-n="-1" aria-label="1회 빼기">−</button></span>' +
@@ -6206,7 +6206,7 @@ Views.board = (function () {
       '<div class="bd-sec"><h4>최근 6주 숙제 기록</h4><div class="bd-log">' + recent.map(function (k) {
         var x = wk(r, k);
         var ex = EXTRAS.filter(function (e) { return x.ex[e[0]]; }).map(function (e) { return e[1]; });
-        return '<span>' + weekLabel(k) + '</span><span>프랙시트북 ' + (x.practice ? '✓' : '–') + ' · 데일리 ' + x.daily + '/10' +
+        return '<span>' + weekLabel(k) + '</span><span>프랙티스북 ' + (x.practice ? '✓' : '–') + ' · 데일리 ' + x.daily + '/10' +
           (sp.erlt.on ? ' · ERLT ' + (x.erlt ? '✓' : '–') : '') + (ex.length ? ' · ' + ex.join(', ') + ' ✓' : '') + '</span>';
       }).join('') + '</div></div>';
   }

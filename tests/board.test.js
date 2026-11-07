@@ -40,7 +40,7 @@ const SHOT = process.env.SHOT_DIR || '.';
   for (let i = 0; i < 3; i++) await p.click(`${row} [data-act="daily"][data-n="1"]`);
   await p.click(`${row} [data-act="daily"][data-n="-1"]`);
   const w = await p.evaluate(s => { const r = Store.board(s); const k = Object.keys(r.hw)[0]; return r.hw[k]; }, sid);
-  ok('프랙시트북 체크 · 데일리 2회', w.practice === true && w.daily === 2, JSON.stringify(w));
+  ok('프랙티스북 체크 · 데일리 2회', w.practice === true && w.daily === 2, JSON.stringify(w));
 
   // 상세 창 — 교재 등록
   await p.click(`${row} [data-act="open"][data-tab="book"]`); await p.waitForTimeout(300);
