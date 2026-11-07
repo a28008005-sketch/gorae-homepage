@@ -5,6 +5,7 @@
  *  - 본사 교재 진도와 다음 교재 주문 알림 (80% 노랑 · 90% 빨강 · 주문완료 파랑)
  *  - 보유 교재 (부교재·예습·복습·문법·단어)
  *  - 주간 공통 숙제 (프랙티스북 · 데일리시트 10회) 와 개인 숙제 (ERLT · 원서 2권 · 추가 과제)
+ *  - 레벨 21회차 진도 (Unit 1~4 × Day1~4 + 위클리, 21회차 먼슬리) 와 웨일튜터 AI 테스트 기록 — whaletutor.js (2026-11-07)
  * 를 체크합니다. 기록은 Store 의 boards 컬렉션(학생 1명당 1줄)에 저장되고 sync.js 가 다른 기기로 보냅니다.
  */
 window.Views = window.Views || {};
@@ -27,7 +28,9 @@ Views.board = (function () {
   var week = mondayOf(new Date());
   var filter = { q: '', classId: '', alertOnly: false };
   var viewEl = null;
-  var modal = { wrap: null, sid: null, tab: 'info', showPw: false, confirm: '' };
+  var mode = 'table';                     // 'table' 표로 보기 · 'wt' 웨일튜터 한눈에
+  var hmSort = 'worry';                   // 한눈에 보기 정렬: 걱정 순 · 반 순
+  var modal = { wrap: null, sid: null, tab: 'info', showPw: false, confirm: '', sel: 0 };
   var saveTimers = {};
   var popupDay = '';
   var drafts = {};        // 아직 저장 전인 학생 기록 (처음 체크하는 순간 저장소로 들어갑니다)
@@ -91,8 +94,23 @@ Views.board = (function () {
       '<span>' + a.d + '/' + a.t + '</span><button data-act="ses" data-k="' + k + '" data-n="1" aria-label="' + label + ' 1회 더하기">+</button></span>' +
       '<div class="bd-bar"><i style="width:' + a.p + '%"></i></div></div>';
   }
+  /** 레벨 학생: 프랙티스북 · 데일리테스트는 회차 기록(웨일튜터 + 선생님 체크)에서 셉니다 */
+  function autoAch(st) {
+    var one = function (label, d, extra) {
+      var p = Math.round(d / 20 * 100);
+      return '<div class="bd-ach auto' + (p >= 100 ? ' full' : '') + '"><span class="lb">' + label + ' <b class="pct">' + d + '/20</b></span>' +
+        '<div class="bd-bar"><i style="width:' + p + '%"></i></div>' + (extra ? '<span class="ex">' + extra + '</span>' : '') + '</div>';
+    };
+    return '<button class="bd-achbtn" data-act="open" data-tab="level" title="회차별로 보기">' +
+      one('프랙티스북', st.pb) + one('데일리테스트', st.dt, st.dtAvg != null ? '평균 ' + st.dtAvg + '점' : '') + '</button>';
+  }
   /** 지금 교재 이름에서 권(vol) 번호, 진도에서 지금 Unit 을 뽑습니다. */
   function bookVolUnit(r, lvPrefix) {
+    if (leveled(r)) {
+      var info = WT.bookInfo(WT.bookKey(r)), st = WT.stats(r);
+      if (info && (!lvPrefix || info.name.toLowerCase().indexOf(lvPrefix.toLowerCase()) === 0))
+        return { v: info.vol, u: st.next && st.next.u ? st.next.u : 0 };
+    }
     var t = String(r.current.title || ''), v = 0, u = 0;
     var m = /vol\.?\s*(\d)/i.exec(t) || /phonics\s*(\d)/i.exec(t);
     if (m && (!lvPrefix || t.toLowerCase().indexOf(lvPrefix.toLowerCase()) === 0)) v = +m[1];
@@ -100,8 +118,16 @@ Views.board = (function () {
     return { v: v, u: u };
   }
 
+  /** 레벨 21회차 틀로 관리하는 교재인가 (웨일 파닉스 · 센텐스뱅크 240~1680) */
+  function leveled(r) { return !!WT.bookKey(r); }
   function bookState(r) {
     var c = r.current;
+    if (leveled(r)) {
+      var st = WT.stats(r);
+      if (!c.title) c.title = (WT.bookInfo(st.key) || {}).name || '';
+      var lp = st.pct, lk = st.finished ? 'done' : c.ordered ? 'ordered' : lp >= URGENT ? 'urgent' : lp >= WARN ? 'warn' : 'ok';
+      return { k: lk === 'done' ? (c.ordered ? 'ordered' : 'urgent') : lk, p: lp, st: st };
+    }
     if (!c.title || !c.total) return { k: 'none', p: 0 };
     var p = Math.min(100, Math.round(c.done / c.total * 100));
     if (c.ordered) return { k: 'ordered', p: p };
@@ -170,16 +196,25 @@ Views.board = (function () {
   }
 
   function statsHtml(list) {
-    var withBook = list.map(function (s) { return rec(s.id).current; }).filter(function (c) { return c.title; });
-    var avg = function (k) { return withBook.length ? Math.round(withBook.reduce(function (a, c) { return a + ach(c, k).p; }, 0) / withBook.length) : 0; };
-    var pbAvg = avg('pb'), dtAvg = avg('dt');
+    var pcts = { pb: [], dt: [], ai: [] };
+    list.forEach(function (s) {
+      var r = rec(s.id);
+      if (leveled(r)) {
+        var st = WT.stats(r), base = Math.max(1, Math.min(20, st.reached));   // 지금까지 나간 회차 기준
+        pcts.pb.push(Math.min(100, Math.round(st.pb / base * 100))); pcts.dt.push(Math.min(100, Math.round(st.dt / base * 100)));
+        if (st.ai != null) pcts.ai.push(st.ai);
+      } else if (r.current.title) { pcts.pb.push(ach(r.current, 'pb').p); pcts.dt.push(ach(r.current, 'dt').p); }
+    });
+    var avg = function (a) { return a.length ? Math.round(a.reduce(function (x, y) { return x + y; }, 0) / a.length) : 0; };
+    var pbAvg = avg(pcts.pb), dtAvg = avg(pcts.dt), aiAvg = pcts.ai.length ? avg(pcts.ai) : null;
     var st = list.map(function (s) { return bookState(rec(s.id)).k; });
     var urg = st.filter(function (k) { return k === 'urgent'; }).length;
     var warn = st.filter(function (k) { return k === 'warn'; }).length;
     var ord = st.filter(function (k) { return k === 'ordered'; }).length;
     return '<div class="bd-stats">' +
       '<div class="bd-stat"><span>등록생</span><b>' + list.length + '</b><small>학생 명부 기준</small></div>' +
-      '<div class="bd-stat"><span>평균 성취율</span><b>' + Math.round((pbAvg + dtAvg) / 2) + '<small>%</small></b><small>프랙티스북 ' + pbAvg + '% · 데일리테스트 ' + dtAvg + '% (각 ' + SESSIONS + '회차)</small></div>' +
+      '<button class="bd-stat" data-act="mode" data-k="wt"><span>웨일튜터 AI 테스트 평균</span><b>' + (aiAvg == null ? '–' : aiAvg + '<small>%</small>') + '</b>' +
+        '<small>프랙티스북 ' + pbAvg + '% · 데일리테스트 ' + dtAvg + '% (나간 회차 기준) · 눌러서 한눈에 보기</small></button>' +
       '<button class="bd-stat' + (urg ? ' bad' : warn ? ' warn' : '') + (filter.alertOnly ? ' on' : '') + '" data-act="alertonly">' +
         '<span>교재 주문 필요</span><b>' + (urg + warn) + '</b><small>지금 주문 ' + urg + ' · 준비 ' + warn +
         (filter.alertOnly ? ' · 눌러서 전체 보기' : ' · 눌러서 모아 보기') + '</small></button>' +
@@ -203,6 +238,9 @@ Views.board = (function () {
     var cs = Store.classes();
     var curWeek = mondayOf(new Date());
     return '<div class="bd-tools">' +
+      '<div class="seg bd-mode"><button class="' + (mode === 'table' ? 'on' : '') + '" data-act="mode" data-k="table">표로 보기</button>' +
+        '<button class="' + (mode === 'wt' ? 'on' : '') + '" data-act="mode" data-k="wt">웨일튜터 한눈에</button></div>' +
+      '<button class="btn sm" data-act="wtimport">' + Icon.svg('cloud', 14) + ' 웨일튜터 기록 가져오기</button>' +
       '<div class="bd-week"><button data-act="wk" data-n="-1" aria-label="이전 주">‹</button>' +
         '<strong>' + weekLabel(week) + '</strong>' +
         (week === curWeek ? '<span class="now">이번 주</span>' : '<button data-act="wk" data-n="0" class="now">이번 주로</button>') +
@@ -214,8 +252,46 @@ Views.board = (function () {
     '</div>';
   }
 
+  /** 21칸 회차 줄 (D1~4 네모 · 위클리 W · 먼슬리 M). 색은 웨일튜터 AI 테스트 점수 */
+  function aiClass(s) {
+    if (s.kind === 'M') return s.done ? 'g4' : '';
+    if (s.ai == null) return s.done ? 'g3' : '';
+    if (s.ai < 0) return 'miss';
+    var p = s.aiPct;
+    return p >= 90 ? 'g4' : p >= 75 ? 'g3' : p >= 60 ? 'g2' : p >= 40 ? 'g1' : 'g0';
+  }
+  function sesTitle(s) {
+    var t = s.label + (s.date ? ' · ' + s.date.slice(5).replace('-', '/') : '');
+    if (s.ai != null) t += s.ai < 0 ? ' · AI 테스트 안 함' : ' · AI ' + s.ai + '/' + s.max;
+    if (s.dt != null) t += ' · 데일리 ' + s.dt;
+    if (s.wk != null) t += ' · 위클리 ' + s.wk;
+    if (s.pb) t += ' · 프랙티스북 ✓';
+    if (s.card) t += ' · 카드 연습 ✓';
+    if (s.mt != null) t += ' · 먼슬리 ' + s.mt;
+    return t;
+  }
+  function stripHtml(st, sel) {
+    var nxt = st.next ? st.next.n : 0;
+    return '<div class="bd-strip">' + st.ss.map(function (x) {
+      return '<button class="sq k' + x.kind + ' ' + aiClass(x) + (x.n === nxt ? ' now' : '') + (sel === x.n ? ' sel' : '') + '" data-act="open" data-tab="level" data-n="' + x.n + '" title="' + esc(sesTitle(x)) + '">' +
+        (x.kind === 'L' ? '' : WT.shortOf(x.n)) + '</button>' + (x.kind === 'W' && x.n < 20 ? '<i class="gap"></i>' : '');
+    }).join('') + '</div>';
+  }
+  function cellLevel(s, r, b) {
+    var st = b.st, c = r.current;
+    var nx = st.next ? '다음 ' + st.next.label : '레벨 종료 ✓';
+    return '<div class="bd-book lv st-' + b.k + '">' +
+      '<div class="row"><div class="t" title="' + esc(c.title) + '">' + esc(c.title) + '</div><span class="pill">' + (st.finished ? '레벨 종료' : STATE_LABEL[b.k]) + '</span></div>' +
+      stripHtml(st) +
+      '<div class="row"><span class="muted">' + st.reached + '/' + WT.TOTAL + '회차 · ' + nx + '</span>' +
+        (st.ai != null ? '<span class="bd-ai ' + aiClass({ kind: 'L', ai: 1, aiPct: st.ai }) + '" title="웨일튜터 AI 테스트 평균 (' + st.aiN + '회)">AI ' + st.ai + '%</span>' : '') + '</div>' +
+      (c.next ? '<div class="row"><span class="next">다음 교재 ' + esc(c.next) + '</span></div>' : '') +
+      '</div>';
+  }
+
   function cellBook(s, r) {
     var c = r.current, b = bookState(r);
+    if (b.st) return cellLevel(s, r, b);
     if (!c.title) return '<button class="bd-add" data-act="open" data-tab="book">+ 본사 교재 등록</button>';
     if (!c.total) return '<div class="bd-book"><div class="t">' + esc(c.title) + '</div><button class="bd-add" data-act="open" data-tab="book">전체 단원 수를 넣으면 진도가 보입니다</button></div>';
     return '<div class="bd-book st-' + b.k + '">' +
@@ -299,7 +375,7 @@ Views.board = (function () {
           '<td class="bd-bk">' + cellBook(s, r) + '</td>' +
           '<td class="bd-mat">' + cellMat(r) + '</td>' +
           '<td class="bd-hw"><div class="hw">' +
-            achHtml(r.current, 'pb', '프랙티스북') + achHtml(r.current, 'dt', '데일리테스트') +
+            (b.st ? autoAch(b.st) : achHtml(r.current, 'pb', '프랙티스북') + achHtml(r.current, 'dt', '데일리테스트')) +
             '<span class="bd-daily' + (w.daily >= 10 ? ' full' : '') + '" style="--p:' + (w.daily * 10) + '%">' +
               '<button class="plus" data-act="daily" data-n="1" aria-label="데일리시트 읽기 1회 추가">데일리시트 <b>' + w.daily + '/10</b></button>' +
               '<button class="minus" data-act="daily" data-n="-1" aria-label="1회 빼기">−</button></span>' +
@@ -319,7 +395,8 @@ Views.board = (function () {
     viewEl = el;
     var list = visible();
     var all = roster();
-    el.innerHTML = '<div class="stack bd">' + statsHtml(all) + ordersHtml() + toolsHtml() + tableHtml(list) + legendHtml() + '</div>';
+    el.innerHTML = '<div class="stack bd">' + statsHtml(all) + ordersHtml() + toolsHtml() +
+      (mode === 'wt' ? heatHtml(list) : tableHtml(list) + legendHtml()) + '</div>';
     bind(el);
     // 다른 선생님 기기에서 바뀐 내용이 들어오면 열린 상세 창도 맞춰 줍니다 (입력 중일 땐 건드리지 않음).
     if (!typing && modal.wrap && modal.wrap.parentNode) {
@@ -349,7 +426,7 @@ Views.board = (function () {
     if (q) q.oninput = function () {
       filter.q = q.value;
       var box = el.querySelector('.bd-tablebox') || el.querySelector('.empty');
-      var html = tableHtml(visible());
+      var html = mode === 'wt' ? heatHtml(visible()) : tableHtml(visible());
       if (box) { var tmp = document.createElement('div'); tmp.innerHTML = html; box.parentNode.replaceChild(tmp.firstChild, box); }
     };
     var c = el.querySelector('#bd-class');
@@ -362,9 +439,12 @@ Views.board = (function () {
     switch (act) {
       case 'wk': week = n === 0 ? mondayOf(new Date()) : shiftWeek(week, n); render(viewEl); if (modal.wrap) paintModal(); break;
       case 'alertonly': filter.alertOnly = !filter.alertOnly; render(viewEl); break;
-      case 'open': openModal(sid, t.getAttribute('data-tab')); break;
+      case 'open': openModal(sid, t.getAttribute('data-tab'), +t.getAttribute('data-n') || 0); break;
       case 'prog': mutate(sid, function (r) { r.programs[k] = !r.programs[k]; }); break;
       case 'unit': mutate(sid, function (r) { r.current.done = Math.max(0, Math.min(r.current.total, r.current.done + n)); }); break;
+      case 'mode': mode = k; render(viewEl); break;
+      case 'hmsort': hmSort = k; render(viewEl); break;
+      case 'wtimport': openImport(); break;
       case 'ses': mutate(sid, function (r) {
           var c = r.current, tot = num(c[k + 'Total']) || SESSIONS, before = num(c[k]);
           c[k] = Math.max(0, Math.min(tot, before + n));
@@ -436,12 +516,89 @@ Views.board = (function () {
       '<div class="bd-sec"><h4>지난 교재 히스토리</h4>' +
         (r.history.length ? '<div class="bd-list">' + r.history.map(function (h, i) { return { h: h, i: i }; }).reverse().map(function (x) {
           return '<div class="li"><div class="grow"><b>' + esc(x.h.title) + '</b><span>' + esc(x.h.start || '?') + ' ~ ' + esc(x.h.end || '?') +
-            (x.h.pb ? ' · 프랙티스북 ' + esc(x.h.pb) + ' · 데일리테스트 ' + esc(x.h.dt) : '') + '</span></div>' +
+            (x.h.pb ? ' · 프랙티스북 ' + esc(x.h.pb) + ' · 데일리테스트 ' + esc(x.h.dt) : '') + (x.h.ai ? ' · 웨일튜터 AI ' + esc(x.h.ai) : '') +
+            (x.h.mt ? ' · 먼슬리 ' + esc(x.h.mt) + '점' : '') + (x.h.note ? ' · ' + esc(x.h.note) : '') + '</span></div>' +
             '<button class="btn sm ghost" data-act="hdel" data-i="' + x.i + '">지우기</button></div>';
         }).join('') + '</div>' : '<p class="hint">완료 처리한 교재가 여기에 순서대로 쌓입니다.</p>') +
         '<div class="bd-grid3" style="align-items:end;margin-top:8px"><label class="fld">지난 교재 직접 추가<input id="bd-h-title" placeholder="교재명"></label>' +
           '<label class="fld">시작<input id="bd-h-start" type="date"></label><label class="fld">끝<input id="bd-h-end" type="date"></label></div>' +
         '<button class="btn sm" data-act="hadd" style="margin-top:8px">히스토리에 추가</button></div>';
+  }
+
+  /* ---------- 레벨 21회차 탭 ---------- */
+  function lvSet(r, n, k, v) {
+    var key = WT.bookKey(r);
+    r.lv = r.lv || {};
+    var b = r.lv[key] = r.lv[key] || {};
+    var m = b[n] = b[n] || {};
+    if (v === null || v === '') delete m[k]; else m[k] = v;
+  }
+  function cardFor(r, u, label) {
+    var info = WT.bookInfo(WT.bookKey(r));
+    if (!info) return '';
+    return info.phonics ? cardLink(PHONICS_URL, 'Phonics', info.vol, u, label || '파닉스카드') : cardLink(SENTENCE_URL, info.level, info.vol, u, label || '센텐스카드');
+  }
+  function tabLevel(s, r) {
+    var st = WT.stats(r), info = WT.bookInfo(st.key) || { name: r.current.title, phonics: false };
+    var sel = modal.sel || (st.next ? st.next.n : WT.TOTAL), x = st.ss[sel - 1];
+    var cardName = info.phonics ? '파닉스카드' : '센텐스카드';
+    var tog = function (k, on, label) { return '<button class="bd-tog' + (on ? ' on' : '') + '" data-act="lvt" data-n="' + x.n + '" data-k="' + k + '" data-v="' + (on ? 0 : 1) + '"><i></i>' + label + '</button>'; };
+    var numIn = function (k, v, label, max) {
+      return '<label class="fld">' + label + '<input id="bd-lv-' + k + '" data-lv="' + x.n + '.' + k + '" type="number" min="0" max="' + (max || 100) + '" inputmode="numeric" value="' + (v == null ? '' : v) + '" placeholder="점수"></label>';
+    };
+    var lmsLine = x.lms
+      ? '<div class="bd-lms"><b>웨일튜터</b> ' + esc(x.lms.date) + ' · ' + (x.ai < 0 ? '<span class="bad">AI 테스트 안 함</span>' : 'AI 테스트 <b>' + x.ai + ' / ' + x.max + '</b> (' + x.aiPct + '%)') +
+        (x.kind === 'L' ? ' · 데일리테스트 ' + (x.lms.dt || 0) + '점' : '') + ' · 프랙티스북 ' + (x.lms.pb ? '✓' : '–') +
+        (x.lms.voca != null ? ' · 단어 ' + x.lms.voca : '') + (x.lms.ks != null ? ' · 핵심문장 ' + x.lms.ks : '') + '</div>'
+      : (x.kind === 'M' ? '' : '<div class="bd-lms muted">웨일튜터 기록이 아직 없습니다. 「웨일튜터 기록 가져오기」로 불러오거나, 수업을 했다면 아래에서 직접 체크하세요.</div>');
+    var detail;
+    if (x.kind === 'L') {
+      detail = lmsLine + '<div class="bd-lvform">' + (x.lms ? '' : tog('done', !!x.m.done, '이 회차 수업함')) + tog('pb', x.pb, '프랙티스북') +
+        numIn('dt', x.m.dt != null ? x.m.dt : null, '데일리테스트 점수' + (x.lms && x.lms.dt ? ' (웨일튜터 ' + x.lms.dt + ')' : '')) + '</div>';
+    } else if (x.kind === 'W') {
+      detail = lmsLine + '<p class="hint" style="margin:6px 0">위클리테스트 날입니다. 교재 진도는 나가지 않고, 데일리테스트지 위클리 시험 · ' + cardName + ' 영상 연습 · 웨일튜터 AI 테스트 20문제를 봅니다.</p>' +
+        '<div class="bd-lvform">' + (x.lms ? '' : tog('done', !!x.m.done, '이 회차 수업함')) + numIn('wk', x.wk, '위클리테스트 (시험지) 점수') +
+        tog('card', x.card, cardName + ' 영상 연습') + tog('pb', x.pb, '프랙티스북') + '</div>' +
+        '<div class="bd-chips" style="margin-top:8px">' + cardFor(r, x.u, cardName + ' Unit ' + x.u + ' 연습') + '</div>';
+    } else {
+      var fin = !r.current.title ? '' : (modal.confirm === 'finish'
+        ? '<div class="bd-confirm">「' + esc(r.current.title) + '」 레벨을 끝내고 히스토리로 옮깁니다' + (r.current.next ? '. 「' + esc(r.current.next) + '」을 새로 시작합니다.' : '.') +
+          ' <button class="btn sm primary" data-act="finish-yes">확인</button><button class="btn sm" data-act="cancel">취소</button></div>'
+        : '<button class="btn primary" data-act="finish">레벨 종료 처리</button>');
+      detail = '<p class="hint" style="margin:0 0 8px">모든 레슨이 끝난 21회차입니다. 먼슬리테스트 → 교재 정리 → ' + cardName + ' 완료 영상까지 마치면 레벨 종료입니다.</p>' +
+        '<div class="bd-lvform">' + numIn('mt', x.mt, '먼슬리테스트 점수') + tog('org', x.org, '교재 정리') + tog('video', x.video, cardName + ' 완료 영상') + '</div>' +
+        '<div class="bd-chips" style="margin-top:8px">' + cardFor(r, 0, cardName + ' 권 전체 (완료 영상)') + '</div>' +
+        '<div class="row" style="margin-top:10px;gap:8px;flex-wrap:wrap;justify-content:flex-start">' + fin + '</div>';
+    }
+    var units = [1, 2, 3, 4].map(function (u) {
+      return '<div class="bd-unit"><b>Unit ' + u + '</b>' + st.ss.slice((u - 1) * 5, u * 5).map(function (y) { return sesBox(y, sel, st); }).join('') + '</div>';
+    }).join('');
+    var chip = function (label, val, cls) { return '<span class="bd-mchip ' + (cls || '') + '"><small>' + label + '</small><b>' + val + '</b></span>'; };
+    return '<div class="bd-sec"><div class="row" style="align-items:baseline"><h4 style="margin:0">' + esc(info.name) + '</h4>' +
+        '<span class="muted">' + st.reached + ' / 21회차 · ' + (st.next ? '다음 ' + st.next.label : '레벨 종료') + '</span></div>' +
+        '<div class="bd-bar" style="margin:8px 0 12px"><i style="width:' + st.pct + '%"></i></div>' +
+        '<div class="bd-mchips">' +
+          chip('웨일튜터 AI 평균', st.ai == null ? '–' : st.ai + '%', st.ai == null ? '' : aiClass({ kind: 'L', ai: 1, aiPct: st.ai })) +
+          chip('AI 테스트 안 함', st.aiMiss + '회', st.aiMiss ? 'miss' : '') +
+          chip('위클리 AI 평균', st.weekly == null ? '–' : st.weekly + '%') +
+          chip('프랙티스북', st.pb + '/20') + chip('데일리테스트', st.dt + '/20' + (st.dtAvg != null ? ' · ' + st.dtAvg + '점' : '')) +
+          chip(cardName + ' 연습', st.cards + '/4') +
+        '</div>' +
+        '<div class="bd-units">' + units + '<div class="bd-unit m">' + sesBox(st.ss[20], sel, st) + '</div></div>' +
+        '<div class="bd-lvlegend"><span><i class="g4"></i>90%↑</span><span><i class="g3"></i>75%↑</span><span><i class="g2"></i>60%↑</span><span><i class="g1"></i>40%↑</span><span><i class="g0"></i>40% 미만</span><span><i class="miss"></i>AI 테스트 안 함</span><span><i></i>아직</span></div>' +
+      '</div>' +
+      '<div class="bd-sec bd-seldetail"><h4>' + x.n + '회차 · ' + x.label + '</h4>' + detail + '</div>';
+  }
+  function sesBox(y, sel, st) {
+    var nxt = st.next ? st.next.n : 0;
+    var main = y.kind === 'M' ? (y.mt != null ? y.mt + '점' : y.done ? '✓' : '먼슬리') :
+      y.ai == null ? (y.done ? '✓' : '') : y.ai < 0 ? '×' : y.ai + '/' + y.max;
+    var marks = (y.pb ? '<i class="pb" title="프랙티스북">P</i>' : '') + (y.dt != null ? '<i title="데일리테스트">' + y.dt + '</i>' : '') +
+      (y.wk != null ? '<i title="위클리테스트">' + y.wk + '</i>' : '') + (y.card ? '<i class="cd" title="카드 연습">🎴</i>' : '') +
+      (y.org ? '<i>정리</i>' : '') + (y.video ? '<i class="cd">🎬</i>' : '');
+    return '<button class="bd-ses k' + y.kind + ' ' + aiClass(y) + (y.n === sel ? ' sel' : '') + (y.n === nxt ? ' now' : '') + '" data-act="lvsel" data-n="' + y.n + '" title="' + esc(sesTitle(y)) + '">' +
+      '<span class="lb">' + (y.kind === 'L' ? 'D' + y.d : y.kind === 'W' ? '위클리' : '21회차') + (y.date ? ' <small>' + y.date.slice(5).replace('-', '/') + '</small>' : '') + '</span>' +
+      '<b>' + main + '</b><span class="mk">' + marks + '</span></button>';
   }
 
   function tabMat(s, r) {
@@ -494,10 +651,14 @@ Views.board = (function () {
       }).join('') + '</div></div>';
   }
 
-  function openModal(sid, tab) {
+  function openModal(sid, tab, n) {
     var s = Store.student(sid);
     if (!s) return;
+    var r0 = rec(sid);
+    if (tab === 'book' && leveled(r0)) tab = 'level';
+    if (tab === 'level' && !leveled(r0)) tab = 'book';
     modal.sid = sid; modal.tab = tab || 'info'; modal.showPw = false; modal.confirm = '';
+    modal.sel = n || 0;
     modal.wrap = UI.modal({ title: s.name + ' · 학습 현황', wide: true, body: '<div id="bd-modal"></div>',
       footer: '<a class="btn ghost" href="#/students">학생 명부에서 정보 고치기</a><div class="sp"></div><button class="btn primary" data-close>닫기</button>' });
     bindModal(modal.wrap);
@@ -510,8 +671,9 @@ Views.board = (function () {
     var s = Store.student(modal.sid);
     if (!box || !s) return;
     var r = rec(modal.sid);
-    var tabs = [['info', '웨일 프로그램'], ['book', '본사 교재'], ['mat', '보유 교재'], ['hw', '개인 숙제']];
-    var body = { info: tabInfo, book: tabBook, mat: tabMat, hw: tabHw }[modal.tab](s, r);
+    var tabs = [['info', '웨일 프로그램']].concat(leveled(r) ? [['level', '레벨 21회차']] : [])
+      .concat([['book', '본사 교재'], ['mat', '보유 교재'], ['hw', '개인 숙제']]);
+    var body = { info: tabInfo, level: tabLevel, book: tabBook, mat: tabMat, hw: tabHw }[modal.tab](s, r);
     var mb = modal.wrap.querySelector('.modal-b'), top = mb ? mb.scrollTop : 0;
     box.innerHTML = '<p class="bd-msub">' + esc(className(s) || s.grade || '반 미지정') + ' · ' + weekLabel(week) + ' 주 기록</p>' +
       '<div class="seg bd-tabs">' + tabs.map(function (t) {
@@ -542,12 +704,19 @@ Views.board = (function () {
           try { navigator.clipboard.writeText(v).then(function () { UI.toast('복사했습니다'); }, fallback); } catch (err) { fallback(); }
           return;
         }
+        case 'lvsel': modal.sel = i || +t.getAttribute('data-n'); modal.confirm = ''; paintModal(); return;
+        case 'lvt': mutate(sid, function (r) { lvSet(r, +t.getAttribute('data-n'), t.getAttribute('data-k'), t.getAttribute('data-v') === '1'); }); paintModal(); return;
         case 'finish': modal.confirm = 'finish'; paintModal(); return;
         case 'cancel': modal.confirm = ''; paintModal(); return;
         case 'finish-yes':
           modal.confirm = '';
           mutate(sid, function (r) {
             var c = r.current;
+            if (leveled(r)) {
+              var st = WT.stats(r);
+              r.history.push({ title: c.title, start: c.start || '', end: U.ymd(), pb: st.pb + '/20', dt: st.dt + '/20', ai: st.ai == null ? '' : st.ai + '%', mt: st.m.mt == null ? '' : String(st.m.mt) });
+              if (r.wt) r.wt.done = r.wt.book;   // 이 교재는 끝남 (웨일튜터에서 다음 교재가 배정되면 그쪽으로 넘어갑니다)
+            } else
             r.history.push({ title: c.title, start: c.start || '', end: U.ymd(), pb: ach(c, 'pb').d + '/' + ach(c, 'pb').t, dt: ach(c, 'dt').d + '/' + ach(c, 'dt').t });
             r.current = { title: c.next || '', start: c.next ? U.ymd() : '', done: 0, total: c.next ? c.total : 0, next: '', ordered: false,
               pb: 0, pbTotal: num(c.pbTotal) || SESSIONS, dt: 0, dtTotal: num(c.dtTotal) || SESSIONS };
@@ -586,6 +755,9 @@ Views.board = (function () {
         setPath(r, t.getAttribute('data-f'), v);
       } else if (t.getAttribute('data-w')) {
         var p = {}; p[t.getAttribute('data-w')] = t.value; setWk(r, p);
+      } else if (t.getAttribute('data-lv')) {
+        var lv = t.getAttribute('data-lv').split('.');
+        lvSet(r, +lv[0], lv[1], t.value === '' ? null : Math.max(0, Math.min(100, +t.value || 0)));
       } else if (t.getAttribute('data-m')) {
         var mi = t.getAttribute('data-m').split('.');
         r.materials[+mi[0]][mi[1]] = t.type === 'number' ? num(t.value) : t.value;
@@ -603,6 +775,12 @@ Views.board = (function () {
         commit(r);
       }
       var f = t.getAttribute('data-f') || '';
+      if (t.getAttribute('data-lv')) {
+        setTimeout(function () {
+          var a = document.activeElement;
+          if (!(a && box.contains(a) && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) paintModal();
+        }, 0);
+      }
       if (f === 'current.done' || f === 'current.total') {
         if (r.current.total && r.current.done > r.current.total) r.current.done = r.current.total;
         typing = true; mutate(modal.sid, function () {}); typing = false;
@@ -614,6 +792,116 @@ Views.board = (function () {
       }
     };
   }
+
+  /* ---------- 웨일튜터 한눈에 (날짜 × 학생 색칸) ---------- */
+  var DOW = ['일', '월', '화', '수', '목', '금', '토'];
+  function heatHtml(list) {
+    var recs = list.map(function (s) { return { s: s, r: rec(s.id) }; });
+    var withWt = recs.filter(function (x) { return x.r.wt && x.r.wt.days; });
+    var at = WT.lastImport();
+    var head = '<div class="bd-hmtop"><div><b>웨일튜터 한눈에</b><span class="muted"> · 최근 수업일 20일, 칸 색은 그날 AI 테스트 점수 · ' +
+      (at ? '마지막 가져온 시각 ' + esc(at.slice(0, 16).replace('T', ' ')) : '아직 가져온 기록이 없습니다') + '</span></div>' +
+      '<div class="seg"><button class="' + (hmSort === 'worry' ? 'on' : '') + '" data-act="hmsort" data-k="worry">챙길 학생 먼저</button>' +
+      '<button class="' + (hmSort === 'class' ? 'on' : '') + '" data-act="hmsort" data-k="class">반 순서</button></div></div>';
+    if (!withWt.length) return '<div class="bd-tablebox bd-hmbox">' + head +
+      '<div class="empty" style="padding:28px">웨일튜터 기록이 아직 없습니다. 위의 「웨일튜터 기록 가져오기」를 눌러 처음 한 번 연결해 주세요.</div></div>';
+    var dates = WT.classDates(withWt.map(function (x) { return x.r; }), 20);
+    var rows = recs.map(function (x) {
+      var rc = WT.recent(x.r, dates), st = leveled(x.r) ? WT.stats(x.r) : null;
+      // 챙길 점수: 안 한 날 · 낮은 점수 · 떨어지는 추세
+      var worry = (rc.came ? (100 - (rc.rate || 0)) * 1.2 : 0) + (rc.ai != null ? (100 - rc.ai) : 0) + (rc.trend != null && rc.trend < 0 ? -rc.trend : 0);
+      return { s: x.s, r: x.r, rc: rc, st: st, worry: x.r.wt ? worry : -1 };
+    });
+    if (hmSort === 'worry') rows.sort(function (a, b) { return b.worry - a.worry; });
+    var flag = function (x) {
+      var f = [];
+      if (x.rc.came && x.rc.rate != null && x.rc.rate < 70) f.push('<span class="bd-flag bad">AI 테스트 자주 안 함</span>');
+      if (x.rc.ai != null && x.rc.ai < 60) f.push('<span class="bd-flag warn">점수 낮음</span>');
+      if (x.rc.trend != null && x.rc.trend <= -10) f.push('<span class="bd-flag warn">점수 ↓</span>');
+      if (x.rc.trend != null && x.rc.trend >= 10) f.push('<span class="bd-flag ok">점수 ↑</span>');
+      return f.join('');
+    };
+    var cell = function (x, i) {
+      var d = (x.r.wt && x.r.wt.days || {})[dates[i]];
+      if (!d) return '<td class="hc"><i class="hm none"></i></td>';
+      var p = WT.parseCode(d[0]), w = p && p.d === 5;
+      var o = { kind: 'L', ai: d[1], aiPct: d[1] >= 0 && d[2] ? Math.round(d[1] / d[2] * 100) : null };
+      var t = dates[i].slice(5).replace('-', '/') + (p ? ' · ' + (WT.bookInfo(p.book) || {}).name + ' ' + WT.labelOf(p.n) : '') +
+        (d[1] < 0 ? ' · AI 테스트 안 함' : ' · AI ' + d[1] + '/' + d[2]) + (d[3] ? ' · 데일리 ' + d[3] : '') + (d[4] ? ' · 프랙티스북 ✓' : '');
+      return '<td class="hc"><i class="hm ' + aiClass(o) + (w ? ' w' : '') + '" title="' + esc(t) + '">' + (d[1] < 0 ? '×' : o.aiPct) + '</i></td>';
+    };
+    var bar = function (v) { return v == null ? '<span class="muted">–</span>' : '<span class="bd-mini"><i class="' + aiClass({ kind: 'L', ai: 1, aiPct: v }) + '" style="width:' + v + '%"></i></span><b>' + v + '</b>'; };
+    return '<div class="bd-tablebox bd-hmbox">' + head +
+      '<table class="bd-table bd-hm"><thead><tr><th class="bd-sticky">학생</th><th>레벨 진도</th>' +
+        dates.map(function (d) { var x = new Date(d + 'T12:00:00'); return '<th class="hc"><span>' + (x.getMonth() + 1) + '/' + x.getDate() + '</span><small>' + DOW[x.getDay()] + '</small></th>'; }).join('') +
+        '<th>AI 테스트<br>응시율</th><th>AI 평균</th><th>데일리<br>평균</th><th>단어<br>평균</th><th>살펴볼 점</th></tr></thead><tbody>' +
+      rows.map(function (x) {
+        var st = x.st;
+        return '<tr data-sid="' + x.s.id + '"><td class="bd-sticky bd-name"><button class="nm" data-act="open" data-tab="level">' + esc(x.s.name) + '</button><span class="cls">' + esc(className(x.s) || '') + '</span></td>' +
+          '<td class="bd-hmlv">' + (st ? '<button class="lk" data-act="open" data-tab="level"><span>' + esc(x.r.current.title) + '</span><small>' + st.reached + '/21 · ' + (st.next ? st.next.label : '종료') + '</small></button>' : '<span class="muted">–</span>') + '</td>' +
+          (x.r.wt ? dates.map(function (d, i) { return cell(x, i); }).join('') : '<td colspan="' + dates.length + '" class="muted" style="text-align:center">웨일튜터에서 찾지 못한 학생입니다 (아이디를 확인해 주세요)</td>') +
+          '<td class="nm2">' + (x.rc.came ? '<b>' + x.rc.rate + '%</b><small> ' + x.rc.took + '/' + x.rc.came + '일</small>' : '<span class="muted">–</span>') + '</td>' +
+          '<td class="nm2">' + bar(x.rc.ai) + '</td><td class="nm2">' + (x.rc.dt == null ? '<span class="muted">–</span>' : x.rc.dt) + '</td>' +
+          '<td class="nm2">' + (x.rc.voca == null ? '<span class="muted">–</span>' : x.rc.voca) + '</td><td>' + flag(x) + '</td></tr>';
+      }).join('') + '</tbody></table>' +
+      '<div class="bd-lvlegend" style="padding:10px 14px"><span><i class="g4"></i>90%↑</span><span><i class="g3"></i>75%↑</span><span><i class="g2"></i>60%↑</span><span><i class="g1"></i>40%↑</span><span><i class="g0"></i>40% 미만</span>' +
+        '<span><i class="miss"></i>수업했지만 AI 테스트 안 함</span><span><i class="none"></i>그날 수업 없음</span><span><i class="g3 w"></i>굵은 테두리 = 위클리 (20문제)</span></div></div>';
+  }
+
+  /* ---------- 웨일튜터 기록 가져오기 ---------- */
+  function openImport() {
+    var at = WT.lastImport();
+    var w = UI.modal({ title: '웨일튜터 기록 가져오기', wide: true, body:
+      '<div class="bd-import">' +
+        '<p>본사 웨일튜터 관리자 화면의 <b>학습현황</b>(AI 테스트 · 데일리테스트 · 프랙티스북)을 최근 ' + 120 + '일치 한 번에 가져옵니다. ' +
+          '가져온 기록은 다른 선생님 기기에도 그대로 보입니다. ' + (at ? '<br>마지막으로 가져온 시각: <b>' + esc(at.slice(0, 16).replace('T', ' ')) + '</b>' : '') + '</p>' +
+        '<ol>' +
+          '<li><b>처음 한 번만</b> — 아래 고래 버튼을 브라우저 <b>북마크바로 끌어다 놓으세요.</b> (북마크바가 안 보이면 Ctrl + Shift + B)</li>' +
+          '<li>웨일튜터 관리자(whale.cloubot.com)에 로그인합니다.</li>' +
+          '<li>북마크바의 <b>「고래 현황판으로 보내기」</b>를 누르면 이 현황판이 새 창으로 열리고 자동으로 저장됩니다. 1분 정도 걸립니다.</li>' +
+        '</ol>' +
+        '<div class="bd-bmrow"><a class="btn primary bd-bm" href="' + WT.bookmarkletHref() + '" draggable="true" data-bm>🐳 고래 현황판으로 보내기</a>' +
+          '<span class="hint">← 이 버튼을 북마크바로 끌어다 놓기</span></div>' +
+        '<details><summary>태블릿 · 끌어다 놓기가 안 될 때</summary>' +
+          '<p class="hint">아무 페이지나 북마크로 저장한 뒤, 북마크 편집에서 주소(URL)를 아래 「주소 복사」로 복사한 내용으로 바꾸고 이름을 「고래 현황판으로 보내기」로 저장하세요.</p>' +
+          '<button class="btn sm" data-bmcopy>주소 복사</button></details>' +
+        '<p class="hint">웨일튜터 아이디가 현황판 「웨일 프로그램」 탭의 아이디와 같은 학생끼리 연결됩니다. 아이디가 없으면 이름으로 찾습니다.</p>' +
+      '</div>',
+      footer: '<a class="btn" href="https://whale.cloubot.com" target="_blank" rel="noopener">웨일튜터 관리자 열기</a><div class="sp"></div><button class="btn primary" data-close>닫기</button>' });
+    var b = w.querySelector('[data-bm]');
+    b.onclick = function (e) { e.preventDefault(); UI.toast('이 버튼은 북마크바로 끌어다 놓고, 웨일튜터 화면에서 눌러 주세요'); };
+    w.querySelector('[data-bmcopy]').onclick = function () {
+      var v = WT.bookmarkletHref();
+      try { navigator.clipboard.writeText(v).then(function () { UI.toast('주소를 복사했습니다'); }, function () { UI.toast('복사가 막혔습니다. 노트북에서 해 주세요', true); }); } catch (e) { UI.toast('복사가 막혔습니다', true); }
+    };
+  }
+  var wtHandled = '', wtPending = null;
+  function wtReceive(data, source) {
+    if (window.Sync && Sync.isCloud && Sync.isCloud() && !Sync.signedIn()) {
+      wtPending = { data: data, source: source };
+      try { source.postMessage('gorae-wt-login', WT.ORIGIN); } catch (e) {}
+      setTimeout(function () { if (wtPending) { var p = wtPending; wtPending = null; wtReceive(p.data, p.source); } }, 2000);
+      return;
+    }
+    if (wtHandled !== data.at) {
+      wtHandled = data.at;
+      var res = WT.importPayload(data);
+      mode = 'wt';
+      if (location.hash.indexOf('#/board') !== 0) location.hash = '#/board';
+      else refresh();
+      UI.modal({ title: '웨일튜터 기록을 가져왔습니다', body:
+        '<p>학생 <b>' + res.matched + '명</b> · 수업 기록 <b>' + res.rows + '건</b>을 현황판에 붙였습니다.</p>' +
+        (res.switched.length ? '<p><b>교재가 바뀐 학생</b> (이전 교재는 히스토리로 옮김)<br>' + res.switched.map(esc).join('<br>') + '</p>' : '') +
+        (res.missing.length ? '<p class="hint">웨일튜터에서 찾지 못한 학생: ' + res.missing.map(esc).join(', ') + ' — 「웨일 프로그램」 탭에 웨일튜터 아이디를 넣어 주세요.</p>' : '') +
+        (res.unknown.length ? '<p class="hint">현황판 등록생 명단에 없는 웨일튜터 학생: ' + res.unknown.map(esc).join(', ') + '</p>' : ''),
+        footer: '<button class="btn primary" data-close>확인</button>' });
+    }
+    try { source.postMessage('gorae-wt-ack', WT.ORIGIN); } catch (e) {}
+  }
+  window.addEventListener('message', function (e) {
+    if (e.origin !== WT.ORIGIN || !e.data || e.data.type !== 'gorae-wt') return;
+    wtReceive(e.data, e.source);
+  });
 
   /* ---------- 하루 한 번 주문 알림 팝업 ---------- */
   var popupWrap = null;
@@ -662,6 +950,6 @@ Views.board = (function () {
       '<a class="btn primary" href="#/board">학습 현황판 →</a></div><div class="card-b">' + body + '</div></div>';
   }
 
-  return { title: title, sub: sub, render: render, dashboardCard: dashboardCard,
+  return { title: title, sub: sub, render: render, dashboardCard: dashboardCard, _receive: wtReceive,
     _bookState: function (sid) { return bookState(rec(sid)); } };
 })();

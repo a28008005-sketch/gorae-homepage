@@ -115,7 +115,7 @@ const ok = (label, cond, extra='') => console.log(`  ${cond ? '✓' : '✗ 실�
   // 학습 현황판 (2026-11-07) — A 에서 체크한 교재·숙제가 B 에 그대로 보이는지
   const bdSid = await A.evaluate(() => {
     const s = Store.students({ active: true })[0];
-    Store.saveBoard({ studentId: s.id, programs: { ws: true }, current: { title: 'Whale Phonics 3', total: 20, done: 19, next: 'Whale Phonics 4', ordered: false } });
+    Store.saveBoard({ studentId: s.id, programs: { ws: true }, current: { title: 'Grammar Club 3', total: 20, done: 19, next: 'Grammar Club 4', ordered: false } });
     return s.id;
   });
   await A.evaluate(() => Sync.syncNow()); await A.waitForTimeout(900);

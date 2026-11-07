@@ -52,13 +52,13 @@ const SHOT = process.env.SHOT_DIR || '.';
 
   // 상세 창 — 교재 등록
   await p.click(`${row} [data-act="open"][data-tab="book"]`); await p.waitForTimeout(300);
-  await p.fill('#bd-f-current-title', 'Whale Phonics 3');
+  await p.fill('#bd-f-current-title', 'Grammar Club 3');
   await p.fill('#bd-f-current-total', '20');
   await p.fill('#bd-f-current-done', '15');
-  await p.fill('#bd-f-current-next', 'Whale Phonics 4');
+  await p.fill('#bd-f-current-next', 'Grammar Club 4');
   await p.locator('#bd-f-current-next').blur(); await p.waitForTimeout(800);
   ok('교재 입력 저장', await p.evaluate(s => {
-    const c = Store.board(s).current; return c.title === 'Whale Phonics 3' && c.total === 20 && c.done === 15 && c.next === 'Whale Phonics 4';
+    const c = Store.board(s).current; return c.title === 'Grammar Club 3' && c.total === 20 && c.done === 15 && c.next === 'Grammar Club 4';
   }, sid));
   await p.click('.modal [data-close]'); await p.waitForTimeout(300);
 
@@ -81,8 +81,8 @@ const SHOT = process.env.SHOT_DIR || '.';
   await p.click('.modal [data-act="finish"]');
   await p.click('.modal [data-act="finish-yes"]'); await p.waitForTimeout(300);
   const after = await p.evaluate(s => Store.board(s), sid);
-  ok('완료 처리 → 다음 교재 시작', after.current.title === 'Whale Phonics 4' && after.current.done === 0 && !after.current.ordered);
-  ok('지난 교재 히스토리 (성취율 함께)', after.history.length === 1 && after.history[0].title === 'Whale Phonics 3' && after.history[0].pb === '20/20');
+  ok('완료 처리 → 다음 교재 시작', after.current.title === 'Grammar Club 4' && after.current.done === 0 && !after.current.ordered);
+  ok('지난 교재 히스토리 (성취율 함께)', after.history.length === 1 && after.history[0].title === 'Grammar Club 3' && after.history[0].pb === '20/20');
   ok('새 교재는 회차 0부터', after.current.pb === 0 && after.current.dt === 0);
 
   // 보유 교재 · 개인 숙제
@@ -106,11 +106,11 @@ const SHOT = process.env.SHOT_DIR || '.';
   ok('표에 파닉스 카드 · 단계 표시', (await p.locator(`${row} .bd-sb`).innerText()).includes('Phonics 3'));
   const ph = await p.getAttribute(`${row} .bd-sb a.go`, 'href');
   ok('파닉스카드 바로가기 (Phonics Vol.3)', /phonics\.html\?lv=Phonics&v=3/.test(ph || ''), ph);
-  // 센텐스카드 바로가기 — 240 vol.2 를 12/20 진도로 → Unit 3
+  // 센텐스카드 바로가기 — 240 vol.2 (레벨 21회차, 아직 회차 기록 없음 → Unit 1)
   await p.evaluate(s => { const r = Store.board(s); r.sbank = { track: 'sb', level: '240', done: 3, total: 10 }; r.current.title = '240 vol.2'; r.current.total = 20; r.current.done = 12; Store.saveBoard(r); }, sid);
   await p.goto(BASE + '#/settings'); await p.goto(BASE + '#/board'); await p.waitForTimeout(500);
   const sh = await p.getAttribute(`${row} .bd-sb a.go`, 'href');
-  ok('센텐스카드 바로가기 (240 · Vol.2 · Unit 3)', /survival\.html\?lv=240&v=2&u=3/.test(sh || ''), sh);
+  ok('센텐스카드 바로가기 (240 · Vol.2 · Unit 1)', /survival\.html\?lv=240&v=2&u=1/.test(sh || ''), sh);
   ok('원서 칩·시험대비 칩 표에 표시', await p.locator(`${row} .bd-sp .bd-chip`).count() >= 3);
   await p.click(`${row} [data-act="ex"][data-k="exam"]`);
   ok('시험대비 이번 주 체크', await p.locator(`${row} [data-act="ex"][data-k="exam"].done`).count() === 1);
