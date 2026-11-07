@@ -865,6 +865,18 @@ tr.s-warn .bd-name{border-left-color:var(--warn)} tr.s-urgent .bd-name{border-le
   .bd-grid3,.bd-bigtogs{grid-template-columns:minmax(0,1fr)}
   .bd-mrow{grid-template-columns:minmax(0,1fr) minmax(0,1fr)} .bd-mrow .t{grid-column:1/-1;order:-1}
 }
+/* 프랙티스북 · 데일리테스트 성취율 (각 20회차) */
+.bd-ach{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:3px 8px;margin-bottom:7px;min-width:180px}
+.bd-ach .lb{grid-column:1/-1;font-size:11.5px;color:var(--muted);white-space:nowrap;display:flex;justify-content:space-between}
+.bd-ach .pct{font-size:12.5px;color:var(--ink);font-variant-numeric:tabular-nums}
+.bd-ach .bd-bar{margin-top:0}
+.bd-ach.full .bd-bar i{background:var(--ok)} .bd-ach.full .pct{color:#296b4d}
+.bd-step.sm button{width:24px;height:24px;font-size:15px}
+.bd-step.sm span{min-width:38px;padding:0 2px;font-size:12px}
+.bd-grid4{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:10px}
+.bd-achrow{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px}
+.bd-chip.go{background:var(--navy-3);color:#fff;text-decoration:none}
+.bd-chip.go small{opacity:.8;font-size:11px;margin-left:2px}
 
 </style>
 </head>
@@ -5797,12 +5809,16 @@ Views.board = (function () {
 
   var PROGRAMS = [['ws', '웨일스튜던트', 'WS'], ['tg', '웨일튜터 · 고래영어', '튜터·고래'],
     ['to', '웨일튜터 · 오션라이팅', '튜터·오션'], ['tl', '웨일튜터 · 영어도서관', '튜터·도서관'],
-    ['eb', '이북', '이북'], ['sb', '스마트보카 앱', '보카']];
+    ['eb', '이북', '이북'], ['sb', '스마트보카 앱', '스마트보카']];
   var MAT_TYPES = ['부교재', '예습', '복습', '문법', '단어', '기타'];
   var EXTRAS = [['news', '영자신문'], ['gram', '문법'], ['read', '독해'], ['voca', '단어'], ['exam', '시험대비']];
   var WARN = 80, URGENT = 90;
   // 파닉스 서바이벌 카드 (dailytest 저장소 cards/phonics.html, 2026-11-07)
   var PHONICS_URL = 'https://a28008005-sketch.github.io/dailytest/cards/phonics.html';
+  var SENTENCE_URL = 'https://a28008005-sketch.github.io/dailytest/cards/survival.html';
+  var SB_LEVELS = ['240', '520', '860', '1240', '1680'];
+  // 교재 한 권의 프랙티스북 · 데일리테스트 회차 (2026-11-07, 원장님 기준 20회차)
+  var SESSIONS = 20;
   var STATE_LABEL = { ok: '진행 중', warn: '주문 준비', urgent: '지금 주문', ordered: '주문 완료' };
 
   var week = mondayOf(new Date());
@@ -5833,7 +5849,7 @@ Views.board = (function () {
   /* ---------- 기록 ---------- */
   function blank(sid) {
     return { studentId: sid, tutorId: '', tutorPw: '', programs: {}, sbank: { track: 'sb', level: '', done: 0, total: 0 },
-      current: { title: '', start: '', done: 0, total: 0, next: '', ordered: false },
+      current: { title: '', start: '', done: 0, total: 0, next: '', ordered: false, pb: 0, pbTotal: SESSIONS, dt: 0, dtTotal: SESSIONS },
       history: [], materials: [], special: { erlt: { on: false, book: '' }, wonseo: { on: false }, extras: {} },
       hw: {}, memo: '' };
   }
@@ -5856,10 +5872,31 @@ Views.board = (function () {
   }
   function wk(r, key) {
     var w = (r.hw || {})[key || week] || {};
-    return { practice: !!w.practice, daily: num(w.daily), erlt: !!w.erlt, w1: w.w1 || '', w2: w.w2 || '',
+    return { practice: !!w.practice, pbN: num(w.pbN), dtN: num(w.dtN), daily: num(w.daily), erlt: !!w.erlt, w1: w.w1 || '', w2: w.w2 || '',
       c1: !!w.c1, c2: !!w.c2, ex: Object.assign({}, w.ex || {}) };
   }
   function setWk(r, patch) { r.hw[week] = Object.assign(wk(r), patch); }
+  /** 프랙티스북(pb) · 데일리테스트(dt) 성취율 */
+  function ach(c, k) {
+    var tot = num(c[k + 'Total']) || SESSIONS, d = Math.min(num(c[k]), tot);
+    return { d: d, t: tot, p: Math.round(d / tot * 100) };
+  }
+  function achHtml(c, k, label) {
+    var a = ach(c, k);
+    return '<div class="bd-ach' + (a.p >= 100 ? ' full' : '') + '"><span class="lb">' + label + ' <b class="pct">' + a.p + '%</b></span>' +
+      '<span class="bd-step sm"><button data-act="ses" data-k="' + k + '" data-n="-1" aria-label="' + label + ' 1회 빼기">−</button>' +
+      '<span>' + a.d + '/' + a.t + '</span><button data-act="ses" data-k="' + k + '" data-n="1" aria-label="' + label + ' 1회 더하기">+</button></span>' +
+      '<div class="bd-bar"><i style="width:' + a.p + '%"></i></div></div>';
+  }
+  /** 지금 교재 이름에서 권(vol) 번호, 진도에서 지금 Unit 을 뽑습니다. */
+  function bookVolUnit(r, lvPrefix) {
+    var t = String(r.current.title || ''), v = 0, u = 0;
+    var m = /vol\.?\s*(\d)/i.exec(t) || /phonics\s*(\d)/i.exec(t);
+    if (m && (!lvPrefix || t.toLowerCase().indexOf(lvPrefix.toLowerCase()) === 0)) v = +m[1];
+    if (v && r.current.total) u = Math.min(4, Math.floor(num(r.current.done) / 5) + 1);
+    return { v: v, u: u };
+  }
+
   function bookState(r) {
     var c = r.current;
     if (!c.title || !c.total) return { k: 'none', p: 0 };
@@ -5930,14 +5967,16 @@ Views.board = (function () {
   }
 
   function statsHtml(list) {
-    var done = list.filter(function (s) { var w = wk(rec(s.id)); return w.practice && w.daily >= 10; }).length;
+    var withBook = list.map(function (s) { return rec(s.id).current; }).filter(function (c) { return c.title; });
+    var avg = function (k) { return withBook.length ? Math.round(withBook.reduce(function (a, c) { return a + ach(c, k).p; }, 0) / withBook.length) : 0; };
+    var pbAvg = avg('pb'), dtAvg = avg('dt');
     var st = list.map(function (s) { return bookState(rec(s.id)).k; });
     var urg = st.filter(function (k) { return k === 'urgent'; }).length;
     var warn = st.filter(function (k) { return k === 'warn'; }).length;
     var ord = st.filter(function (k) { return k === 'ordered'; }).length;
     return '<div class="bd-stats">' +
       '<div class="bd-stat"><span>등록생</span><b>' + list.length + '</b><small>학생 명부 기준</small></div>' +
-      '<div class="bd-stat"><span>이번 주 공통숙제 완료</span><b>' + done + '<small> / ' + list.length + '</small></b><small>프랙티스북 + 데일리 10회</small></div>' +
+      '<div class="bd-stat"><span>평균 성취율</span><b>' + Math.round((pbAvg + dtAvg) / 2) + '<small>%</small></b><small>프랙티스북 ' + pbAvg + '% · 데일리테스트 ' + dtAvg + '% (각 ' + SESSIONS + '회차)</small></div>' +
       '<button class="bd-stat' + (urg ? ' bad' : warn ? ' warn' : '') + (filter.alertOnly ? ' on' : '') + '" data-act="alertonly">' +
         '<span>교재 주문 필요</span><b>' + (urg + warn) + '</b><small>지금 주문 ' + urg + ' · 준비 ' + warn +
         (filter.alertOnly ? ' · 눌러서 전체 보기' : ' · 눌러서 모아 보기') + '</small></button>' +
@@ -6012,20 +6051,32 @@ Views.board = (function () {
     return '<div class="bd-chips">' + out.join('') + '</div>';
   }
 
+  /** 그 학생 레벨·권·Unit 으로 바로 열리는 카드 링크 (카드 화면에서 다른 레벨도 고를 수 있음) */
+  function cardLink(base, lv, v, u, label) {
+    var href = base + '?lv=' + encodeURIComponent(lv) + '&v=' + v + (u ? '&u=' + u : '') + '&from=board';
+    return '<a class="bd-chip tag go" target="_blank" rel="noopener" href="' + href + '" title="' + label + ' ' + esc(lv) + ' Vol.' + v + (u ? ' Unit ' + u : '') + ' 바로 열기">' +
+      label + ' ▶ <small>Vol.' + v + (u ? ' · U' + u : '') + '</small></a>';
+  }
+
   /** 센텐스뱅크 · 파닉스 카드 칸 */
-  function sbCell(sb) {
+  function sbCell(sb, r) {
     var pc = sb.track === 'pc';
     if (!sb.level && !pc) return '<button class="bd-chip ghost" data-act="open" data-tab="info">+ 레벨</button>';
     var bar = sb.total ? ' <span class="muted">' + sb.done + '/' + sb.total + '</span><div class="bd-bar"><i style="width:' +
       Math.min(100, Math.round(sb.done / sb.total * 100)) + '%"></i></div>' : '';
     if (pc) {
       var pv = (/(\d)/.exec(sb.level || '') || [])[1];
-      return (pv
-          ? '<a class="bd-chip tag" target="_blank" rel="noopener" href="' + PHONICS_URL + '?lv=Phonics&v=' + pv + '" title="파닉스 서바이벌 카드 Vol.' + pv + ' 열기">파닉스 카드 ▶</a>'
-          : '<button class="bd-chip tag" data-act="open" data-tab="info">파닉스 카드</button>') +
-        (sb.level ? ' <b>' + esc(sb.level) + '</b>' : '') + bar;
+      var pu = r ? bookVolUnit(r, 'whale phonics') : { v: 0, u: 0 };
+      if (pu.v && String(pu.v) !== String(pv)) pu.u = 0;   // 단계와 지금 교재 권이 다르면 Unit 은 고르게
+      return (sb.level ? '<b>' + esc(sb.level) + '</b> ' : '') +
+        (pv ? cardLink(PHONICS_URL, 'Phonics', pv, pu.u, '파닉스카드') : '<button class="bd-chip tag" data-act="open" data-tab="info">파닉스카드</button>') + bar;
     }
-    return '레벨 <b>' + esc(sb.level) + '</b>' + bar;
+    var link = '';
+    if (SB_LEVELS.indexOf(String(sb.level)) >= 0) {
+      var vu = r ? bookVolUnit(r, String(sb.level)) : { v: 0, u: 0 };
+      link = ' ' + cardLink(SENTENCE_URL, String(sb.level), vu.v || 1, vu.v ? vu.u : 0, '센텐스카드');
+    }
+    return '레벨 <b>' + esc(sb.level) + '</b>' + link + bar;
   }
 
   function tableHtml(list) {
@@ -6041,11 +6092,11 @@ Views.board = (function () {
           '<td class="bd-prog"><div class="bd-chips">' + PROGRAMS.map(function (p) {
             return '<button class="bd-chip' + (r.programs[p[0]] ? ' on' : '') + '" data-act="prog" data-k="' + p[0] + '" title="' + p[1] + '" aria-pressed="' + !!r.programs[p[0]] + '">' + p[2] + '</button>';
           }).join('') + '</div></td>' +
-          '<td class="bd-sb">' + sbCell(sb) + '</td>' +
+          '<td class="bd-sb">' + sbCell(sb, r) + '</td>' +
           '<td class="bd-bk">' + cellBook(s, r) + '</td>' +
           '<td class="bd-mat">' + cellMat(r) + '</td>' +
           '<td class="bd-hw"><div class="hw">' +
-            '<button class="bd-tog' + (w.practice ? ' on' : '') + '" data-act="practice" aria-pressed="' + w.practice + '"><i></i>프랙티스북</button>' +
+            achHtml(r.current, 'pb', '프랙티스북') + achHtml(r.current, 'dt', '데일리테스트') +
             '<span class="bd-daily' + (w.daily >= 10 ? ' full' : '') + '" style="--p:' + (w.daily * 10) + '%">' +
               '<button class="plus" data-act="daily" data-n="1" aria-label="데일리시트 읽기 1회 추가">데일리시트 <b>' + w.daily + '/10</b></button>' +
               '<button class="minus" data-act="daily" data-n="-1" aria-label="1회 빼기">−</button></span>' +
@@ -6111,7 +6162,14 @@ Views.board = (function () {
       case 'open': openModal(sid, t.getAttribute('data-tab')); break;
       case 'prog': mutate(sid, function (r) { r.programs[k] = !r.programs[k]; }); break;
       case 'unit': mutate(sid, function (r) { r.current.done = Math.max(0, Math.min(r.current.total, r.current.done + n)); }); break;
-      case 'practice': mutate(sid, function (r) { setWk(r, { practice: !wk(r).practice }); }); break;
+      case 'ses': mutate(sid, function (r) {
+          var c = r.current, tot = num(c[k + 'Total']) || SESSIONS, before = num(c[k]);
+          c[k] = Math.max(0, Math.min(tot, before + n));
+          var w = wk(r), key = k === 'pb' ? 'pbN' : 'dtN', p = {};
+          p[key] = Math.max(0, num(w[key]) + (c[k] - before));   // 이번 주에 한 회차 수
+          if (k === 'pb') p.practice = p.pbN > 0;
+          setWk(r, p);
+        }); break;
       case 'daily': mutate(sid, function (r) { setWk(r, { daily: Math.max(0, Math.min(10, wk(r).daily + n)) }); }); break;
       case 'sp': mutate(sid, function (r) { var p = {}; p[k] = !wk(r)[k]; setWk(r, p); }); break;
       case 'ex': mutate(sid, function (r) { var w = wk(r); w.ex[k] = !w.ex[k]; setWk(r, { ex: w.ex }); }); break;
@@ -6166,12 +6224,16 @@ Views.board = (function () {
         '<div class="bd-grid3">' + fld('교재명', 'current.title', c.title, 'text', '예: Whale Phonics 2') +
           fld('완료 단원', 'current.done', c.done, 'number') + fld('전체 단원', 'current.total', c.total, 'number') + '</div>' +
         '<div class="form-grid">' + fld('시작일', 'current.start', c.start, 'date') + fld('다음 교재', 'current.next', c.next, 'text', '주문할 교재명') + '</div>' +
+        '<div class="bd-grid4">' + fld('프랙티스북 끝낸 회차', 'current.pb', num(c.pb), 'number') + fld('프랙티스북 전체 회차', 'current.pbTotal', num(c.pbTotal) || SESSIONS, 'number') +
+          fld('데일리테스트 끝낸 회차', 'current.dt', num(c.dt), 'number') + fld('데일리테스트 전체 회차', 'current.dtTotal', num(c.dtTotal) || SESSIONS, 'number') + '</div>' +
+        '<div class="bd-achrow">' + achHtml(c, 'pb', '프랙티스북') + achHtml(c, 'dt', '데일리테스트') + '</div>' +
         '<div class="row" style="justify-content:flex-start;gap:8px;flex-wrap:wrap"><button class="bd-tog' + (c.ordered ? ' on' : '') + '" data-act="ordered"><i></i>다음 교재 주문 완료</button>' + finishUi + '</div>' +
         '<p class="hint">진도가 ' + WARN + '%를 넘으면 노란색, ' + URGENT + '%를 넘으면 빨간색으로 바뀌고 대시보드와 이 화면 위쪽 주문 알림에 올라갑니다.</p>' +
       '</div></div>' +
       '<div class="bd-sec"><h4>지난 교재 히스토리</h4>' +
         (r.history.length ? '<div class="bd-list">' + r.history.map(function (h, i) { return { h: h, i: i }; }).reverse().map(function (x) {
-          return '<div class="li"><div class="grow"><b>' + esc(x.h.title) + '</b><span>' + esc(x.h.start || '?') + ' ~ ' + esc(x.h.end || '?') + '</span></div>' +
+          return '<div class="li"><div class="grow"><b>' + esc(x.h.title) + '</b><span>' + esc(x.h.start || '?') + ' ~ ' + esc(x.h.end || '?') +
+            (x.h.pb ? ' · 프랙티스북 ' + esc(x.h.pb) + ' · 데일리테스트 ' + esc(x.h.dt) : '') + '</span></div>' +
             '<button class="btn sm ghost" data-act="hdel" data-i="' + x.i + '">지우기</button></div>';
         }).join('') + '</div>' : '<p class="hint">완료 처리한 교재가 여기에 순서대로 쌓입니다.</p>') +
         '<div class="bd-grid3" style="align-items:end;margin-top:8px"><label class="fld">지난 교재 직접 추가<input id="bd-h-title" placeholder="교재명"></label>' +
@@ -6224,7 +6286,7 @@ Views.board = (function () {
       '<div class="bd-sec"><h4>최근 6주 숙제 기록</h4><div class="bd-log">' + recent.map(function (k) {
         var x = wk(r, k);
         var ex = EXTRAS.filter(function (e) { return x.ex[e[0]]; }).map(function (e) { return e[1]; });
-        return '<span>' + weekLabel(k) + '</span><span>프랙티스북 ' + (x.practice ? '✓' : '–') + ' · 데일리 ' + x.daily + '/10' +
+        return '<span>' + weekLabel(k) + '</span><span>프랙티스북 ' + (x.pbN ? x.pbN + '회' : (x.practice ? '✓' : '–')) + ' · 데일리테스트 ' + (x.dtN ? x.dtN + '회' : '–') + ' · 데일리시트 ' + x.daily + '/10' +
           (sp.erlt.on ? ' · ERLT ' + (x.erlt ? '✓' : '–') : '') + (ex.length ? ' · ' + ex.join(', ') + ' ✓' : '') + '</span>';
       }).join('') + '</div></div>';
   }
@@ -6283,8 +6345,9 @@ Views.board = (function () {
           modal.confirm = '';
           mutate(sid, function (r) {
             var c = r.current;
-            r.history.push({ title: c.title, start: c.start || '', end: U.ymd() });
-            r.current = { title: c.next || '', start: c.next ? U.ymd() : '', done: 0, total: c.next ? c.total : 0, next: '', ordered: false };
+            r.history.push({ title: c.title, start: c.start || '', end: U.ymd(), pb: ach(c, 'pb').d + '/' + ach(c, 'pb').t, dt: ach(c, 'dt').d + '/' + ach(c, 'dt').t });
+            r.current = { title: c.next || '', start: c.next ? U.ymd() : '', done: 0, total: c.next ? c.total : 0, next: '', ordered: false,
+              pb: 0, pbTotal: num(c.pbTotal) || SESSIONS, dt: 0, dtTotal: num(c.dtTotal) || SESSIONS };
           });
           UI.toast('교재를 히스토리로 옮겼습니다');
           paintModal(); return;

@@ -36,11 +36,19 @@ const SHOT = process.env.SHOT_DIR || '.';
   }, sid));
 
   // 공통 숙제
-  await p.click(`${row} [data-act="practice"]`);
+  for (let i = 0; i < 5; i++) await p.click(`${row} [data-act="ses"][data-k="pb"][data-n="1"]`);
+  for (let i = 0; i < 3; i++) await p.click(`${row} [data-act="ses"][data-k="dt"][data-n="1"]`);
+  await p.click(`${row} [data-act="ses"][data-k="dt"][data-n="-1"]`);
   for (let i = 0; i < 3; i++) await p.click(`${row} [data-act="daily"][data-n="1"]`);
   await p.click(`${row} [data-act="daily"][data-n="-1"]`);
+  const cur = await p.evaluate(s => Store.board(s).current, sid);
+  ok('프랙티스북 5/20 · 데일리테스트 2/20', cur.pb === 5 && cur.dt === 2, JSON.stringify(cur));
+  ok('성취율 25% · 10% 표시', (await p.locator(`${row} .bd-ach .pct`).allInnerTexts()).join(',') === '25%,10%');
   const w = await p.evaluate(s => { const r = Store.board(s); const k = Object.keys(r.hw)[0]; return r.hw[k]; }, sid);
-  ok('프랙티스북 체크 · 데일리 2회', w.practice === true && w.daily === 2, JSON.stringify(w));
+  ok('이번 주 기록 · 데일리시트 2회', w.pbN === 5 && w.dtN === 2 && w.daily === 2, JSON.stringify(w));
+  for (let i = 0; i < 20; i++) await p.click(`${row} [data-act="ses"][data-k="pb"][data-n="1"]`);
+  ok('20회차에서 멈춤 · 100%', await p.evaluate(s => Store.board(s).current.pb === 20, sid) && await p.locator(`${row} .bd-ach.full`).count() === 1);
+  ok('스마트보카 정확히 표기', (await p.locator(`${row} [data-act="prog"][data-k="sb"]`).innerText()).trim() === '스마트보카');
 
   // 상세 창 — 교재 등록
   await p.click(`${row} [data-act="open"][data-tab="book"]`); await p.waitForTimeout(300);
@@ -74,7 +82,8 @@ const SHOT = process.env.SHOT_DIR || '.';
   await p.click('.modal [data-act="finish-yes"]'); await p.waitForTimeout(300);
   const after = await p.evaluate(s => Store.board(s), sid);
   ok('완료 처리 → 다음 교재 시작', after.current.title === 'Whale Phonics 4' && after.current.done === 0 && !after.current.ordered);
-  ok('지난 교재 히스토리', after.history.length === 1 && after.history[0].title === 'Whale Phonics 3');
+  ok('지난 교재 히스토리 (성취율 함께)', after.history.length === 1 && after.history[0].title === 'Whale Phonics 3' && after.history[0].pb === '20/20');
+  ok('새 교재는 회차 0부터', after.current.pb === 0 && after.current.dt === 0);
 
   // 보유 교재 · 개인 숙제
   await p.click('.modal [data-act="tab"][data-t="mat"]');
@@ -95,6 +104,13 @@ const SHOT = process.env.SHOT_DIR || '.';
   await p.screenshot({ path: SHOT + '/board-modal.png' });
   await p.click('.modal [data-close]'); await p.waitForTimeout(300);
   ok('표에 파닉스 카드 · 단계 표시', (await p.locator(`${row} .bd-sb`).innerText()).includes('Phonics 3'));
+  const ph = await p.getAttribute(`${row} .bd-sb a.go`, 'href');
+  ok('파닉스카드 바로가기 (Phonics Vol.3)', /phonics\.html\?lv=Phonics&v=3/.test(ph || ''), ph);
+  // 센텐스카드 바로가기 — 240 vol.2 를 12/20 진도로 → Unit 3
+  await p.evaluate(s => { const r = Store.board(s); r.sbank = { track: 'sb', level: '240', done: 3, total: 10 }; r.current.title = '240 vol.2'; r.current.total = 20; r.current.done = 12; Store.saveBoard(r); }, sid);
+  await p.goto(BASE + '#/settings'); await p.goto(BASE + '#/board'); await p.waitForTimeout(500);
+  const sh = await p.getAttribute(`${row} .bd-sb a.go`, 'href');
+  ok('센텐스카드 바로가기 (240 · Vol.2 · Unit 3)', /survival\.html\?lv=240&v=2&u=3/.test(sh || ''), sh);
   ok('원서 칩·시험대비 칩 표에 표시', await p.locator(`${row} .bd-sp .bd-chip`).count() >= 3);
   await p.click(`${row} [data-act="ex"][data-k="exam"]`);
   ok('시험대비 이번 주 체크', await p.locator(`${row} [data-act="ex"][data-k="exam"].done`).count() === 1);
