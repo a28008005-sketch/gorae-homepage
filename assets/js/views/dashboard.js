@@ -39,6 +39,7 @@ Views.dashboard = (function () {
     { id: '860', color: '#c6002e', ink: '#fff' }, { id: '1240', color: '#00a9ec', ink: '#fff' },
     { id: '1680', color: '#283b8d', ink: '#fff' }
   ];
+  var PHONICS = 'https://a28008005-sketch.github.io/dailytest/cards/phonics.html';
   function survivalCard() {
     var rows = SURVIVAL_LV.map(function (l) {
       var vols = '';
@@ -56,6 +57,11 @@ Views.dashboard = (function () {
         '<p style="margin:0 0 12px;font-size:13px;line-height:1.6;color:#5d6b7a">교재 한 권을 끝낸 날, 레벨·권을 눌러 바로 시작하세요. 카드가 교재 순서대로 나오고 영어 질문 → 학생 대답 → 정답 음성 순서로 진행됩니다. ' +
         '학습패드에서는 처음 연 화면의 <b>📲 이 학습패드에 앱으로 설치</b> 버튼(아이패드는 사파리 공유 → 홈 화면에 추가)으로 홈 화면에 앱을 만들어 두면 됩니다.</p>' +
         rows +
+        // 파닉스 서바이벌 카드 (2026-11-07)
+        '<div class="row" style="gap:6px;margin-top:4px">' +
+          '<span style="display:inline-block;min-width:58px;text-align:center;border-radius:999px;padding:4px 10px;font-weight:800;font-size:13px;background:#3cc46b;color:#fff">파닉스</span>' +
+          [1, 2, 3, 4, 5, 6].map(function (v) { return '<a class="btn sm" target="_blank" rel="noopener" href="' + PHONICS + '?lv=Phonics&v=' + v + '">Vol.' + v + '</a>'; }).join('') +
+        '</div>' +
       '</div></div>';
   }
 

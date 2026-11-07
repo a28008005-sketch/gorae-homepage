@@ -94,7 +94,7 @@ const SHOT = process.env.SHOT_DIR || '.';
   ok('파닉스 카드 과정으로 전환', await p.evaluate(s => { const b = Store.board(s).sbank; return b.track === 'pc' && b.level === 'Phonics 3'; }, sid));
   await p.screenshot({ path: SHOT + '/board-modal.png' });
   await p.click('.modal [data-close]'); await p.waitForTimeout(300);
-  ok('표에 파닉스 카드 · 카드 준비 중 표시', (await p.locator(`${row} .bd-sb`).innerText()).includes('카드 준비 중'));
+  ok('표에 파닉스 카드 · 단계 표시', (await p.locator(`${row} .bd-sb`).innerText()).includes('Phonics 3'));
   ok('원서 칩·시험대비 칩 표에 표시', await p.locator(`${row} .bd-sp .bd-chip`).count() >= 3);
   await p.click(`${row} [data-act="ex"][data-k="exam"]`);
   ok('시험대비 이번 주 체크', await p.locator(`${row} [data-act="ex"][data-k="exam"].done`).count() === 1);

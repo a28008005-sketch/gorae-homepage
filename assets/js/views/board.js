@@ -16,6 +16,8 @@ Views.board = (function () {
   var MAT_TYPES = ['부교재', '예습', '복습', '문법', '단어', '기타'];
   var EXTRAS = [['news', '영자신문'], ['gram', '문법'], ['read', '독해'], ['voca', '단어'], ['exam', '시험대비']];
   var WARN = 80, URGENT = 90;
+  // 파닉스 서바이벌 카드 (dailytest 저장소 cards/phonics.html, 2026-11-07)
+  var PHONICS_URL = 'https://a28008005-sketch.github.io/dailytest/cards/phonics.html';
   var STATE_LABEL = { ok: '진행 중', warn: '주문 준비', urgent: '지금 주문', ordered: '주문 완료' };
 
   var week = mondayOf(new Date());
@@ -232,9 +234,11 @@ Views.board = (function () {
     var bar = sb.total ? ' <span class="muted">' + sb.done + '/' + sb.total + '</span><div class="bd-bar"><i style="width:' +
       Math.min(100, Math.round(sb.done / sb.total * 100)) + '%"></i></div>' : '';
     if (pc) {
-      return '<button class="bd-chip tag" data-act="open" data-tab="info">파닉스 카드</button>' +
-        (sb.level ? ' <b>' + esc(sb.level) + '</b>' : '') +
-        (bar || '<div class="muted">카드 준비 중</div>');
+      var pv = (/(\d)/.exec(sb.level || '') || [])[1];
+      return (pv
+          ? '<a class="bd-chip tag" target="_blank" rel="noopener" href="' + PHONICS_URL + '?lv=Phonics&v=' + pv + '" title="파닉스 서바이벌 카드 Vol.' + pv + ' 열기">파닉스 카드 ▶</a>'
+          : '<button class="bd-chip tag" data-act="open" data-tab="info">파닉스 카드</button>') +
+        (sb.level ? ' <b>' + esc(sb.level) + '</b>' : '') + bar;
     }
     return '레벨 <b>' + esc(sb.level) + '</b>' + bar;
   }
@@ -354,7 +358,7 @@ Views.board = (function () {
       '<div class="bd-sec"><h4>센텐스뱅크 · 파닉스 카드</h4>' +
         '<div class="seg" style="margin-bottom:10px"><button class="' + (r.sbank.track !== 'pc' ? 'on' : '') + '" data-act="track" data-k="sb">센텐스뱅크</button>' +
         '<button class="' + (r.sbank.track === 'pc' ? 'on' : '') + '" data-act="track" data-k="pc">파닉스 카드</button></div>' +
-        (r.sbank.track === 'pc' ? '<p class="hint" style="margin:0 0 8px">파닉스 단계 학생은 센텐스뱅크 대신 파닉스 카드로 진행합니다. 카드가 준비되면 전체 카드 수를 넣어 주세요.</p>' : '') +
+        (r.sbank.track === 'pc' ? '<p class="hint" style="margin:0 0 8px">파닉스 단계 학생은 센텐스뱅크 대신 파닉스 서바이벌 카드로 진행합니다. 표의 「파닉스 카드 ▶」를 누르면 그 권의 카드가 열립니다. 완료/전체는 끝낸 Unit 수(전체 4)로 적어도 됩니다.</p>' : '') +
         '<div class="bd-grid3">' +
         (r.sbank.track === 'pc'
           ? fld('파닉스 단계', 'sbank.level', r.sbank.level, 'text', '예: Phonics 3') + fld('완료 카드', 'sbank.done', r.sbank.done, 'number') + fld('전체 카드', 'sbank.total', r.sbank.total, 'number')
