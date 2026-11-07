@@ -6945,12 +6945,17 @@ Views.board = (function () {
 
   /* ---------- 웨일튜터 한눈에 (날짜 × 학생 색칸) ---------- */
   var DOW = ['일', '월', '화', '수', '목', '금', '토'];
+  function localTime(iso) {
+    var d = new Date(iso);
+    if (isNaN(d)) return String(iso || '');
+    return (d.getMonth() + 1) + '월 ' + d.getDate() + '일 ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
   function heatHtml(list) {
     var recs = list.map(function (s) { return { s: s, r: rec(s.id) }; });
     var withWt = recs.filter(function (x) { return x.r.wt && x.r.wt.days; });
     var at = WT.lastImport();
     var head = '<div class="bd-hmtop"><div><b>웨일튜터 한눈에</b><span class="muted"> · 최근 수업일 20일, 칸 색은 그날 AI 테스트 점수 · ' +
-      (at ? '마지막 가져온 시각 ' + esc(at.slice(0, 16).replace('T', ' ')) : '아직 가져온 기록이 없습니다') + '</span></div>' +
+      (at ? '마지막 가져온 시각 ' + esc(localTime(at)) : '아직 가져온 기록이 없습니다') + '</span></div>' +
       '<div class="seg"><button class="' + (hmSort === 'worry' ? 'on' : '') + '" data-act="hmsort" data-k="worry">챙길 학생 먼저</button>' +
       '<button class="' + (hmSort === 'class' ? 'on' : '') + '" data-act="hmsort" data-k="class">반 순서</button></div></div>';
     if (!withWt.length) return '<div class="bd-tablebox bd-hmbox">' + head +
@@ -7004,7 +7009,7 @@ Views.board = (function () {
     var w = UI.modal({ title: '웨일튜터 기록 가져오기', wide: true, body:
       '<div class="bd-import">' +
         '<p>본사 웨일튜터 관리자 화면의 <b>학습현황</b>(AI 테스트 · 데일리테스트 · 프랙티스북)을 최근 ' + 120 + '일치 한 번에 가져옵니다. ' +
-          '가져온 기록은 다른 선생님 기기에도 그대로 보입니다. ' + (at ? '<br>마지막으로 가져온 시각: <b>' + esc(at.slice(0, 16).replace('T', ' ')) + '</b>' : '') + '</p>' +
+          '가져온 기록은 다른 선생님 기기에도 그대로 보입니다. ' + (at ? '<br>마지막으로 가져온 시각: <b>' + esc(localTime(at)) + '</b>' : '') + '</p>' +
         '<ol>' +
           '<li><b>처음 한 번만</b> — 아래 고래 버튼을 브라우저 <b>북마크바로 끌어다 놓으세요.</b> (북마크바가 안 보이면 Ctrl + Shift + B)</li>' +
           '<li>웨일튜터 관리자(whale.cloubot.com)에 로그인합니다.</li>' +
