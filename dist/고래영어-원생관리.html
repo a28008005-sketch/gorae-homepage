@@ -5780,7 +5780,7 @@ Views.dashboard = (function () {
 /* ===== 학습 현황판 (2026-11-07 추가) =====
  * 학생 명부의 등록생을 한 표로 보고, 학생마다
  *  - 웨일 프로그램 사용 여부 (웨일스튜던트 · 웨일튜터 3종 · 이북 · 스마트보카)
- *  - 센텐스뱅크 레벨·진도
+ *  - 센텐스뱅크 레벨·진도 (파닉스 단계 학생은 '파닉스 카드' 과정 — 센텐스뱅크처럼 카드로 진행, 2026-11-07)
  *  - 본사 교재 진도와 다음 교재 주문 알림 (80% 노랑 · 90% 빨강 · 주문완료 파랑)
  *  - 보유 교재 (부교재·예습·복습·문법·단어)
  *  - 주간 공통 숙제 (프랙티스북 · 데일리시트 10회) 와 개인 숙제 (ERLT · 원서 2권 · 추가 과제)
@@ -5824,7 +5824,7 @@ Views.board = (function () {
 
   /* ---------- 기록 ---------- */
   function blank(sid) {
-    return { studentId: sid, tutorId: '', tutorPw: '', programs: {}, sbank: { level: '', done: 0, total: 0 },
+    return { studentId: sid, tutorId: '', tutorPw: '', programs: {}, sbank: { track: 'sb', level: '', done: 0, total: 0 },
       current: { title: '', start: '', done: 0, total: 0, next: '', ordered: false },
       history: [], materials: [], special: { erlt: { on: false, book: '' }, wonseo: { on: false }, extras: {} },
       hw: {}, memo: '' };
@@ -6004,11 +6004,25 @@ Views.board = (function () {
     return '<div class="bd-chips">' + out.join('') + '</div>';
   }
 
+  /** 센텐스뱅크 · 파닉스 카드 칸 */
+  function sbCell(sb) {
+    var pc = sb.track === 'pc';
+    if (!sb.level && !pc) return '<button class="bd-chip ghost" data-act="open" data-tab="info">+ 레벨</button>';
+    var bar = sb.total ? ' <span class="muted">' + sb.done + '/' + sb.total + '</span><div class="bd-bar"><i style="width:' +
+      Math.min(100, Math.round(sb.done / sb.total * 100)) + '%"></i></div>' : '';
+    if (pc) {
+      return '<button class="bd-chip tag" data-act="open" data-tab="info">파닉스 카드</button>' +
+        (sb.level ? ' <b>' + esc(sb.level) + '</b>' : '') +
+        (bar || '<div class="muted">카드 준비 중</div>');
+    }
+    return '레벨 <b>' + esc(sb.level) + '</b>' + bar;
+  }
+
   function tableHtml(list) {
     if (!roster().length) return UI.emptyBox('학생 명부에 등록생이 없습니다. 학생 명부에서 먼저 학생을 등록해 주세요.', 'students');
     if (!list.length) return UI.emptyBox('조건에 맞는 학생이 없습니다. 검색어나 반 선택을 확인해 주세요.', 'search');
     return '<div class="bd-tablebox"><table class="bd-table"><thead><tr>' +
-      '<th class="bd-sticky">학생</th><th>웨일 프로그램</th><th>센텐스뱅크</th><th>본사 교재 진도</th><th>보유 교재</th><th>공통 숙제</th><th>개인 숙제</th>' +
+      '<th class="bd-sticky">학생</th><th>웨일 프로그램</th><th>센텐스뱅크 · 파닉스 카드</th><th>본사 교재 진도</th><th>보유 교재</th><th>공통 숙제</th><th>개인 숙제</th>' +
       '</tr></thead><tbody>' +
       list.map(function (s) {
         var r = rec(s.id), w = wk(r), b = bookState(r), sb = r.sbank;
@@ -6017,9 +6031,7 @@ Views.board = (function () {
           '<td class="bd-prog"><div class="bd-chips">' + PROGRAMS.map(function (p) {
             return '<button class="bd-chip' + (r.programs[p[0]] ? ' on' : '') + '" data-act="prog" data-k="' + p[0] + '" title="' + p[1] + '" aria-pressed="' + !!r.programs[p[0]] + '">' + p[2] + '</button>';
           }).join('') + '</div></td>' +
-          '<td class="bd-sb">' + (sb.level
-            ? '레벨 <b>' + esc(sb.level) + '</b>' + (sb.total ? ' <span class="muted">' + sb.done + '/' + sb.total + '</span><div class="bd-bar"><i style="width:' + Math.min(100, Math.round(sb.done / sb.total * 100)) + '%"></i></div>' : '')
-            : '<button class="bd-chip ghost" data-act="open" data-tab="info">+ 레벨</button>') + '</td>' +
+          '<td class="bd-sb">' + sbCell(sb) + '</td>' +
           '<td class="bd-bk">' + cellBook(s, r) + '</td>' +
           '<td class="bd-mat">' + cellMat(r) + '</td>' +
           '<td class="bd-hw"><div class="hw">' +
@@ -6118,8 +6130,14 @@ Views.board = (function () {
       '<div class="bd-sec"><h4>웨일 프로그램 사용</h4><div class="bd-bigtogs">' + PROGRAMS.map(function (p) {
         return '<button class="bd-tog' + (r.programs[p[0]] ? ' on' : '') + '" data-act="prog" data-k="' + p[0] + '"><i></i>' + p[1] + '</button>';
       }).join('') + '</div></div>' +
-      '<div class="bd-sec"><h4>센텐스뱅크</h4><div class="bd-grid3">' +
-        fld('레벨', 'sbank.level', r.sbank.level, 'text', '예: 240') + fld('완료 단원', 'sbank.done', r.sbank.done, 'number') + fld('전체 단원', 'sbank.total', r.sbank.total, 'number') +
+      '<div class="bd-sec"><h4>센텐스뱅크 · 파닉스 카드</h4>' +
+        '<div class="seg" style="margin-bottom:10px"><button class="' + (r.sbank.track !== 'pc' ? 'on' : '') + '" data-act="track" data-k="sb">센텐스뱅크</button>' +
+        '<button class="' + (r.sbank.track === 'pc' ? 'on' : '') + '" data-act="track" data-k="pc">파닉스 카드</button></div>' +
+        (r.sbank.track === 'pc' ? '<p class="hint" style="margin:0 0 8px">파닉스 단계 학생은 센텐스뱅크 대신 파닉스 카드로 진행합니다. 카드가 준비되면 전체 카드 수를 넣어 주세요.</p>' : '') +
+        '<div class="bd-grid3">' +
+        (r.sbank.track === 'pc'
+          ? fld('파닉스 단계', 'sbank.level', r.sbank.level, 'text', '예: Phonics 3') + fld('완료 카드', 'sbank.done', r.sbank.done, 'number') + fld('전체 카드', 'sbank.total', r.sbank.total, 'number')
+          : fld('레벨', 'sbank.level', r.sbank.level, 'text', '예: 240') + fld('완료 단원', 'sbank.done', r.sbank.done, 'number') + fld('전체 단원', 'sbank.total', r.sbank.total, 'number')) +
       '</div></div>' +
       '<div class="bd-sec"><h4>현황판 메모</h4><label class="fld"><textarea id="bd-f-memo" data-f="memo" rows="3" placeholder="교재·숙제 관련 특이사항">' + esc(r.memo) + '</textarea></label>' +
         '<p class="hint">이름·반·연락처는 학생 명부에서 고칩니다.</p></div>';
@@ -6279,6 +6297,7 @@ Views.board = (function () {
         case 'mfin': mutate(sid, function (r) { r.materials[i].finished = !r.materials[i].finished; }); paintModal(); return;
         case 'mdel': mutate(sid, function (r) { r.materials.splice(i, 1); }); paintModal(); return;
         case 'cfg': mutate(sid, function (r) { r.special[t.getAttribute('data-k')].on = !r.special[t.getAttribute('data-k')].on; }); paintModal(); return;
+        case 'track': mutate(sid, function (r) { r.sbank.track = t.getAttribute('data-k'); }); paintModal(); return;
         case 'cfgx': mutate(sid, function (r) { var k = t.getAttribute('data-k'); r.special.extras[k] = !r.special.extras[k]; }); paintModal(); return;
       }
       handle(act, t, sid);
