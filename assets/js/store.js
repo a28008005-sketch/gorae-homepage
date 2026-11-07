@@ -74,7 +74,8 @@ var Store = (function () {
     newsProgress: [], // 학생별 영자신문 진도 (기사마다 진행중·완료)
     grades: [],       // 시험 성적 (본사 성적 목록에서 가져온 기록)
     counsels: [],     // 학생별 상담 이력 (후속 상담으로 이어집니다)
-    points: []        // 고래 포인트 — 보카 앱 적립(워커가 넣음)과 원장님 사용·적립 한 줄씩
+    points: [],       // 고래 포인트 — 보카 앱 적립(워커가 넣음)과 원장님 사용·적립 한 줄씩
+    boards: []        // 학습 현황판 — 학생 1명당 1줄 (웨일 프로그램·본사 교재·보유 교재·주간 숙제)
   };
 
   var data = null;
@@ -88,7 +89,8 @@ var Store = (function () {
     homework: 'homeworks', submission: 'submissions',
     vocab: 'vocabLogs', book: 'books', loan: 'loans',
     resource: 'resources', news: 'newsItems', newsprog: 'newsProgress',
-    grade: 'grades', counsel: 'counsels', point: 'points'
+    grade: 'grades', counsel: 'counsels', point: 'points',
+    board: 'boards'
   };
 
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
@@ -331,6 +333,7 @@ var Store = (function () {
     kill(d.newsProgress, 'newsprog', function (x) { return x.studentId === id; });
     kill(d.grades, 'grade', function (g) { return g.studentId === id; });
     kill(d.counsels, 'counsel', function (c) { return c.studentId === id; });
+    kill(d.boards, 'board', function (b) { return b.studentId === id; });
     save(changed);
   }
   /** 특정 요일에 수업이 있는 등록생 */
@@ -1502,6 +1505,27 @@ var Store = (function () {
     return recs.map(function (r) { return { kind: r.kind, id: r.id }; });
   }
 
+  /* ---------- 학습 현황판 (학생 1명당 1줄, id = 학생 id) ---------- */
+  function board(studentId) {
+    var list = get().boards || (get().boards = []);
+    for (var i = 0; i < list.length; i++) if (list[i].id === studentId && !list[i].deleted) return list[i];
+    return null;
+  }
+  /** 바뀐 현황판 기록을 저장합니다. 없으면 새로 만듭니다. */
+  function saveBoard(rec) {
+    var d = get();
+    if (!d.boards) d.boards = [];
+    rec.id = rec.studentId;
+    var found = null;
+    for (var i = 0; i < d.boards.length; i++) if (d.boards[i].id === rec.id) { found = d.boards[i]; break; }
+    if (found && found !== rec) { Object.keys(found).forEach(function (k) { delete found[k]; }); Object.assign(found, rec); rec = found; }
+    if (!found) d.boards.push(rec);
+    if (rec.deleted) delete rec.deleted;
+    stamp(rec);
+    save({ kind: 'board', id: rec.id });
+    return rec;
+  }
+
   /* ---------- 백업 / 복원 ---------- */
   function exportJson() { return JSON.stringify(get(), null, 2); }
   function importJson(text) {
@@ -1632,6 +1656,7 @@ var Store = (function () {
     summarize: summarize, dayOverview: dayOverview,
     exportJson: exportJson, importJson: importJson, resetAll: resetAll, saveAcademy: saveAcademy,
     markOnce: markOnce,
+    board: board, saveBoard: saveBoard,
     migratePatrols: migratePatrols, migrateSite: migrateSite,
     migrateAttitudes: migrateAttitudes
   };

@@ -269,6 +269,9 @@ Views.dashboard = (function () {
       // 주요 현황 요약 (상단)
       mainCards() +
 
+      // 본사 교재 주문 알림 (학습 현황판, 2026-11-07 추가)
+      (Views.board ? Views.board.dashboardCard() : '') +
+
       // 센텐스뱅크 서바이벌 영상 바로가기
       survivalCard() +
 

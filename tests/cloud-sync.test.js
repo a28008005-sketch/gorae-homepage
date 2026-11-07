@@ -112,6 +112,24 @@ const ok = (label, cond, extra='') => console.log(`  ${cond ? '✓' : '✗ 실�
   const bPay = await B.evaluate(() => Store.payments({}).length);
   ok('B 기기: 수강료 기록도 수신', bPay > 0, bPay + '건');
 
+  // 학습 현황판 (2026-11-07) — A 에서 체크한 교재·숙제가 B 에 그대로 보이는지
+  const bdSid = await A.evaluate(() => {
+    const s = Store.students({ active: true })[0];
+    Store.saveBoard({ studentId: s.id, programs: { ws: true }, current: { title: 'Whale Phonics 3', total: 20, done: 19, next: 'Whale Phonics 4', ordered: false } });
+    return s.id;
+  });
+  await A.evaluate(() => Sync.syncNow()); await A.waitForTimeout(900);
+  await B.evaluate(() => Sync.syncNow()); await B.waitForTimeout(900);
+  const bBoard = await B.evaluate((sid) => Store.board(sid), bdSid);
+  ok('A → B 학습 현황판 전파', !!(bBoard && bBoard.programs.ws && bBoard.current.done === 19), bBoard ? bBoard.current.title : '없음');
+  await B.goto(BASE + '#/board', { waitUntil: 'domcontentloaded' }); await B.waitForTimeout(600);
+  await B.evaluate(() => UI.close());
+  await B.click(`tr[data-sid="${bdSid}"] [data-act="ordered"]`).catch(() => B.click(`.bd-orders [data-sid="${bdSid}"]`));
+  await B.evaluate(() => Sync.syncNow()); await B.waitForTimeout(900);
+  await A.evaluate(() => Sync.syncNow()); await A.waitForTimeout(900);
+  ok('B → A 주문완료 전파', await A.evaluate((sid) => Store.board(sid).current.ordered === true, bdSid));
+  await B.goto(BASE + '#/dashboard', { waitUntil: 'domcontentloaded' }); await B.waitForTimeout(300);
+
   // ============ 양방향 전파 ============
   // B가 새 학생 등록 -> A가 받는지
   await B.evaluate(() => Store.saveStudent({ name: '한소원', grade: '중3', status: '등록생', days: ['화','목'], time: '7시' }));
