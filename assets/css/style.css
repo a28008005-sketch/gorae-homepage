@@ -735,7 +735,7 @@ div.fld input[type=file]{font-size:13px;color:var(--ink);font-weight:400}
 .np-trash{margin-top:10px;display:flex;justify-content:flex-end}
 
 /* ---------- 학습 현황판 (2026-11-07) ---------- */
-.bd-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.bd-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .bd-stat{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:13px 16px;display:flex;flex-direction:column;gap:2px;text-align:left;font:inherit;color:inherit}
 .bd-stat span{color:var(--muted);font-size:12.5px}
 .bd-stat b{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.2}
@@ -822,6 +822,7 @@ tr.s-warn .bd-name{border-left-color:var(--warn)} tr.s-urgent .bd-name{border-le
 .bd-sp{min-width:220px;max-width:300px}
 .bd-legend{display:flex;flex-wrap:wrap;gap:6px 16px;color:var(--muted);font-size:12.5px;margin:0}
 .bd-legend span{display:inline-flex;align-items:center;gap:6px}
+.bd-count{margin:0;text-align:right;color:var(--muted);font-size:12.5px;font-variant-numeric:tabular-nums}
 .bd-legend i{width:10px;height:10px;border-radius:3px;display:inline-block}
 
 /* 학생 상세 창 */

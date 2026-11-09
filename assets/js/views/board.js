@@ -192,7 +192,7 @@ Views.board = (function () {
   function title() { return '학습 현황판'; }
   function sub() {
     var n = orderList(['urgent', 'warn']).length;
-    return '등록생 ' + roster().length + '명' + (n ? ' · 교재 주문 필요 ' + n + '명' : '');
+    return n ? '교재 주문 필요 ' + n + '명' : '학생별 교재 · 숙제 · 웨일 프로그램';
   }
 
   function statsHtml(list) {
@@ -212,7 +212,6 @@ Views.board = (function () {
     var warn = st.filter(function (k) { return k === 'warn'; }).length;
     var ord = st.filter(function (k) { return k === 'ordered'; }).length;
     return '<div class="bd-stats">' +
-      '<div class="bd-stat"><span>등록생</span><b>' + list.length + '</b><small>학생 명부 기준</small></div>' +
       '<button class="bd-stat" data-act="mode" data-k="wt"><span>웨일튜터 AI 테스트 평균</span><b>' + (aiAvg == null ? '–' : aiAvg + '<small>%</small>') + '</b>' +
         '<small>프랙티스북 ' + pbAvg + '% · 데일리테스트 ' + dtAvg + '% (나간 회차 기준) · 눌러서 한눈에 보기</small></button>' +
       '<button class="bd-stat' + (urg ? ' bad' : warn ? ' warn' : '') + (filter.alertOnly ? ' on' : '') + '" data-act="alertonly">' +
@@ -396,7 +395,8 @@ Views.board = (function () {
     var list = visible();
     var all = roster();
     el.innerHTML = '<div class="stack bd">' + statsHtml(all) + ordersHtml() + toolsHtml() +
-      (mode === 'wt' ? heatHtml(list) : tableHtml(list) + legendHtml()) + '</div>';
+      (mode === 'wt' ? heatHtml(list) : tableHtml(list) + legendHtml()) +
+      (all.length ? '<p class="bd-count">등록생 ' + all.length + '명 · 학생 명부 기준</p>' : '') + '</div>';
     bind(el);
     // 다른 선생님 기기에서 바뀐 내용이 들어오면 열린 상세 창도 맞춰 줍니다 (입력 중일 땐 건드리지 않음).
     if (!typing && modal.wrap && modal.wrap.parentNode) {
