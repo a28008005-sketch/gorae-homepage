@@ -952,6 +952,11 @@ tr.s-warn .bd-name{border-left-color:var(--warn)} tr.s-urgent .bd-name{border-le
 .sv-live{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:#296b4d;font-weight:700}
 .sv-live i{width:8px;height:8px;border-radius:50%;background:#2e7a57;box-shadow:0 0 0 0 rgba(46,122,87,.5);animation:svpulse 2s infinite}
 @keyframes svpulse{0%{box-shadow:0 0 0 0 rgba(46,122,87,.45)}70%{box-shadow:0 0 0 8px rgba(46,122,87,0)}100%{box-shadow:0 0 0 0 rgba(46,122,87,0)}}
+/* 웨일튜터 자동 가져오기 표시 (2026-11-10) */
+.bd-wtauto{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:6px}
+#bd-wtauto{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:#296b4d;font-weight:700}
+#bd-wtauto i{width:8px;height:8px;border-radius:50%;background:#2e7a57;animation:svpulse 2s infinite}
+#bd-wtauto i.off{background:var(--bad);animation:none}
 
 </style>
 </head>
@@ -5396,7 +5401,7 @@ var WT = (function () {
         (rowsById[id] = rowsById[id] || {})[date] = x.slice(1);
       });
     });
-    var res = { matched: 0, rows: 0, switched: [], missing: [], unknown: [] };
+    var res = { matched: 0, rows: 0, fresh: 0, saved: 0, switched: [], missing: [], unknown: [] };
     var used = {};
     var cut = ymdAgo(KEEP_DAYS);
     roster.forEach(function (st) {
@@ -5412,7 +5417,13 @@ var WT = (function () {
       used[id] = 1;
       var wt = r.wt || {};
       var days = Object.assign({}, wt.days || {});
-      Object.keys(rowsById[id] || {}).forEach(function (d) { days[d] = rowsById[id][d]; res.rows++; });
+      var changed = 0;
+      Object.keys(rowsById[id] || {}).forEach(function (d) {
+        if (JSON.stringify(days[d]) !== JSON.stringify(rowsById[id][d])) changed++;
+        days[d] = rowsById[id][d]; res.rows++;
+      });
+      res.fresh += changed;
+      var sameBook = (s[2] || wt.book || '') === (wt.book || '') && !!r.tutorId;
       Object.keys(days).forEach(function (d) { if (d < cut) delete days[d]; });
       r.wt = { id: s[0], book: s[2] || wt.book || '', bookName: s[3] || '', start: s[4] || wt.start || '', at: p.at || new Date().toISOString(), days: days };
       if (wt.done && wt.done === r.wt.book) r.wt.done = wt.done;   // 이미 레벨 종료한 교재 — 새 교재가 배정되기 전까지 그대로
@@ -5435,8 +5446,11 @@ var WT = (function () {
         if (info.phonics) { r.sbank.track = 'pc'; if (!/\d/.test(r.sbank.level || '') || bookFromTitle(r.sbank.level) !== 'WE-L0V' + info.vol) r.sbank.level = 'Phonics ' + info.vol; }
         else { r.sbank.track = 'sb'; r.sbank.level = info.level; }
       }
-      Store.saveBoard(r);
       res.matched++;
+      // 자동 가져오기는 바뀐 학생만 저장합니다 (기기마다 같은 기록을 계속 올리지 않게)
+      if (opts.quiet && !changed && sameBook && wt.days) return;
+      Store.saveBoard(r);
+      res.saved++;
     });
     (p.students || []).forEach(function (s) { if (!used[String(s[0]).toLowerCase()] && rowsById[String(s[0]).toLowerCase()]) res.unknown.push(s[1]); });
     try { localStorage.setItem('gorae-wt-last', JSON.stringify({ at: p.at, matched: res.matched, rows: res.rows })); } catch (e) {}
@@ -6558,6 +6572,7 @@ Views.board = (function () {
       (mode === 'wt' ? heatHtml(list) : tableHtml(list) + legendHtml()) +
       (all.length ? '<p class="bd-count">등록생 ' + all.length + '명 · 학생 명부 기준</p>' : '') + '</div>';
     bind(el);
+    wtAutoStart(); wtPull(false);   // 웨일튜터 자동 가져오기 (1분에 한 번까지)
     // 다른 선생님 기기에서 바뀐 내용이 들어오면 열린 상세 창도 맞춰 줍니다 (입력 중일 땐 건드리지 않음).
     if (!typing && modal.wrap && modal.wrap.parentNode) {
       var a = document.activeElement;
@@ -6605,6 +6620,7 @@ Views.board = (function () {
       case 'mode': mode = k; render(viewEl); break;
       case 'hmsort': hmSort = k; render(viewEl); break;
       case 'wtimport': openImport(); break;
+      case 'wtnow': wtRefreshNow(); break;
       case 'ses': mutate(sid, function (r) {
           var c = r.current, tot = num(c[k + 'Total']) || SESSIONS, before = num(c[k]);
           c[k] = Math.max(0, Math.min(tot, before + n));
@@ -6965,7 +6981,8 @@ Views.board = (function () {
     var withWt = recs.filter(function (x) { return x.r.wt && x.r.wt.days; });
     var at = WT.lastImport();
     var head = '<div class="bd-hmtop"><div><b>웨일튜터 한눈에</b><span class="muted"> · 최근 수업일 20일, 칸 색은 그날 AI 테스트 점수 · ' +
-      (at ? '마지막 가져온 시각 ' + esc(localTime(at)) : '아직 가져온 기록이 없습니다') + '</span></div>' +
+      (at ? '마지막 반영 ' + esc(localTime(at)) : '아직 가져온 기록이 없습니다') + '</span>' +
+      (wtAutoOk() ? '<div class="bd-wtauto"><span id="bd-wtauto">' + autoLabel() + '</span><button class="btn sm" data-act="wtnow">지금 새로 받기</button></div>' : '') + '</div>' +
       '<div class="seg"><button class="' + (hmSort === 'worry' ? 'on' : '') + '" data-act="hmsort" data-k="worry">챙길 학생 먼저</button>' +
       '<button class="' + (hmSort === 'class' ? 'on' : '') + '" data-act="hmsort" data-k="class">반 순서</button></div></div>';
     if (!withWt.length) return '<div class="bd-tablebox bd-hmbox">' + head +
@@ -7040,6 +7057,72 @@ Views.board = (function () {
       try { navigator.clipboard.writeText(v).then(function () { UI.toast('주소를 복사했습니다'); }, function () { UI.toast('복사가 막혔습니다. 노트북에서 해 주세요', true); }); } catch (e) { UI.toast('복사가 막혔습니다', true); }
     };
   }
+  /* ---------- 웨일튜터 자동 가져오기 (2026-11-10) ----------
+   * 숙제 영상 워커가 수업 시간에 10분마다 웨일튜터 학습현황을 받아 둡니다.
+   * 현황판이 열려 있으면 3분마다 그 기록을 가져와, 바뀐 학생만 저장합니다. */
+  var WT_AUTO_MS = 3 * 60 * 1000;
+  var wtAuto = { busy: false, last: 0, server: '', error: '', timer: null };
+  function wtAutoOk() {
+    if (!/^https?:$/.test(location.protocol) || (window.GORAE_LOCAL_ONLY && !window.GORAE_WT_AUTO)) return false;
+    return !(window.Sync && Sync.isCloud && Sync.isCloud() && !Sync.signedIn());
+  }
+  function wtSince() {
+    var at = WT.lastImport();
+    if (!at) return '';
+    var d = new Date(new Date(at).getTime() - 4 * 864e5);
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+  function wtPull(force) {
+    if (wtAuto.busy || !wtAutoOk()) return Promise.resolve(null);
+    if (!force && Date.now() - wtAuto.last < 60000) return Promise.resolve(null);
+    wtAuto.busy = true;
+    var since = wtSince();
+    return fetch('/hw/admin/api/wt' + (since ? '?since=' + since : ''), { credentials: 'same-origin', cache: 'no-store' })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok || j.ok === false) throw new Error(j.error || ('서버 ' + r.status)); return j; }); })
+      .then(function (j) {
+        wtAuto.last = Date.now(); wtAuto.server = j.at || ''; wtAuto.error = '';
+        if (!j.students || !j.students.length) return null;
+        var res = WT.importPayload(j, { quiet: true });
+        if (res.fresh) UI.toast('웨일튜터 새 기록 ' + res.fresh + '건 반영');
+        if (res.switched.length) UI.toast('교재가 바뀐 학생: ' + res.switched.join(', '));
+        return res;
+      })
+      .catch(function (e) { wtAuto.error = e.message; wtAuto.last = Date.now(); return null; })
+      .then(function (res) {
+        wtAuto.busy = false;
+        if (location.hash.indexOf('#/board') === 0 && !document.querySelector('.modal-wrap')) {
+          if (res && (res.fresh || res.switched.length)) refresh(); else paintAuto();
+        }
+        return res;
+      });
+  }
+  function paintAuto() {
+    var b = viewEl && viewEl.querySelector('#bd-wtauto');
+    if (b) b.innerHTML = autoLabel();
+  }
+  function autoLabel() {
+    if (!wtAutoOk()) return '';
+    if (wtAuto.error) return '<i class="off"></i>자동 연결 확인 필요 · ' + esc(wtAuto.error);
+    if (!wtAuto.last) return '<i></i>자동 연결 · 확인 중…';
+    return '<i></i>자동 연결 · 웨일튜터 ' + (wtAuto.server ? esc(localTime(wtAuto.server)) + ' 받음' : '아직 받은 기록 없음') +
+      ' · 현황판 ' + esc(localTime(new Date(wtAuto.last).toISOString()).replace(/^\d+월 \d+일 /, '')) + ' 확인';
+  }
+  function wtAutoStart() {
+    if (wtAuto.timer || !wtAutoOk()) return;
+    wtAuto.timer = setInterval(function () {
+      if (location.hash.indexOf('#/board') !== 0) return;
+      if (document.hidden) return;
+      wtPull(false);
+    }, WT_AUTO_MS);
+  }
+  function wtRefreshNow() {
+    UI.toast('웨일튜터에서 지금 받아 오는 중… (처음이면 1분쯤 걸려요)');
+    return fetch('/hw/admin/api/wt/refresh', { method: 'POST', credentials: 'same-origin', cache: 'no-store' })
+      .then(function (r) { return r.json().catch(function () { return {}; }); })
+      .then(function (j) { if (j.ok === false) throw new Error(j.error || '실패'); return wtPull(true); })
+      .catch(function (e) { UI.toast('받아 오지 못했습니다: ' + e.message, true); });
+  }
+
   var wtHandled = '', wtPending = null;
   function wtReceive(data, source) {
     if (window.Sync && Sync.isCloud && Sync.isCloud() && !Sync.signedIn()) {

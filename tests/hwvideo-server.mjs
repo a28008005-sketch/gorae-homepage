@@ -27,6 +27,13 @@ const env = { HW, GATE, ADMIN_PASSWORD: 'pw-test', KAKAO_SKILL_KEY: 'kk-test' };
 const realFetch = globalThis.fetch;
 globalThis.fetch = async (input, init) => {
   const u = typeof input === 'string' ? input : input.url;
+  // 웨일튜터 학습현황 흉내 (자동 가져오기 확인용): WT_FAKE 에 학생 명단 · 날짜별 기록
+  if (/whale\.cloubot\.com/.test(u)) {
+    const W = globalThis.WT_FAKE || { students: [], days: {} };
+    if (/campusStudentListAll2/.test(u)) return new Response(JSON.stringify({ success: true, data: W.students }), { headers: { 'content-type': 'application/json' } });
+    const d = new URL(u).searchParams.get('date');
+    return new Response(JSON.stringify({ success: true, data: W.days[d] || [] }), { headers: { 'content-type': 'application/json' } });
+  }
   if (/kakaocdn\.net/.test(u)) {
     if (/\.jpg/.test(u)) return new Response(Buffer.from('/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=', 'base64'), { headers: { 'content-type': 'image/jpeg' } });
     return new Response(Buffer.alloc(4000, 1), { headers: { 'content-type': 'audio/mp4' } });
@@ -37,6 +44,11 @@ const types = { '.pdf': 'application/pdf', '.html': 'text/html; charset=utf-8', 
 
 http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost:8899');
+  if (url.pathname === '/__wt_fake' && req.method === 'POST') {   // 테스트가 웨일튜터 가짜 기록을 넣는 곳
+    const chunks = []; for await (const c of req) chunks.push(c);
+    globalThis.WT_FAKE = JSON.parse(Buffer.concat(chunks).toString());
+    res.end('ok'); return;
+  }
   if (url.pathname.startsWith('/hw')) {
     const chunks = []; for await (const c of req) chunks.push(c);
     const body = chunks.length ? Buffer.concat(chunks) : undefined;

@@ -21,6 +21,12 @@
 //   POST /hw/admin/api/sv/delete {id}   기록·영상 지우기
 //   기록은 sv/log/<id>.json, 영상은 sv/vid/<id>.<확장자> 에 둡니다. sv/ 폴더는 자동 삭제 규칙을 걸지 않습니다.
 //
+// 웨일튜터 학습현황 자동 가져오기 (2026-11-10 추가)
+//   크론(평일 13~21시 KST, 10분마다)이 본사 웨일튜터 「학습현황」을 받아 wt/day/<날짜>.json · wt/students.json 에 둡니다.
+//   GET  /hw/admin/api/wt?since=YYYY-MM-DD   원생관리 학습 현황판이 가져가는 곳 (북마크와 같은 모양)
+//   POST /hw/admin/api/wt/refresh            지금 바로 한 번 받아 오기
+//   크론 설정: 클라우드플레어 → gorae-homework → Settings → Trigger events → Cron  "*/10 4-12 * * 1-5" (UTC)
+//
 // 카카오 채널 숙제 (카카오 챗봇 스킬이 부르는 곳, 비밀값 KAKAO_SKILL_KEY 필요)
 //   POST /hw/kakao/<KAKAO_SKILL_KEY>   채널로 온 파일은 sub/ 에 숙제로 저장, 글은 '카카오 메시지'로 저장, 자동 답장
 //   학부모가 "이름 김고래" 라고 한 번 보내면 그 카카오 계정 = 그 학생으로 기억합니다 (kakao/users/ 폴더, 지우지 않음)
@@ -31,6 +37,9 @@ const KEEP_DAYS = 30;
 const RES_MAX = 95 * 1024 * 1024; // 자료 파일 한 개 최대 크기 (워커가 한 번에 받을 수 있는 한도 100MB 아래)
 
 export default {
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(wtRefresh(env, { cron: true }).catch(() => {}));
+  },
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const p = url.pathname.replace(/\/+$/, '') || '/';
@@ -65,6 +74,8 @@ export default {
         if (p === '/hw/admin/api/res/delete' && request.method === 'POST') return resDelete(request, env);
         if (p === '/hw/admin/res') return resFile(env, url);
         if (p === '/hw/admin/api/sv/list') return svList(env, url);
+        if (p === '/hw/admin/api/wt') return wtGet(env, url);
+        if (p === '/hw/admin/api/wt/refresh' && request.method === 'POST') return json(await wtRefresh(env, {}));
         if (p === '/hw/admin/api/sv/sent' && request.method === 'POST') return svSent(request, env);
         if (p === '/hw/admin/api/sv/delete' && request.method === 'POST') return svDelete(request, env);
       }
@@ -678,6 +689,81 @@ function kCard(title, description, label, link) {
 function kReply(outputs) { return json({ version: '2.0', template: { outputs } }); }
 
 // ---------- 유틸 ----------
+// ---------- 웨일튜터 학습현황 자동 가져오기 ----------
+const WT_BASE = 'https://whale.cloubot.com';
+const WT_STAT = '/api/study/getStudyStat?user_idx=43294969&user_type=2&user_org_idx=dalnim0690&campus_number=699&class_idx=&student=&date=';
+const WT_LIST = '/api/user/campusStudentListAll2/dalnim0690?page=all';
+const WT_BACKFILL = 120;          // 처음 한 번은 120일치를 채웁니다
+const kstDate = (ms) => new Date(ms + 9 * 3600 * 1000).toISOString().slice(0, 10);
+const isWeekday = (ymd) => { const d = new Date(ymd + 'T12:00:00Z').getUTCDay(); return d > 0 && d < 6; };
+const wtNum = (v) => (v == null || v === '' ? null : Number(v));
+
+async function wtFetchJson(path) {
+  const r = await fetch(WT_BASE + path, { headers: { accept: 'application/json', 'user-agent': 'gorae-staff/1.0' }, cf: { cacheTtl: 0 } });
+  if (!r.ok) throw new Error('웨일튜터 응답 ' + r.status);
+  return r.json();
+}
+async function wtDay(env, date) {
+  const j = await wtFetchJson(WT_STAT + date);
+  if (j && j.success === false) throw new Error('웨일튜터: ' + String(j.msg || '거절'));
+  const rows = ((j && j.data) || []).map(x => {
+    const t = String(x.ai_test || '-').split('/');
+    return [x.id, x.lesson, t.length > 1 ? +t[0] : -1, t.length > 1 ? +t[1] : 0, +x.dt || 0, x.student_book_check == '1' ? 1 : 0,
+      wtNum(x.voca_score), wtNum(x.key_sentences), String(x.indatetime || '').slice(11, 16)];
+  });
+  await env.HW.put('wt/day/' + date + '.json', JSON.stringify({ date, at: new Date().toISOString(), rows }), { httpMetadata: { contentType: 'application/json' } });
+  return rows.length;
+}
+async function wtReadJson(env, key) {
+  const o = await env.HW.get(key);
+  if (!o) return null;
+  try { return JSON.parse(await o.text()); } catch (_) { return null; }
+}
+/** 오늘(+ 아직 마무리 안 된 어제)과, 처음이면 지난 120일을 받아 둡니다. */
+async function wtRefresh(env, opts) {
+  const now = Date.now(), today = kstDate(now);
+  const hour = new Date(now + 9 * 3600 * 1000).getUTCHours();
+  if (opts.cron && (!isWeekday(today) || hour < 13 || hour > 21)) return { ok: true, skipped: true };
+  const meta = (await wtReadJson(env, 'wt/meta.json')) || {};
+  const dates = [today];
+  if (meta.final !== kstDate(now - 864e5)) dates.push(kstDate(now - 864e5));   // 어제 기록 마무리
+  // 처음 채우기는 한 번에 40일씩 (무료 요금제는 한 번에 바깥 요청 50개까지라서) — 10분마다 이어서 채웁니다
+  const bf = meta.bf || 2, bfEnd = Math.min(WT_BACKFILL, bf + 39);
+  if (bf <= WT_BACKFILL) for (let i = bf; i <= bfEnd; i++) dates.push(kstDate(now - i * 864e5));
+  const want = dates.filter(isWeekday);
+  let rows = 0, done = 0;
+  for (let i = 0; i < want.length; i += 6) {
+    const got = await Promise.all(want.slice(i, i + 6).map(d => wtDay(env, d).then(n => { done++; return n; }).catch(() => 0)));
+    rows += got.reduce((a, b) => a + b, 0);
+  }
+  try {
+    const L = await wtFetchJson(WT_LIST);
+    let list = L && L.data; list = Array.isArray(list) ? list : (list && list.list) || [];
+    if (list.length) await env.HW.put('wt/students.json', JSON.stringify(list.map(s => [s.student_id, s.student_name || s.name, s.current_bookcode || '', s.current_short_name || '', String(s.book_start_datetime || '').slice(0, 10)])), { httpMetadata: { contentType: 'application/json' } });
+  } catch (_) { /* 명단은 다음 번에 */ }
+  const next = { at: new Date().toISOString(), final: meta.final, bf: bf <= WT_BACKFILL && done >= want.length - 2 ? bfEnd + 1 : bf, days: done, rows };
+  if (hour >= 21 || !isWeekday(today)) next.final = today;
+  else if (meta.final !== kstDate(now - 864e5)) next.final = kstDate(now - 864e5);
+  await env.HW.put('wt/meta.json', JSON.stringify(next), { httpMetadata: { contentType: 'application/json' } });
+  return { ok: true, at: next.at, days: done, rows };
+}
+/** 학습 현황판이 가져가는 묶음 (북마크와 같은 모양) */
+async function wtGet(env, url) {
+  const since = /^\d{4}-\d{2}-\d{2}$/.test(url.searchParams.get('since') || '') ? url.searchParams.get('since') : kstDate(Date.now() - WT_BACKFILL * 864e5);
+  const meta = (await wtReadJson(env, 'wt/meta.json')) || {};
+  const students = (await wtReadJson(env, 'wt/students.json')) || [];
+  const days = {};
+  let cursor;
+  do {
+    const r = await env.HW.list({ prefix: 'wt/day/', cursor, limit: 1000 });
+    const keys = r.objects.map(o => o.key).filter(k => k.slice(7, 17) >= since);
+    const got = await Promise.all(keys.map(k => wtReadJson(env, k)));
+    got.forEach(d => { if (d && d.rows && d.rows.length) days[d.date] = d.rows; });
+    cursor = r.truncated ? r.cursor : undefined;
+  } while (cursor);
+  return json({ ok: true, type: 'gorae-wt', v: 1, at: meta.at || '', auto: true, students, days });
+}
+
 function json(o, status = 200) {
   return new Response(JSON.stringify(o), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } });
 }

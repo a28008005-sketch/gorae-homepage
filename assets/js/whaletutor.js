@@ -168,7 +168,7 @@ var WT = (function () {
         (rowsById[id] = rowsById[id] || {})[date] = x.slice(1);
       });
     });
-    var res = { matched: 0, rows: 0, switched: [], missing: [], unknown: [] };
+    var res = { matched: 0, rows: 0, fresh: 0, saved: 0, switched: [], missing: [], unknown: [] };
     var used = {};
     var cut = ymdAgo(KEEP_DAYS);
     roster.forEach(function (st) {
@@ -184,7 +184,13 @@ var WT = (function () {
       used[id] = 1;
       var wt = r.wt || {};
       var days = Object.assign({}, wt.days || {});
-      Object.keys(rowsById[id] || {}).forEach(function (d) { days[d] = rowsById[id][d]; res.rows++; });
+      var changed = 0;
+      Object.keys(rowsById[id] || {}).forEach(function (d) {
+        if (JSON.stringify(days[d]) !== JSON.stringify(rowsById[id][d])) changed++;
+        days[d] = rowsById[id][d]; res.rows++;
+      });
+      res.fresh += changed;
+      var sameBook = (s[2] || wt.book || '') === (wt.book || '') && !!r.tutorId;
       Object.keys(days).forEach(function (d) { if (d < cut) delete days[d]; });
       r.wt = { id: s[0], book: s[2] || wt.book || '', bookName: s[3] || '', start: s[4] || wt.start || '', at: p.at || new Date().toISOString(), days: days };
       if (wt.done && wt.done === r.wt.book) r.wt.done = wt.done;   // 이미 레벨 종료한 교재 — 새 교재가 배정되기 전까지 그대로
@@ -207,8 +213,11 @@ var WT = (function () {
         if (info.phonics) { r.sbank.track = 'pc'; if (!/\d/.test(r.sbank.level || '') || bookFromTitle(r.sbank.level) !== 'WE-L0V' + info.vol) r.sbank.level = 'Phonics ' + info.vol; }
         else { r.sbank.track = 'sb'; r.sbank.level = info.level; }
       }
-      Store.saveBoard(r);
       res.matched++;
+      // 자동 가져오기는 바뀐 학생만 저장합니다 (기기마다 같은 기록을 계속 올리지 않게)
+      if (opts.quiet && !changed && sameBook && wt.days) return;
+      Store.saveBoard(r);
+      res.saved++;
     });
     (p.students || []).forEach(function (s) { if (!used[String(s[0]).toLowerCase()] && rowsById[String(s[0]).toLowerCase()]) res.unknown.push(s[1]); });
     try { localStorage.setItem('gorae-wt-last', JSON.stringify({ at: p.at, matched: res.matched, rows: res.rows })); } catch (e) {}
