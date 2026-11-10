@@ -844,7 +844,7 @@ Views.board = (function () {
         var st = x.st;
         return '<tr data-sid="' + x.s.id + '"><td class="bd-sticky bd-name"><button class="nm" data-act="open" data-tab="level">' + esc(x.s.name) + '</button><span class="cls">' + esc(className(x.s) || '') + '</span></td>' +
           '<td class="bd-hmlv">' + (st ? '<button class="lk" data-act="open" data-tab="level"><span>' + esc(x.r.current.title) + '</span><small>' + st.reached + '/21 · ' + (st.next ? st.next.label : '종료') + '</small></button>' : '<span class="muted">–</span>') + '</td>' +
-          (x.r.wt ? dates.map(function (d, i) { return cell(x, i); }).join('') : '<td colspan="' + dates.length + '" class="muted" style="text-align:center">웨일튜터에서 찾지 못한 학생입니다 (아이디를 확인해 주세요)</td>') +
+          (x.r.wt ? dates.map(function (d, i) { return cell(x, i); }).join('') : '<td colspan="' + dates.length + '" class="muted" style="text-align:center">' + (x.r.tutorId || x.r.current.title ? '웨일튜터에서 찾지 못한 학생입니다 (아이디를 확인해 주세요)' : '교재 미배정') + '</td>') +
           '<td class="nm2">' + (x.rc.came ? '<b>' + x.rc.rate + '%</b><small> ' + x.rc.took + '/' + x.rc.came + '일</small>' : '<span class="muted">–</span>') + '</td>' +
           '<td class="nm2">' + bar(x.rc.ai) + '</td><td class="nm2">' + (x.rc.dt == null ? '<span class="muted">–</span>' : x.rc.dt) + '</td>' +
           '<td class="nm2">' + (x.rc.voca == null ? '<span class="muted">–</span>' : x.rc.voca) + '</td><td>' + flag(x) + '</td></tr>';

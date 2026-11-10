@@ -175,7 +175,11 @@ var WT = (function () {
       var r = Store.board(st.id) || { studentId: st.id };
       var tid = String(r.tutorId || '').trim().toLowerCase();
       var s = (tid && byId[tid]) || byName[st.name];
-      if (!s) { res.missing.push(st.name); return; }
+      if (!s) {
+        // 교재가 아직 없는 학생(예: 중학생 교재 미배정)은 '못 찾음'으로 알리지 않습니다
+        if (r.tutorId || (r.current && r.current.title)) res.missing.push(st.name);
+        return;
+      }
       var id = String(s[0]).toLowerCase();
       used[id] = 1;
       var wt = r.wt || {};
