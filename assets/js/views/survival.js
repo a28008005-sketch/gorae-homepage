@@ -286,7 +286,9 @@ Views.survival = (function () {
           label = st && st.video ? '카톡 보내기' : '문자 보내기'; if (!go.disabled) go.textContent = label;
           how.innerHTML = st && st.video
             ? '<b style="color:#296b4d">카카오 알림톡으로 먼저 보내고</b>, 카톡을 못 받는 번호는 <b>문자로 자동 전환</b>됩니다. (알림톡은 승인된 문구로 나가고, 아래 내용은 쓰이지 않습니다)'
-            : '학습 영상 알림톡 템플릿이 아직 등록되지 않아 <b>문자(장문)</b>로 보냅니다. 템플릿 ID를 워커에 넣으면 카톡 우선으로 바뀝니다.';
+            : '학습 영상 알림톡 템플릿이 아직 승인되지 않아 지금은 <b>문자(장문)</b>로 보냅니다. ' +
+              '<span id="sv-tpl"><button class="btn sm" type="button" id="sv-tpl-go">카톡 템플릿 확인·신청</button></span>';
+          var tg = w.querySelector('#sv-tpl-go'); if (tg) tg.addEventListener('click', function () { tplSetup(w.querySelector('#sv-tpl')); });
         }).catch(function () { how.textContent = '문자(장문)로 보냅니다.'; go.textContent = label; });
         w.querySelector('#sv-copy-msg').addEventListener('click', function () {
           copy(w.querySelector('#sv-text').value, '내용을 복사했습니다. 카톡에 붙여 넣어 보내세요.');
@@ -305,6 +307,62 @@ Views.survival = (function () {
         });
       }
     });
+  }
+
+  /* ---------- 학습 영상 알림톡 템플릿 신청 (솔라피 · 카카오 검수 1~3일) ----------
+     워커는 이름이 TPL_NAME 이고 '승인'된 템플릿을 스스로 찾아 쓰므로, 승인 뒤에는 따로 할 일이 없습니다. */
+  var TPL_NAME = '센텐스뱅크 학습 영상 안내';
+  var TPL_CONTENT = '[고래영어] #{학생명} 학생 학습 영상 안내\n\n안녕하세요, 고래영어입니다.\n' +
+    '#{학생명} 학생이 #{범위} 말하기 서바이벌에 도전했습니다.\n카드를 보고 영어로 바로 말하는 모습을 영상으로 담았습니다.\n\n' +
+    "아래 '영상 보기' 버튼을 눌러 확인해 주세요.";
+  var TPL_LINK = 'https://staff.whalejinju.kr/hw/v/#{영상}';
+  var TPL_STATE = { PENDING: '등록됨(검수 전)', INSPECTING: '카카오 검수 중', APPROVED: '승인', REJECTED: '반려' };
+  function solapi(method, path, body) {
+    return call('/api/notify/solapi', { method: 'POST', body: { method: method, path: path, body: body } }).then(function (r) {
+      if (!r || r.status >= 300) { var d = (r && r.data) || {}; throw new Error('솔라피: ' + (d.errorMessage || d.errorCode || d.message || ('오류 ' + (r && r.status)))); }
+      return r.data;
+    });
+  }
+  function tplList() {
+    return solapi('GET', '/kakao/v2/templates?limit=100').then(function (d) {
+      var list = (d && (d.templateList || d.list || d.templates)) || [];
+      return list.filter(function (t) { return String(t.name || '').trim() === TPL_NAME; });
+    });
+  }
+  function tplSetup(box) {
+    var say = function (h) { box.innerHTML = h; };
+    say('솔라피에서 확인하는 중…');
+    tplList().then(function (mine) {
+      var t = mine.filter(function (x) { return x.status === 'APPROVED'; })[0] || mine.filter(function (x) { return x.status === 'INSPECTING'; })[0] || mine[0];
+      if (t && t.status === 'APPROVED') return say('<b style="color:#296b4d">승인되었습니다.</b> 창을 닫고 다시 열면 카톡으로 보내집니다.');
+      if (t && t.status === 'INSPECTING') return say('<b>카카오 검수 중</b>입니다 (보통 1~3 영업일). 승인되면 자동으로 카톡 보내기로 바뀝니다.');
+      if (t && t.status === 'PENDING') return solapi('PUT', '/kakao/v2/templates/' + t.templateId + '/inspection', {}).then(function () { say('<b>검수 요청을 보냈습니다.</b> 승인되면(1~3 영업일) 자동으로 카톡 보내기로 바뀝니다.'); });
+      var why = t && t.status === 'REJECTED' ? '이전 신청이 반려되었습니다: ' + U.esc(((t.comments || []).map(function (c) { return c.content || c.comment || ''; }).join(' / ')) || '사유 없음') + '<br>' : '';
+      say(why + '<button class="btn sm primary" type="button" id="sv-tpl-new">학습 영상 알림톡 템플릿 신청하기</button>');
+      box.querySelector('#sv-tpl-new').addEventListener('click', function () { tplCreate(box); });
+    }).catch(function (e) { say('<span style="color:#a8453f">' + U.esc(e.message) + '</span>'); });
+  }
+  function tplCreate(box) {
+    box.innerHTML = '신청하는 중…';
+    Promise.all([solapi('GET', '/kakao/v2/channels'), solapi('GET', '/kakao/v2/templates/categories')]).then(function (r) {
+      var ch = (r[0] && (r[0].channelList || r[0].list || r[0].channels)) || [];
+      var c = ch.filter(function (x) { return /고래|whale/i.test(String(x.searchId || '') + String(x.channelName || x.name || '')); })[0] || ch[0];
+      if (!c) throw new Error('솔라피에 연결된 카카오 채널을 찾지 못했습니다.');
+      var cats = [], walk = function (arr, parent) { (arr || []).forEach(function (x) { var n = (parent ? parent + ' > ' : '') + (x.name || ''); if (x.code) cats.push({ code: x.code, name: n }); walk(x.subCategories || x.children || x.categories, n); }); };
+      walk(Array.isArray(r[1]) ? r[1] : (r[1] && (r[1].categories || r[1].list)) || [], '');
+      var leaf = cats.filter(function (x) { return x.code.length >= 6; });   // 대분류(앞 3자리) 아래 세부 분류만
+      var cat = leaf.filter(function (x) { return /학습|수업|교육|강의/.test(x.name) && /안내|정보|기타|진행|결과/.test(x.name); })[0] ||
+        leaf.filter(function (x) { return /교육|학습|수업/.test(x.name); })[0] || leaf.filter(function (x) { return /기타/.test(x.name); })[0];
+      if (!cat) throw new Error('알맞은 템플릿 분류를 찾지 못했습니다.');
+      return solapi('POST', '/kakao/v2/templates', {
+        channelId: c.channelId || c.id, name: TPL_NAME, content: TPL_CONTENT, categoryCode: cat.code, messageType: 'BA', emphasizeType: 'NONE',
+        buttons: [{ buttonType: 'WL', buttonName: '영상 보기', linkMo: TPL_LINK, linkPc: TPL_LINK }]
+      }).then(function (t) {
+        return solapi('PUT', '/kakao/v2/templates/' + t.templateId + '/inspection', {}).then(function () {
+          box.innerHTML = '<b style="color:#296b4d">신청 완료.</b> 카카오 검수(1~3 영업일) 뒤 승인되면 자동으로 카톡 보내기로 바뀝니다. (분류: ' + U.esc(cat.name) + ')';
+        });
+      });
+    }).catch(function (e) { box.innerHTML = '<span style="color:#a8453f">' + U.esc(e.message) + '</span>'; });
   }
 
   function mergeRec(rec) {

@@ -448,7 +448,13 @@ const NOTIFY_LABEL = {
 };
 
 async function notify(request, env, path) {
-  if (path === '/api/notify/status') return json(notifyStatus(env));
+  if (path === '/api/notify/status') {
+    const st = notifyStatus(env);
+    if (!st.video && st.ready) st.video = !!(await videoTemplate(env));
+    return json(st);
+  }
+  // 솔라피 카카오 관리 창구 (로그인한 원장님 기기에서만) — 템플릿 등록·검수 요청·상태 확인용
+  if (path === '/api/notify/solapi' && request.method === 'POST') return solapiProxy(request, env);
   if (request.method !== 'POST') return json({ error: '없는 경로입니다.' }, 404);
 
   // 학습 영상 링크처럼 템플릿이 없는 안내는 문자(LMS)로 보냅니다. (2026-11 추가 · 센텐스뱅크 서바이벌)
@@ -504,7 +510,7 @@ async function sendMessage(request, env) {
   if (!text) return json({ error: '보낼 내용이 비어 있습니다.' }, 400);
   const subject = String(body.subject || '고래영어 안내').trim().slice(0, 30);
   const v = body.video || null;
-  const tpl = String(env.KAKAO_TPL_VIDEO || '').trim();
+  const tpl = v ? await videoTemplate(env) : '';
   const pfId = String(env.KAKAO_PFID || '').trim();
   const useKakao = !!(v && tpl && pfId && /^[0-9]+_[a-z0-9]+\/[0-9a-f]{32}$/.test(String(v.path || '')));
   const results = [];
@@ -530,6 +536,43 @@ async function sendMessage(request, env) {
   }
   const sent = results.filter(r => r.ok).length;
   return json({ ok: sent > 0, sent, total: results.length, via: useKakao ? 'kakao' : 'sms', error: sent === results.length ? undefined : results.filter(r => !r.ok).map(r => r.error).join(' / ') }, sent > 0 ? 200 : 502);
+}
+
+/** 학습 영상 알림톡 템플릿 ID. 워커 변수 KAKAO_TPL_VIDEO 가 없으면 솔라피에서 '승인된' 같은 이름의 템플릿을 찾아 씁니다(10분 기억). */
+const VIDEO_TPL_NAME = '센텐스뱅크 학습 영상 안내';
+async function videoTemplate(env) {
+  const fixed = String(env.KAKAO_TPL_VIDEO || '').trim();
+  if (fixed) return fixed;
+  if (!env.SOLAPI_API_KEY || !env.SOLAPI_API_SECRET) return '';
+  const cache = typeof caches !== 'undefined' ? caches.default : null;
+  const ck = 'https://notify.gorae/video-template';
+  if (cache) { const hit = await cache.match(ck); if (hit) return (await hit.text()) || ''; }
+  let id = '';
+  try {
+    const res = await fetch('https://api.solapi.com/kakao/v2/templates?limit=100', { headers: { authorization: await solapiAuth(env) } });
+    const j = await res.json().catch(() => ({}));
+    const list = j.templateList || j.list || j.templates || [];
+    const ok = list.filter(t => String(t.name || '').trim() === VIDEO_TPL_NAME && /APPROVED/i.test(String(t.status || '')));
+    if (ok.length) id = ok[0].templateId || ok[0].id || '';
+  } catch (e) { id = ''; }
+  if (cache) await cache.put(ck, new Response(id, { headers: { 'cache-control': 'max-age=600' } }));
+  return id;
+}
+
+/** POST /api/notify/solapi { method, path, body } — 솔라피 /kakao/v2/ 창구만 그대로 대신 불러 줍니다. */
+async function solapiProxy(request, env) {
+  if (!env.SOLAPI_API_KEY || !env.SOLAPI_API_SECRET) return json({ error: '솔라피 열쇠가 없습니다.' }, 503);
+  const b = await request.json().catch(() => ({}));
+  const m = String(b.method || 'GET').toUpperCase();
+  const p = String(b.path || '');
+  if (!/^\/kakao\/v2\/[A-Za-z0-9_\-\/?=&.%]*$/.test(p) || !['GET', 'POST', 'PUT', 'PATCH'].includes(m)) return json({ error: '허용하지 않는 요청입니다.' }, 400);
+  const res = await fetch('https://api.solapi.com' + p, {
+    method: m,
+    headers: { authorization: await solapiAuth(env), 'content-type': 'application/json' },
+    body: m === 'GET' ? undefined : JSON.stringify(b.body || {})
+  });
+  const text = await res.text();
+  return new Response(JSON.stringify({ status: res.status, data: (() => { try { return JSON.parse(text); } catch (e) { return text; } })() }), { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
 }
 
 function notifyStatus(env) {
@@ -682,3 +725,4 @@ function loginPage(error) {
     headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' }
   });
 }
+
