@@ -8657,15 +8657,16 @@ Views.survival = (function () {
           '<textarea id="sv-text" rows="8" style="font:inherit;font-size:14px;line-height:1.6;padding:10px;border:1px solid #dfe5ec;border-radius:8px">' + U.esc(message(i)) + '</textarea></label>' +
         '<p class="hint" id="sv-how" style="margin:0;line-height:1.6">발송 방법을 확인하는 중…</p>' +
         '<p class="hint" style="margin:0">영상 링크는 비밀번호 없이 열리지만 주소를 아는 사람만 볼 수 있습니다.</p></div>',
-      footer: '<button class="btn" id="sv-copy-msg">내용 복사 (카톡용)</button><div class="sp"></div>' +
-        '<button class="btn" data-close>취소</button><button class="btn primary" id="sv-go">문자 보내기</button>',
+      footer: '<button class="btn" id="sv-copy-msg">내용만 복사</button><div class="sp"></div>' +
+        '<button class="btn" data-close>취소</button><button class="btn primary" id="sv-go">보내기</button>',
       onMount: function (w) {
-        var how = w.querySelector('#sv-how');
+        var how = w.querySelector('#sv-how'), go = w.querySelector('#sv-go'), label = '문자 보내기';
         fetch('/api/notify/status', { credentials: 'same-origin', cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (st) {
+          label = st && st.video ? '카톡 보내기' : '문자 보내기'; if (!go.disabled) go.textContent = label;
           how.innerHTML = st && st.video
             ? '<b style="color:#296b4d">카카오 알림톡으로 먼저 보내고</b>, 카톡을 못 받는 번호는 <b>문자로 자동 전환</b>됩니다. (알림톡은 승인된 문구로 나가고, 아래 내용은 쓰이지 않습니다)'
             : '학습 영상 알림톡 템플릿이 아직 등록되지 않아 <b>문자(장문)</b>로 보냅니다. 템플릿 ID를 워커에 넣으면 카톡 우선으로 바뀝니다.';
-        }).catch(function () { how.textContent = '문자(장문)로 보냅니다.'; });
+        }).catch(function () { how.textContent = '문자(장문)로 보냅니다.'; go.textContent = label; });
         w.querySelector('#sv-copy-msg').addEventListener('click', function () {
           copy(w.querySelector('#sv-text').value, '내용을 복사했습니다. 카톡에 붙여 넣어 보내세요.');
           call(API + '/api/sv/sent', { method: 'POST', body: { id: i.id, to: '', how: 'copy' } }).then(function (j) { mergeRec(j.rec); });
@@ -8679,7 +8680,7 @@ Views.survival = (function () {
                 mergeRec(j.rec); UI.close(); UI.toast((r.via === 'kakao' ? '카카오 알림톡으로 보냈습니다' : '문자로 보냈습니다') + ' (' + r.sent + '/' + r.total + ')'); App.rerender();
               });
             })
-            .catch(function (e) { b.disabled = false; b.textContent = '문자 보내기'; UI.toast(e.message, true); });
+            .catch(function (e) { b.disabled = false; b.textContent = label; UI.toast(e.message, true); });
         });
       }
     });
