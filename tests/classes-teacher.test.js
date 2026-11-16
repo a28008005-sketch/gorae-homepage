@@ -53,6 +53,30 @@ const ok = (l,c,e='') => console.log(`  ${c?'✓':'✗ 실패'}  ${l}${e?' — '
   ok('대시보드 Binny 필터', (await p.locator('.dash-cls .class-card').count()) === 3);
   await p.click('.dash-cls [data-tf=""]'); await p.waitForTimeout(400);
   await p.screenshot({ path: (process.env.SHOT_DIR || '.') + '/c-dash.png', fullPage: false });
+  // 시간표별 출석 현황 (시각화)
+  const tl = await p.evaluate(() => {
+    var d = U.ymd(), day = U.dayOf(d);
+    var cid = Store.saveClass({ name: '1:40반', days: [day], time: '1시' });
+    var cid2 = Store.saveClass({ name: '3:15~3:30반', days: [day], time: '3시' });
+    var mk = function (n, c, arr) { return Store.saveStudent({ name: n, status: '등록생', classId: c, arrive: arr, days: [day] }); };
+    var a = mk('가학생', cid, '1:40'), b = mk('나학생', cid, '1:40'), c = mk('다학생', cid, '1:40 (' + day + ' 1:00)');
+    var e = mk('라학생', cid2, '3:20'), f = mk('마학생', cid2, '3:30');
+    Store.setAttendance(a, d, { checkIn: '13:44' });
+    Store.setAttendance(b, d, { checkIn: '14:05' });
+    Store.setAttendance(e, d, { status: '결석' });
+    return true;
+  });
+  await p.goto(BASE + '#/settings'); await p.goto(BASE + '#/dashboard'); await p.waitForTimeout(800);
+  const dots = await p.$$eval('.tl-dot', ds => ds.map(d => d.textContent + ':' + d.className.split(' ')[1]));
+  ok('시간표 출석 그림 표시', dots.length >= 5, dots.join(' '));
+  ok('정시 등원 초록', dots.includes('가학생:st-in'));
+  ok('10분 넘게 늦으면 주황', dots.includes('나학생:st-late'));
+  ok('오늘 요일 시각을 따름 (1:00 지남 → 아직 안 옴)', dots.includes('다학생:st-miss') || new Date().getHours() < 13, dots.find(x => x.startsWith('다')));
+  ok('결석 빨강', dots.includes('라학생:st-bad'));
+  await p.locator('.tl-dot', { hasText: '가학생' }).click(); await p.waitForTimeout(400);
+  ok('이름표 누르면 학생 정보', await p.locator('.modal').count() > 0);
+  await p.keyboard.press('Escape');
+  await p.screenshot({ path: (process.env.SHOT_DIR || '.') + '/c-tl.png', fullPage: false, clip: { x: 236, y: 230, width: 1204, height: 760 } });
   console.log(errs.length ? '\n에러 ' + errs.join('\n') : '\n페이지 에러 없음');
   await b.close();
 })();

@@ -449,7 +449,9 @@ body.share-mode .content{padding:0}
 .dash-pill.st-in{background:#e3f1ec;color:#1f6b50}
 .dash-pill.st-out{background:#eef1f4;color:#6b7b8a}
 .dash-pill.st-bad{background:#fdeaea;color:#b33a3a}
-.dash-pill.st-wait{background:#fff6e0;color:#8a6414}
+.dash-pill.st-wait{background:#f3f5f7;color:#6b7b8a}
+.dash-pill.st-late{background:#fdf0dc;color:#9a5c0c}
+.dash-pill.st-miss{background:#fdeaea;color:#b33a3a}
 
 .pill{
   background:var(--blue-soft);color:#2b5a80;border-radius:6px;padding:3px 8px;
@@ -968,6 +970,45 @@ tr.s-warn .bd-name{border-left-color:var(--warn)} tr.s-urgent .bd-name{border-le
 #bd-wtauto{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:#296b4d;font-weight:700}
 #bd-wtauto i{width:8px;height:8px;border-radius:50%;background:#2e7a57;animation:svpulse 2s infinite}
 #bd-wtauto i.off{background:var(--bad);animation:none}
+
+/* ===== 대시보드: 시간표별 오늘 출석 현황 ===== */
+.tl-sum{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;margin-bottom:12px}
+.tl-big{font-size:26px;font-weight:800;letter-spacing:-.5px;margin-right:6px}
+.tl-big small{font-size:13px;font-weight:600;color:var(--muted);margin-left:2px}
+.tl-key{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--muted)}
+.tl-key::before{content:'';width:11px;height:11px;border-radius:4px;border:2px solid transparent}
+.tl-key.st-in::before{background:#2f9e73}
+.tl-key.st-late::before{background:#e8962e}
+.tl-key.st-miss::before{border-color:#d64545;background:#fff}
+.tl-key.st-wait::before{border-color:#b7c3cf;background:#fff}
+.tl-key.st-out::before{background:#c3ccd5}
+.tl-key.st-bad::before{background:#d64545}
+.tl-scroll{overflow-x:auto}
+.tl{min-width:720px;position:relative}
+.tl-row{display:flex;align-items:stretch;border-top:1px solid var(--line)}
+.tl-axis{border-top:0}
+.tl-label{width:150px;flex:none;padding:8px 10px 8px 10px;border-left:4px solid var(--klass,transparent);font-size:13px}
+.tl-axis .tl-label,.tl-overlay .tl-label{border-left-color:transparent}
+.tl-sub{font-size:11.5px;color:var(--muted);margin-top:4px}
+.tl-rate{height:5px;border-radius:3px;background:#eef1f4;margin-top:6px;overflow:hidden}
+.tl-rate i{display:block;height:100%;background:var(--klass)}
+.tl-track{flex:1;position:relative;min-height:40px}
+.tl-axis .tl-track{height:22px;min-height:22px}
+.tl-hour{position:absolute;top:2px;transform:translateX(-50%);font-size:11px;color:var(--muted);font-weight:700}
+.tl-body{position:relative}
+.tl-overlay{position:absolute;inset:0;display:flex;pointer-events:none}
+.tl-grid{position:absolute;top:0;bottom:0;border-left:1px dashed #e3e8ee}
+.tl-now{position:absolute;top:0;bottom:0;border-left:2px solid #d64545;z-index:3}
+.tl-now-lbl{position:absolute;top:2px;transform:translateX(-50%);z-index:4;background:#fff;padding:0 4px;font-size:10.5px;color:#d64545;font-weight:800;white-space:nowrap}
+.tl-start{position:absolute;top:0;bottom:0;border-left:3px solid var(--klass);opacity:.35}
+.tl-dot{position:absolute;z-index:2;transform:translateX(-4px);height:24px;line-height:20px;padding:0 8px;border-radius:12px;
+  font-size:11.5px;font-weight:700;white-space:nowrap;cursor:pointer;border:2px solid transparent;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.tl-dot.st-in{background:#2f9e73;color:#fff}
+.tl-dot.st-late{background:#e8962e;color:#fff}
+.tl-dot.st-out{background:#e2e7ec;color:#5c6b79}
+.tl-dot.st-bad{background:#d64545;color:#fff;text-decoration:line-through}
+.tl-dot.st-miss{background:#fff;color:#c43c3c;border-color:#d64545}
+.tl-dot.st-wait{background:#fff;color:#6b7b8a;border-color:#c3ccd5;border-style:dashed}
 
 </style>
 </head>
@@ -11141,12 +11182,149 @@ Views.classes = (function () {
 
   /** 오늘 이 학생의 등원 상태 표시 */
   function todayState(s, date) {
+    var now = new Date();
+    var x = tlState(s, date, U.dayOf(date), now.getHours() * 60 + now.getMinutes());
+    var r = x.rec;
+    var text = x.st === 'out' ? '하원 ' + r.checkOut
+      : (x.st === 'in' || x.st === 'late') ? (r.checkIn ? (x.st === 'late' ? '늦게 ' : '등원 ') + r.checkIn : '출석')
+      : x.st === 'bad' ? '결석'
+      : x.st === 'miss' ? '안 옴' + (x.exp !== null ? ' (' + hmText(x.exp) + ')' : '')
+      : (x.exp !== null ? hmText(x.exp) + ' 예정' : '아직');
+    return { cls: x.st === 'late' ? 'late' : x.st === 'miss' ? 'miss' : x.st, text: text };
+  }
+
+  /* ---------- 시간표 위에 그린 오늘 출석 현황 ---------- */
+  var TL_FROM = 12 * 60 + 30, TL_TO = 18 * 60;   // 12:30 ~ 18:00
+
+  /** "1:40" 같은 오후 시각을 분으로 (8시 전은 오후로 봅니다) */
+  function pmMin(h, m) {
+    h = Number(h); m = Number(m);
+    if (h < 8) h += 12;
+    return h * 60 + m;
+  }
+  function hmText(min) {
+    var h = Math.floor(min / 60), m = min % 60;
+    return (h > 12 ? h - 12 : h) + ':' + (m < 10 ? '0' : '') + m;
+  }
+
+  /**
+   * 오늘 이 학생이 오기로 한 시각(분).
+   * arrive 예: "1:40", "1:40 (화 2:30)", "4:25 (수 2:20)" — 오늘 요일이 괄호 안에 있으면 그 시각.
+   * 없으면 반 이름의 첫 시각(예: "2:40~3:00반" → 2:40).
+   */
+  function expectedMin(s, day) {
+    var sc = Store.scheduleOf(s);
+    var txt = sc.arrive || '';
+    var re = /([월화수목금토])\s*(\d{1,2}):(\d{2})/g, m;
+    while ((m = re.exec(txt))) { if (m[1] === day) return pmMin(m[2], m[3]); }
+    m = /(\d{1,2}):(\d{2})/.exec(txt) || /(\d{1,2}):(\d{2})/.exec(sc.className || '');
+    return m ? pmMin(m[1], m[2]) : null;
+  }
+  function hmToMin(hm) {
+    var m = /(\d{1,2}):(\d{2})/.exec(hm || '');
+    return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+  }
+
+  /** 학생 1명의 오늘 상태 — 그림에 쓸 위치·색 */
+  function tlState(s, date, day, nowMin) {
     var r = Store.attendanceFor(s.id, date) || {};
-    if (r.status === '결석') return { cls: 'bad', text: '결석' };
-    if (r.checkOut) return { cls: 'out', text: '하원 ' + r.checkOut };
-    if (r.checkIn) return { cls: 'in', text: '등원 ' + r.checkIn };
-    if (r.status === '출석') return { cls: 'in', text: '출석' };
-    return { cls: 'wait', text: '아직' };
+    var exp = expectedMin(s, day);
+    var inMin = hmToMin(r.checkIn);
+    var st;
+    if (r.status === '결석') st = 'bad';
+    else if (inMin !== null) st = r.checkOut ? 'out' : (exp !== null && inMin > exp + 10 ? 'late' : 'in');
+    else if (r.status === '출석') st = 'in';
+    else if (exp !== null && nowMin > exp + 10) st = 'miss';
+    else st = 'wait';
+    return { s: s, exp: exp, at: inMin !== null ? inMin : exp, st: st, rec: r };
+  }
+
+  var TL_LABEL = { in: '등원', late: '늦게 옴', out: '하원', bad: '결석', miss: '아직 안 옴', wait: '올 예정' };
+
+  function pct(min) {
+    return Math.max(0, Math.min(100, (min - TL_FROM) / (TL_TO - TL_FROM) * 100));
+  }
+
+  function timeline() {
+    var date = U.ymd(), day = U.dayOf(date);
+    var now = new Date(), nowMin = now.getHours() * 60 + now.getMinutes();
+    var cs = Store.classes().filter(visible);
+    var total = { all: 0, came: 0, late: 0, miss: 0, bad: 0 };
+
+    var rows = cs.map(function (c) {
+      var list = Store.studentsInClass(c.id).filter(function (s) {
+        return s.status === '등록생' && Store.scheduleOf(s).days.indexOf(day) >= 0;
+      }).map(function (s) { return tlState(s, date, day, nowMin); })
+        .filter(function (x) { return x.at !== null; })
+        .sort(function (a, b) { return a.at - b.at; });
+      if (!list.length) return '';
+
+      var came = list.filter(function (x) { return x.st === 'in' || x.st === 'late' || x.st === 'out'; }).length;
+      total.all += list.length; total.came += came;
+      list.forEach(function (x) { if (x.st === 'late') total.late++; if (x.st === 'miss') total.miss++; if (x.st === 'bad') total.bad++; });
+
+      // 이름표가 겹치지 않게 줄(lane)을 나눕니다
+      var W = 10.5, lanes = [];
+      list.forEach(function (x) {
+        var left = pct(x.at), li = 0;
+        while (lanes[li] !== undefined && lanes[li] > left - W) li++;
+        lanes[li] = left; x.lane = li; x.left = left;
+      });
+      var nLane = Math.max(lanes.length, 1);
+      var start = expectedMin({ arrive: '', classId: c.id }, day);
+      var rate = Math.round(came / list.length * 100);
+
+      return '<div class="tl-row" style="--klass:' + U.esc(c.color || '#215a86') + '">' +
+        '<div class="tl-label">' +
+          '<b>' + U.esc(c.name) + '</b>' +
+          '<div class="tl-sub">' + teacherTag(c.teacher) + '</div>' +
+          '<div class="tl-rate"><i style="width:' + rate + '%"></i></div>' +
+          '<div class="tl-sub">등원 ' + came + '/' + list.length + '</div>' +
+        '</div>' +
+        '<div class="tl-track" style="height:' + (nLane * 30 + 10) + 'px">' +
+          (start !== null ? '<span class="tl-start" style="left:' + pct(start) + '%"></span>' : '') +
+          list.map(function (x) {
+            var tip = x.s.name + ' · ' + TL_LABEL[x.st] +
+              (x.rec.checkIn ? ' ' + x.rec.checkIn : '') +
+              (x.exp !== null ? ' (오는 시간 ' + hmText(x.exp) + ')' : '');
+            return '<span class="tl-dot st-' + x.st + '" data-open="' + x.s.id + '" title="' + U.esc(tip) + '" ' +
+              'style="left:' + x.left + '%;top:' + (x.lane * 30 + 5) + 'px">' +
+              U.esc(x.s.name) + '</span>';
+          }).join('') +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    if (!total.all) return '<p class="hint">오늘(' + day + ') 수업이 있는 반이 없습니다.</p>';
+
+    var hours = '';
+    for (var h = 13; h <= 17; h++) {
+      hours += '<span class="tl-hour" style="left:' + pct(h * 60) + '%">' + (h - 12) + '시</span>';
+    }
+    var nowIn = nowMin >= TL_FROM && nowMin <= TL_TO;
+    var nowLine = nowIn ? '<span class="tl-now" style="left:' + pct(nowMin) + '%"></span>' : '';
+    if (nowIn) hours += '<span class="tl-now-lbl" style="left:' + pct(nowMin) + '%">지금 ' + hmText(nowMin) + '</span>';
+
+    return '<div class="tl-sum">' +
+        '<span class="tl-big">' + total.came + '<small>/' + total.all + '명 등원</small></span>' +
+        '<span class="tl-key st-in">등원</span><span class="tl-key st-late">늦게 옴 ' + total.late + '</span>' +
+        '<span class="tl-key st-miss">아직 안 옴 ' + total.miss + '</span>' +
+        '<span class="tl-key st-wait">올 예정</span><span class="tl-key st-out">하원</span>' +
+        '<span class="tl-key st-bad">결석 ' + total.bad + '</span>' +
+      '</div>' +
+      '<div class="tl-scroll"><div class="tl">' +
+        '<div class="tl-row tl-axis"><div class="tl-label"></div><div class="tl-track">' + hours + '</div></div>' +
+        '<div class="tl-body">' + rows +
+          '<div class="tl-overlay"><div class="tl-label"></div><div class="tl-track">' +
+            (function () {
+              var g = '';
+              for (var h = 13; h <= 17; h++) g += '<span class="tl-grid" style="left:' + pct(h * 60) + '%"></span>';
+              return g;
+            })() + nowLine +
+          '</div></div>' +
+        '</div>' +
+      '</div></div>' +
+      '<p class="hint" style="margin:10px 0 0">세로 굵은 선은 반 시작 시각, 이름표 위치는 실제 등원 시각(안 온 학생은 오기로 한 시각)입니다. 오기로 한 시각보다 10분 넘게 늦으면 주황/빨강으로 바뀝니다.</p>';
   }
 
   function dashboardCard() {
@@ -11159,7 +11337,7 @@ Views.classes = (function () {
     var cards = cs.map(function (c) {
       var members = Store.studentsInClass(c.id).filter(function (s) { return s.status === '등록생'; });
       var todays = members.filter(function (s) { return Store.scheduleOf(s).days.indexOf(day) >= 0; });
-      var came = todays.filter(function (s) { var st = todayState(s, date).cls; return st === 'in' || st === 'out'; }).length;
+      var came = todays.filter(function (s) { var st = todayState(s, date).cls; return st === 'in' || st === 'late' || st === 'out'; }).length;
       return '<div class="class-card dash-class' + (todays.length ? '' : ' off') + '" style="--klass:' + U.esc(c.color || '#215a86') + '">' +
         '<div class="class-top">' +
           '<div>' +
@@ -11181,7 +11359,7 @@ Views.classes = (function () {
       '</div>';
     }).join('');
 
-    return '<div class="card"><div class="card-h"><h2>오늘 반 · 담당 선생님</h2><div class="sp"></div>' +
+    return '<div class="card"><div class="card-h"><h2>오늘 출석 현황 · 반별 담당</h2><div class="sp"></div>' +
         '<a class="btn sm" href="#/classes">반 · 시간표 →</a></div>' +
       '<div class="card-b">' +
         '<div class="chips" style="margin-bottom:14px">' +
@@ -11194,7 +11372,10 @@ Views.classes = (function () {
                 U.esc(o[1]) + ' ' + n + '</button>';
             }).join('') +
         '</div>' +
-        (cs.length ? '<div class="class-grid">' + cards + '</div>'
+        (cs.length
+          ? '<div class="section-title" style="margin:4px 0 10px">시간표별 출석 현황</div>' + timeline() +
+            '<div class="section-title" style="margin:22px 0 10px">반별 담당 · 학생</div>' +
+            '<div class="class-grid">' + cards + '</div>'
           : UI.emptyBox('이 선생님이 맡은 반이 없습니다.', 'calendar')) +
       '</div></div>';
   }
