@@ -358,19 +358,6 @@ Views.classes = (function () {
     '</div>';
   }
 
-  /** 오늘 이 학생의 등원 상태 표시 */
-  function todayState(s, date) {
-    var now = new Date();
-    var x = tlState(s, date, U.dayOf(date), now.getHours() * 60 + now.getMinutes());
-    var r = x.rec;
-    var text = x.st === 'out' ? '하원 ' + r.checkOut
-      : (x.st === 'in' || x.st === 'late') ? (r.checkIn ? (x.st === 'late' ? '늦게 ' : '등원 ') + r.checkIn : '출석')
-      : x.st === 'bad' ? '결석'
-      : x.st === 'miss' ? '안 옴' + (x.exp !== null ? ' (' + hmText(x.exp) + ')' : '')
-      : (x.exp !== null ? hmText(x.exp) + ' 예정' : '아직');
-    return { cls: x.st === 'late' ? 'late' : x.st === 'miss' ? 'miss' : x.st, text: text };
-  }
-
   /* ---------- 시간표 위에 그린 오늘 출석 현황 ---------- */
   var TL_FROM = 12 * 60 + 30, TL_TO = 18 * 60;   // 12:30 ~ 18:00
 
@@ -396,7 +383,9 @@ Views.classes = (function () {
     var re = /([월화수목금토])\s*(\d{1,2}):(\d{2})/g, m;
     while ((m = re.exec(txt))) { if (m[1] === day) return pmMin(m[2], m[3]); }
     m = /(\d{1,2}):(\d{2})/.exec(txt) || /(\d{1,2}):(\d{2})/.exec(sc.className || '');
-    return m ? pmMin(m[1], m[2]) : null;
+    if (m) return pmMin(m[1], m[2]);
+    m = /(\d{1,2})시/.exec(sc.time || '');           // 반 시간 칸 (예: 3시)
+    return m ? pmMin(m[1], 0) : null;
   }
   function hmToMin(hm) {
     var m = /(\d{1,2}):(\d{2})/.exec(hm || '');
@@ -435,45 +424,54 @@ Views.classes = (function () {
       }).map(function (s) { return tlState(s, date, day, nowMin); })
         .filter(function (x) { return x.at !== null; })
         .sort(function (a, b) { return a.at - b.at; });
-      if (!list.length) return '';
+      if (!list.length) {
+        return '<div class="tl-row tl-empty" style="--klass:' + U.esc(c.color || '#215a86') + '">' +
+          '<div class="tl-label"><b>' + U.esc(c.name) + '</b>' + teacherPick(c) + '</div>' +
+          '<div class="tl-main"><span class="hint">오늘(' + day + ')은 이 반 수업이 없습니다.</span></div></div>';
+      }
 
       var came = list.filter(function (x) { return x.st === 'in' || x.st === 'late' || x.st === 'out'; }).length;
       total.all += list.length; total.came += came;
       list.forEach(function (x) { if (x.st === 'late') total.late++; if (x.st === 'miss') total.miss++; if (x.st === 'bad') total.bad++; });
 
-      // 이름표가 겹치지 않게 줄(lane)을 나눕니다
-      var W = 10.5, lanes = [];
-      list.forEach(function (x) {
-        var left = pct(x.at), li = 0;
-        while (lanes[li] !== undefined && lanes[li] > left - W) li++;
-        lanes[li] = left; x.lane = li; x.left = left;
-      });
-      var nLane = Math.max(lanes.length, 1);
       var start = expectedMin({ arrive: '', classId: c.id }, day);
       var rate = Math.round(came / list.length * 100);
+      var grid = '';
+      for (var h = 13; h <= 17; h++) grid += '<span class="tl-grid" style="left:' + pct(h * 60) + '%"></span>';
 
       return '<div class="tl-row" style="--klass:' + U.esc(c.color || '#215a86') + '">' +
         '<div class="tl-label">' +
           '<b>' + U.esc(c.name) + '</b>' +
-          '<div class="tl-sub">' + teacherTag(c.teacher) + '</div>' +
-          '<div class="tl-rate"><i style="width:' + rate + '%"></i></div>' +
-          '<div class="tl-sub">등원 ' + came + '/' + list.length + '</div>' +
+          teacherPick(c) +
         '</div>' +
-        '<div class="tl-track" style="height:' + (nLane * 30 + 10) + 'px">' +
-          (start !== null ? '<span class="tl-start" style="left:' + pct(start) + '%"></span>' : '') +
-          list.map(function (x) {
-            var tip = x.s.name + ' · ' + TL_LABEL[x.st] +
-              (x.rec.checkIn ? ' ' + x.rec.checkIn : '') +
-              (x.exp !== null ? ' (오는 시간 ' + hmText(x.exp) + ')' : '');
-            return '<span class="tl-dot st-' + x.st + '" data-open="' + x.s.id + '" title="' + U.esc(tip) + '" ' +
-              'style="left:' + x.left + '%;top:' + (x.lane * 30 + 5) + 'px">' +
-              U.esc(x.s.name) + '</span>';
-          }).join('') +
+        '<div class="tl-main">' +
+          // 시간 띠: 학생마다 점 하나 (실제 등원 시각, 안 온 학생은 오기로 한 시각)
+          '<div class="tl-track tl-strip">' + grid +
+            (start !== null ? '<span class="tl-start" style="left:' + pct(start) + '%"></span>' : '') +
+            (nowMin >= TL_FROM && nowMin <= TL_TO ? '<span class="tl-now" style="left:' + pct(nowMin) + '%"></span>' : '') +
+            list.map(function (x) {
+              return '<span class="tl-pt st-' + x.st + '" data-open="' + x.s.id + '" title="' +
+                U.esc(x.s.name + ' · ' + TL_LABEL[x.st] + (x.rec.checkIn ? ' ' + x.rec.checkIn : '')) + '" ' +
+                'style="left:' + pct(x.at) + '%"></span>';
+            }).join('') +
+          '</div>' +
+          // 이름표: 온 순서대로
+          '<div class="tl-names">' +
+            '<span class="tl-count"><b>' + came + '</b>/' + list.length + '<i><em style="width:' + rate + '%"></em></i></span>' +
+            list.map(function (x) {
+              var t = x.st === 'bad' ? '결석'
+                : x.rec.checkIn ? x.rec.checkIn.replace(/^1([3-9]):/, function (a, d) { return (Number('1' + d) - 12) + ':'; })
+                : x.exp !== null ? hmText(x.exp) : '';
+              return '<span class="tl-dot st-' + x.st + '" data-open="' + x.s.id + '" title="' +
+                U.esc(x.s.name + ' · ' + TL_LABEL[x.st] + (x.exp !== null ? ' (오는 시간 ' + hmText(x.exp) + ')' : '')) + '">' +
+                U.esc(x.s.name) + (t ? '<small>' + U.esc(t) + '</small>' : '') + '</span>';
+            }).join('') +
+          '</div>' +
         '</div>' +
       '</div>';
     }).join('');
 
-    if (!total.all) return '<p class="hint">오늘(' + day + ') 수업이 있는 반이 없습니다.</p>';
+    if (!total.all && !rows) return '<p class="hint">오늘(' + day + ') 수업이 있는 반이 없습니다.</p>';
 
     var hours = '';
     for (var h = 13; h <= 17; h++) {
@@ -491,18 +489,10 @@ Views.classes = (function () {
         '<span class="tl-key st-bad">결석 ' + total.bad + '</span>' +
       '</div>' +
       '<div class="tl-scroll"><div class="tl">' +
-        '<div class="tl-row tl-axis"><div class="tl-label"></div><div class="tl-track">' + hours + '</div></div>' +
-        '<div class="tl-body">' + rows +
-          '<div class="tl-overlay"><div class="tl-label"></div><div class="tl-track">' +
-            (function () {
-              var g = '';
-              for (var h = 13; h <= 17; h++) g += '<span class="tl-grid" style="left:' + pct(h * 60) + '%"></span>';
-              return g;
-            })() + nowLine +
-          '</div></div>' +
-        '</div>' +
+        '<div class="tl-row tl-axis"><div class="tl-label"></div><div class="tl-main"><div class="tl-track">' + hours + '</div></div></div>' +
+        rows +
       '</div></div>' +
-      '<p class="hint" style="margin:10px 0 0">세로 굵은 선은 반 시작 시각, 이름표 위치는 실제 등원 시각(안 온 학생은 오기로 한 시각)입니다. 오기로 한 시각보다 10분 넘게 늦으면 주황/빨강으로 바뀝니다.</p>';
+      '<p class="hint" style="margin:10px 0 0">담당 Jinny·Binny 버튼을 누르면 바로 지정되고, 다시 누르면 풀립니다. 띠의 점은 학생이 실제로 온 시각(안 온 학생은 오기로 한 시각), 옅은 세로선은 반 시작, 빨간 선은 지금입니다. 오기로 한 시각보다 10분 넘게 늦으면 주황, 아직 안 오면 빨간 테두리로 바뀝니다.</p>';
   }
 
   function dashboardCard() {
@@ -512,32 +502,7 @@ Views.classes = (function () {
     var day = U.dayOf(date);
     var cs = all.filter(visible);
 
-    var cards = cs.map(function (c) {
-      var members = Store.studentsInClass(c.id).filter(function (s) { return s.status === '등록생'; });
-      var todays = members.filter(function (s) { return Store.scheduleOf(s).days.indexOf(day) >= 0; });
-      var came = todays.filter(function (s) { var st = todayState(s, date).cls; return st === 'in' || st === 'late' || st === 'out'; }).length;
-      return '<div class="class-card dash-class' + (todays.length ? '' : ' off') + '" style="--klass:' + U.esc(c.color || '#215a86') + '">' +
-        '<div class="class-top">' +
-          '<div>' +
-            '<div class="class-name">' + U.esc(c.name) + '</div>' +
-            '<div style="margin-top:6px">' + teacherTag(c.teacher) + '</div>' +
-          '</div>' +
-          '<span class="tag ' + (todays.length && came === todays.length ? 'ok' : 'gray') + '">' +
-            (todays.length ? '등원 ' + came + '/' + todays.length : '오늘 없음') + '</span>' +
-        '</div>' +
-        '<div class="class-members">' +
-          (todays.length ? todays.map(function (s) {
-            var sc = Store.scheduleOf(s), st = todayState(s, date);
-            return '<span class="pill dash-pill st-' + st.cls + '" data-open="' + s.id + '"' +
-              (sc.arrive ? ' title="오는 시간 ' + U.esc(sc.arrive) + '"' : '') + '>' +
-              U.esc(s.name) + ' <span class="pill-sub">' + U.esc(st.text) + '</span></span>';
-          }).join('') : '<span class="hint">오늘(' + day + ') 수업 학생이 없습니다.</span>') +
-        '</div>' +
-        teacherPick(c) +
-      '</div>';
-    }).join('');
-
-    return '<div class="card"><div class="card-h"><h2>오늘 출석 현황 · 반별 담당</h2><div class="sp"></div>' +
+    return '<div class="card"><div class="card-h"><h2>오늘 출석 현황 · 시간표별</h2><div class="sp"></div>' +
         '<a class="btn sm" href="#/classes">반 · 시간표 →</a></div>' +
       '<div class="card-b">' +
         '<div class="chips" style="margin-bottom:14px">' +
@@ -551,9 +516,7 @@ Views.classes = (function () {
             }).join('') +
         '</div>' +
         (cs.length
-          ? '<div class="section-title" style="margin:4px 0 10px">시간표별 출석 현황</div>' + timeline() +
-            '<div class="section-title" style="margin:22px 0 10px">반별 담당 · 학생</div>' +
-            '<div class="class-grid">' + cards + '</div>'
+          ? timeline()
           : UI.emptyBox('이 선생님이 맡은 반이 없습니다.', 'calendar')) +
       '</div></div>';
   }

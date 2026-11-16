@@ -46,11 +46,11 @@ const ok = (l,c,e='') => console.log(`  ${c?'✓':'✗ 실패'}  ${l}${e?' — '
   await p.screenshot({ path: (process.env.SHOT_DIR || '.') + '/c-teacher.png', fullPage: true });
   // 대시보드에서도 보기·지정
   await p.goto(BASE + '#/dashboard', { waitUntil: 'domcontentloaded' }); await p.waitForTimeout(800);
-  ok('대시보드에 오늘 반 카드', (await p.locator('.dash-cls .class-card').count()) === 3);
-  await p.locator('.dash-cls .class-card').nth(0).locator('[data-t="Binny"]').click(); await p.waitForTimeout(400);
+  ok('대시보드에 오늘 반 카드', (await p.locator('.dash-cls .tl-row:not(.tl-axis)').count()) === 3);
+  await p.locator('.dash-cls .tl-row:not(.tl-axis)').nth(0).locator('[data-t="Binny"]').click(); await p.waitForTimeout(400);
   ok('대시보드에서 담당 지정', (await p.evaluate(() => Store.classes()[0].teacher)) === 'Binny');
   await p.click('.dash-cls [data-tf="Binny"]'); await p.waitForTimeout(400);
-  ok('대시보드 Binny 필터', (await p.locator('.dash-cls .class-card').count()) === 3);
+  ok('대시보드 Binny 필터', (await p.locator('.dash-cls .tl-row:not(.tl-axis)').count()) === 3);
   await p.click('.dash-cls [data-tf=""]'); await p.waitForTimeout(400);
   await p.screenshot({ path: (process.env.SHOT_DIR || '.') + '/c-dash.png', fullPage: false });
   // 시간표별 출석 현황 (시각화)
@@ -67,7 +67,7 @@ const ok = (l,c,e='') => console.log(`  ${c?'✓':'✗ 실패'}  ${l}${e?' — '
     return true;
   });
   await p.goto(BASE + '#/settings'); await p.goto(BASE + '#/dashboard'); await p.waitForTimeout(800);
-  const dots = await p.$$eval('.tl-dot', ds => ds.map(d => d.textContent + ':' + d.className.split(' ')[1]));
+  const dots = await p.$$eval('.tl-dot', ds => ds.map(d => d.firstChild.textContent + ':' + d.className.split(' ')[1]));
   ok('시간표 출석 그림 표시', dots.length >= 5, dots.join(' '));
   ok('정시 등원 초록', dots.includes('가학생:st-in'));
   ok('10분 넘게 늦으면 주황', dots.includes('나학생:st-late'));
