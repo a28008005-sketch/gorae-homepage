@@ -42,15 +42,9 @@ Views.classes = (function () {
           (c.capacity ? '/' + c.capacity : '') + '명</span>' +
       '</div>' +
       (c.note ? '<div class="class-note">' + U.esc(c.note) + '</div>' : '') +
-      '<div class="class-members">' +
+      '<div class="class-members" data-drop="' + c.id + '">' +
         (members.length
-          ? members.map(function (s) {
-              var sc = Store.scheduleOf(s);
-              return '<span class="pill" data-open="' + s.id + '"' +
-                (sc.arrive ? ' title="오는 시간 ' + U.esc(sc.arrive) + ' · ' + U.esc(sc.days.join('')) + '"' : '') + '>' +
-                U.esc(s.name) +
-                (sc.arrive ? ' <span class="pill-sub">' + U.esc(sc.arrive) + '</span>' : '') + '</span>';
-            }).join('')
+          ? members.map(dragPill).join('')
           : '<span class="hint">배정된 학생이 없습니다.</span>') +
       '</div>' +
       '<div class="teacher-pick">' +
@@ -66,6 +60,153 @@ Views.classes = (function () {
         '<button class="btn sm ghost" data-edit="' + c.id + '">반 수정</button>' +
       '</div>' +
     '</div>';
+  }
+
+  /* ---------- 끌어서 옮길 수 있는 학생 이름표 ---------- */
+  function dragPill(s) {
+    var sc = Store.scheduleOf(s);
+    return '<span class="pill" data-drag="' + s.id + '"' +
+      (sc.arrive ? ' title="오는 시간 ' + U.esc(sc.arrive) + ' · ' + U.esc(sc.days.join('')) + '"' : '') + '>' +
+      U.esc(s.name) +
+      (sc.arrive ? ' <span class="pill-sub">' + U.esc(sc.arrive) + '</span>' : '') + '</span>';
+  }
+
+  /**
+   * 같은 시간대 반끼리 묶는 이름.
+   * "2:40~3:00반 Jinny" 와 "2:40~3:00반 Binny" 는 둘 다 "2:40~3:00반" 으로 묶입니다.
+   */
+  function baseName(c) {
+    var n = String(c.name || '').trim();
+    Store.teachers().forEach(function (t) {
+      n = n.replace(new RegExp('[\\s·\\-]*' + t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*$', 'i'), '');
+    });
+    return n.trim() || c.name;
+  }
+
+  /* ---------- 시간대별 반 나누기 (끌어서 옮기기) ---------- */
+  function splitBoard(unassigned) {
+    var teachers = Store.teachers();
+    var groups = [], byKey = {};
+    Store.classes().forEach(function (c) {
+      var key = (c.time || '') + '|' + baseName(c);
+      if (!byKey[key]) { byKey[key] = { name: baseName(c), c0: c, list: [] }; groups.push(byKey[key]); }
+      byKey[key].list.push(c);
+    });
+    function tOrder(c) { var i = teachers.indexOf(c.teacher); return i < 0 ? 99 : i; }
+
+    var tray =
+      '<div class="split-tray" data-drop="">' +
+        '<div class="split-tray-h"><b>반 미배정</b><span class="tag ' + (unassigned.length ? 'warn' : 'gray') + '">' +
+          unassigned.length + '명</span>' +
+          '<span class="hint">반에서 빼려면 여기로 끌어 놓으세요</span></div>' +
+        '<div class="split-body">' +
+          (unassigned.length ? unassigned.map(dragPill).join('') : '<span class="hint">모든 학생이 반에 들어가 있습니다.</span>') +
+        '</div>' +
+      '</div>';
+
+    var rows = groups.map(function (g) {
+      var c0 = g.c0;
+      var cols = g.list.slice().sort(function (a, b) { return tOrder(a) - tOrder(b); }).map(function (c) {
+        var members = Store.studentsInClass(c.id);
+        var full = c.capacity && members.length >= c.capacity;
+        var tcls = c.teacher ? ' t-' + U.esc(String(c.teacher).toLowerCase()) : '';
+        return '<div class="split-col' + tcls + '" data-drop="' + c.id + '" style="--klass:' + U.esc(c.color || '#215a86') + '">' +
+          '<div class="split-h">' + teacherTag(c.teacher) +
+            '<span class="split-n' + (full ? ' warn' : '') + '">' + members.length + (c.capacity ? '/' + c.capacity : '') + '명</span>' +
+          '</div>' +
+          '<div class="split-body">' +
+            (members.length ? members.map(dragPill).join('') : '<span class="hint">여기로 끌어 놓으세요</span>') +
+          '</div>' +
+        '</div>';
+      }).join('');
+      return '<div class="split-row">' +
+        '<div class="split-label"><b>' + U.esc(g.name) + '</b>' +
+          '<span>' + (c0.days && c0.days.length ? U.esc(c0.days.join('·')) : '요일 미정') + (c0.time ? ' · ' + U.esc(c0.time) : '') + '</span>' +
+        '</div>' +
+        '<div class="split-cols">' + cols + '</div>' +
+      '</div>';
+    }).join('');
+
+    return tray + '<div class="split">' + rows + '</div>';
+  }
+
+  /** 학생을 다른 반으로 (to 가 '' 이면 반에서 뺍니다) */
+  function moveStudent(id, to) {
+    var s = Store.student(id);
+    if (!s || (s.classId || '') === to) return;
+    var c = to ? Store.klass(to) : null;
+    if (to && !c) return;
+    Store.saveStudent({ id: id, classId: to });
+    var over = c && c.capacity && Store.studentsInClass(c.id).length > c.capacity;
+    UI.toast(s.name + ' → ' + (c ? c.name : '반 미배정') + (over ? ' (정원 초과)' : ''), !!over);
+    App.rerender();
+  }
+
+  /**
+   * 이름표 끌어 놓기 — 마우스와 태블릿 손가락 모두 됩니다 (Pointer Events).
+   * 조금만 움직였다 놓으면 끌기가 아니라 '누르기'로 보고 학생 정보를 엽니다.
+   */
+  function bindDrag(root) {
+    if (root.__dragBound) return;
+    root.__dragBound = true;
+    root.addEventListener('pointerdown', function (e) {
+      var pill = e.target.closest('[data-drag]');
+      if (!pill || !root.contains(pill) || (e.button && e.button !== 0)) return;
+      var id = pill.getAttribute('data-drag');
+      var fromZone = pill.closest('[data-drop]');
+      var from = fromZone ? fromZone.getAttribute('data-drop') : null;
+      var sx = e.clientX, sy = e.clientY, lastY = e.clientY;
+      var ghost = null, over = null, timer = null;
+
+      function zoneAt(x, y) {
+        var el = document.elementFromPoint(x, y);
+        var z = el && el.closest('[data-drop]');
+        return z && root.contains(z) ? z : null;
+      }
+      function move(ev) {
+        if (!ghost) {
+          if (Math.abs(ev.clientX - sx) + Math.abs(ev.clientY - sy) < 6) return;
+          ghost = pill.cloneNode(true);
+          ghost.classList.add('drag-ghost');
+          document.body.appendChild(ghost);
+          pill.classList.add('dragging');
+          document.body.classList.add('is-dragging');
+          // 손가락을 화면 위·아래 끝에 대고 있으면 천천히 스크롤됩니다
+          timer = setInterval(function () {
+            if (lastY < 70) window.scrollBy(0, -14);
+            else if (lastY > window.innerHeight - 70) window.scrollBy(0, 14);
+          }, 16);
+        }
+        ev.preventDefault();
+        lastY = ev.clientY;
+        ghost.style.left = ev.clientX + 'px';
+        ghost.style.top = ev.clientY + 'px';
+        var z = zoneAt(ev.clientX, ev.clientY);
+        if (z !== over) {
+          if (over) over.classList.remove('drop-on');
+          over = z;
+          if (over && over.getAttribute('data-drop') !== from) over.classList.add('drop-on');
+        }
+      }
+      function end(ev, cancel) {
+        document.removeEventListener('pointermove', move);
+        document.removeEventListener('pointerup', up);
+        document.removeEventListener('pointercancel', cancelFn);
+        if (timer) clearInterval(timer);
+        if (over) over.classList.remove('drop-on');
+        if (ghost) ghost.remove();
+        pill.classList.remove('dragging');
+        document.body.classList.remove('is-dragging');
+        if (cancel) return;
+        if (!ghost) { Views.students.openDetail(id); return; }   // 끌지 않고 누르기만 함
+        if (over) moveStudent(id, over.getAttribute('data-drop'));
+      }
+      function up(ev) { end(ev, false); }
+      function cancelFn(ev) { end(ev, true); }
+      document.addEventListener('pointermove', move, { passive: false });
+      document.addEventListener('pointerup', up);
+      document.addEventListener('pointercancel', cancelFn);
+    });
   }
 
   /* ---------- 주간 시간표 ---------- */
@@ -285,6 +426,11 @@ Views.classes = (function () {
     el.innerHTML =
       '<div class="stack">' +
 
+        (all.length ?
+        '<div class="card"><div class="card-h"><h2>시간대별 반 나누기</h2><div class="sp"></div>' +
+          '<span class="hint">학생 이름을 끌어서 옆 반에 놓으면 바로 옮겨집니다</span></div>' +
+          '<div class="card-b">' + splitBoard(unassigned) + '</div></div>' : '') +
+
         '<div class="card">' +
           '<div class="card-h"><h2>반 목록</h2><div class="sp"></div>' +
             (all.length ? '' : '<button class="btn" id="auto">기존 시간표로 반 만들기</button>') +
@@ -310,7 +456,7 @@ Views.classes = (function () {
           '<span class="hint">반을 누르면 수정할 수 있습니다</span></div>' +
           '<div class="card-b" style="overflow-x:auto">' + board() + '</div></div>' : '') +
 
-        (unassigned.length ?
+        (unassigned.length && !all.length ?
         '<div class="card"><div class="card-h"><h2>반 미배정 학생</h2><div class="sp"></div>' +
           '<span class="tag warn">' + unassigned.length + '명</span></div>' +
           '<div class="card-b">' +
@@ -344,6 +490,7 @@ Views.classes = (function () {
     UI.on(el, '[data-open]', 'click', function (e, b) {
       Views.students.openDetail(b.getAttribute('data-open'));
     });
+    bindDrag(el);
   }
 
   /* ---------- 대시보드용: 오늘 반 · 담당 선생님 ---------- */
