@@ -445,6 +445,11 @@ body.share-mode .content{padding:0}
 .teacher-tag.t-jinny{background:#fde7ef;color:#b0306a}
 .teacher-tag.t-binny{background:#e3f1ec;color:#1f7a5c}
 .pill-sub{font-weight:500;opacity:.75;margin-left:2px}
+.dash-class.off{opacity:.55}
+.dash-pill.st-in{background:#e3f1ec;color:#1f6b50}
+.dash-pill.st-out{background:#eef1f4;color:#6b7b8a}
+.dash-pill.st-bad{background:#fdeaea;color:#b33a3a}
+.dash-pill.st-wait{background:#fff6e0;color:#8a6414}
 
 .pill{
   background:var(--blue-soft);color:#2b5a80;border-radius:6px;padding:3px 8px;
@@ -5833,6 +5838,9 @@ Views.dashboard = (function () {
       // 주요 현황 요약 (상단)
       mainCards() +
 
+      // 오늘 반 · 담당 선생님 (반 · 시간표와 같은 반, 2026-11-16 추가)
+      (Views.classes && Views.classes.dashboardCard ? '<div class="dash-cls">' + Views.classes.dashboardCard() + '</div>' : '') +
+
       // 본사 교재 주문 알림 (학습 현황판, 2026-11-07 추가)
       (Views.board ? Views.board.dashboardCard() : '') +
 
@@ -5924,6 +5932,7 @@ Views.dashboard = (function () {
 
     renderUpcomingTasks();
     renderSelectedTasks(today);
+    if (Views.classes && Views.classes.bindDashboard) Views.classes.bindDashboard(el);
     if (Views.hwvideo && Views.hwvideo.fillToday) Views.hwvideo.fillToday(el.querySelector('#dash-hw'));
 
     // 이벤트
@@ -11120,15 +11129,7 @@ Views.classes = (function () {
       App.rerender();
     });
     // 반 카드에서 바로 담당 선생님 지정 (같은 이름을 한 번 더 누르면 해제)
-    UI.on(el, '[data-teach]', 'click', function (e, b) {
-      var c = Store.klass(b.getAttribute('data-teach'));
-      if (!c) return;
-      var t = b.getAttribute('data-t');
-      var next = c.teacher === t ? '' : t;
-      Store.saveClass({ id: c.id, teacher: next });
-      UI.toast(U.esc(c.name) + (next ? ' 담당: ' + next : ' 담당을 비웠습니다.'));
-      App.rerender();
-    });
+    UI.on(el, '[data-teach]', 'click', function (e, b) { toggleTeacher(b); });
     UI.on(el, '[data-edit]', 'click', function (e, b) { openClassForm(b.getAttribute('data-edit')); });
     UI.on(el, '[data-members]', 'click', function (e, b) { openMembers(b.getAttribute('data-members')); });
     UI.on(el, '[data-open]', 'click', function (e, b) {
@@ -11136,7 +11137,105 @@ Views.classes = (function () {
     });
   }
 
-  return { title: title, sub: sub, render: render, openClassForm: openClassForm };
+  /* ---------- 대시보드용: 오늘 반 · 담당 선생님 ---------- */
+  function teacherPick(c) {
+    return '<div class="teacher-pick">' +
+      '<span class="hint">담당</span>' +
+      Store.teachers().map(function (t) {
+        var on = c.teacher === t;
+        return '<button class="chip' + (on ? ' on blue' : '') + '" data-teach="' + c.id + '" data-t="' + U.esc(t) + '">' +
+          U.esc(t) + '</button>';
+      }).join('') +
+    '</div>';
+  }
+
+  /** 오늘 이 학생의 등원 상태 표시 */
+  function todayState(s, date) {
+    var r = Store.attendanceFor(s.id, date) || {};
+    if (r.status === '결석') return { cls: 'bad', text: '결석' };
+    if (r.checkOut) return { cls: 'out', text: '하원 ' + r.checkOut };
+    if (r.checkIn) return { cls: 'in', text: '등원 ' + r.checkIn };
+    if (r.status === '출석') return { cls: 'in', text: '출석' };
+    return { cls: 'wait', text: '아직' };
+  }
+
+  function dashboardCard() {
+    var all = Store.classes();
+    if (!all.length) return '';
+    var date = U.ymd();
+    var day = U.dayOf(date);
+    var cs = all.filter(visible);
+
+    var cards = cs.map(function (c) {
+      var members = Store.studentsInClass(c.id).filter(function (s) { return s.status === '등록생'; });
+      var todays = members.filter(function (s) { return Store.scheduleOf(s).days.indexOf(day) >= 0; });
+      var came = todays.filter(function (s) { var st = todayState(s, date).cls; return st === 'in' || st === 'out'; }).length;
+      return '<div class="class-card dash-class' + (todays.length ? '' : ' off') + '" style="--klass:' + U.esc(c.color || '#215a86') + '">' +
+        '<div class="class-top">' +
+          '<div>' +
+            '<div class="class-name">' + U.esc(c.name) + '</div>' +
+            '<div style="margin-top:6px">' + teacherTag(c.teacher) + '</div>' +
+          '</div>' +
+          '<span class="tag ' + (todays.length && came === todays.length ? 'ok' : 'gray') + '">' +
+            (todays.length ? '등원 ' + came + '/' + todays.length : '오늘 없음') + '</span>' +
+        '</div>' +
+        '<div class="class-members">' +
+          (todays.length ? todays.map(function (s) {
+            var sc = Store.scheduleOf(s), st = todayState(s, date);
+            return '<span class="pill dash-pill st-' + st.cls + '" data-open="' + s.id + '"' +
+              (sc.arrive ? ' title="오는 시간 ' + U.esc(sc.arrive) + '"' : '') + '>' +
+              U.esc(s.name) + ' <span class="pill-sub">' + U.esc(st.text) + '</span></span>';
+          }).join('') : '<span class="hint">오늘(' + day + ') 수업 학생이 없습니다.</span>') +
+        '</div>' +
+        teacherPick(c) +
+      '</div>';
+    }).join('');
+
+    return '<div class="card"><div class="card-h"><h2>오늘 반 · 담당 선생님</h2><div class="sp"></div>' +
+        '<a class="btn sm" href="#/classes">반 · 시간표 →</a></div>' +
+      '<div class="card-b">' +
+        '<div class="chips" style="margin-bottom:14px">' +
+          [['', '전체']].concat(Store.teachers().map(function (t) { return [t, t]; }))
+            .concat([['__none__', '담당 미지정']]).map(function (o) {
+              var n = all.filter(function (c) {
+                return !o[0] ? true : o[0] === '__none__' ? !c.teacher : c.teacher === o[0];
+              }).length;
+              return '<button class="chip' + (tFilter === o[0] ? ' on' : '') + '" data-tf="' + U.esc(o[0]) + '">' +
+                U.esc(o[1]) + ' ' + n + '</button>';
+            }).join('') +
+        '</div>' +
+        (cs.length ? '<div class="class-grid">' + cards + '</div>'
+          : UI.emptyBox('이 선생님이 맡은 반이 없습니다.', 'calendar')) +
+      '</div></div>';
+  }
+
+  /** 대시보드 카드의 버튼 연결 (담당 지정·필터·학생 열기) */
+  function bindDashboard(el) {
+    UI.on(el, '.dash-cls [data-tf]', 'click', function (e, b) {
+      tFilter = b.getAttribute('data-tf');
+      App.rerender();
+    });
+    UI.on(el, '.dash-cls [data-teach]', 'click', function (e, b) { toggleTeacher(b); });
+    UI.on(el, '.dash-cls [data-open]', 'click', function (e, b) {
+      Views.students.openDetail(b.getAttribute('data-open'));
+    });
+  }
+
+  /** 담당 선생님 켜고 끄기 (같은 이름을 한 번 더 누르면 해제) */
+  function toggleTeacher(b) {
+    var c = Store.klass(b.getAttribute('data-teach'));
+    if (!c) return;
+    var t = b.getAttribute('data-t');
+    var next = c.teacher === t ? '' : t;
+    Store.saveClass({ id: c.id, teacher: next });
+    UI.toast(c.name + (next ? ' 담당: ' + next : ' 담당을 비웠습니다.'));
+    App.rerender();
+  }
+
+  return {
+    title: title, sub: sub, render: render, openClassForm: openClassForm,
+    dashboardCard: dashboardCard, bindDashboard: bindDashboard
+  };
 })();
 
 </script>

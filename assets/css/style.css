@@ -434,6 +434,11 @@ body.share-mode .content{padding:0}
 .teacher-tag.t-jinny{background:#fde7ef;color:#b0306a}
 .teacher-tag.t-binny{background:#e3f1ec;color:#1f7a5c}
 .pill-sub{font-weight:500;opacity:.75;margin-left:2px}
+.dash-class.off{opacity:.55}
+.dash-pill.st-in{background:#e3f1ec;color:#1f6b50}
+.dash-pill.st-out{background:#eef1f4;color:#6b7b8a}
+.dash-pill.st-bad{background:#fdeaea;color:#b33a3a}
+.dash-pill.st-wait{background:#fff6e0;color:#8a6414}
 
 .pill{
   background:var(--blue-soft);color:#2b5a80;border-radius:6px;padding:3px 8px;

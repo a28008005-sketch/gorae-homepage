@@ -44,6 +44,15 @@ const ok = (l,c,e='') => console.log(`  ${c?'✓':'✗ 실패'}  ${l}${e?' — '
   ok('반에 있어도 학생 요일 우선', sch.days === '화목' && sch.arrive === '2:40' && sch.cls, JSON.stringify(sch));
   await p.goto(BASE + '#/settings'); await p.goto(BASE + '#/classes'); await p.waitForTimeout(600);
   await p.screenshot({ path: (process.env.SHOT_DIR || '.') + '/c-teacher.png', fullPage: true });
+  // 대시보드에서도 보기·지정
+  await p.goto(BASE + '#/dashboard', { waitUntil: 'domcontentloaded' }); await p.waitForTimeout(800);
+  ok('대시보드에 오늘 반 카드', (await p.locator('.dash-cls .class-card').count()) === 3);
+  await p.locator('.dash-cls .class-card').nth(0).locator('[data-t="Binny"]').click(); await p.waitForTimeout(400);
+  ok('대시보드에서 담당 지정', (await p.evaluate(() => Store.classes()[0].teacher)) === 'Binny');
+  await p.click('.dash-cls [data-tf="Binny"]'); await p.waitForTimeout(400);
+  ok('대시보드 Binny 필터', (await p.locator('.dash-cls .class-card').count()) === 3);
+  await p.click('.dash-cls [data-tf=""]'); await p.waitForTimeout(400);
+  await p.screenshot({ path: (process.env.SHOT_DIR || '.') + '/c-dash.png', fullPage: false });
   console.log(errs.length ? '\n에러 ' + errs.join('\n') : '\n페이지 에러 없음');
   await b.close();
 })();

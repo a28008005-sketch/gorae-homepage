@@ -275,6 +275,9 @@ Views.dashboard = (function () {
       // 주요 현황 요약 (상단)
       mainCards() +
 
+      // 오늘 반 · 담당 선생님 (반 · 시간표와 같은 반, 2026-11-16 추가)
+      (Views.classes && Views.classes.dashboardCard ? '<div class="dash-cls">' + Views.classes.dashboardCard() + '</div>' : '') +
+
       // 본사 교재 주문 알림 (학습 현황판, 2026-11-07 추가)
       (Views.board ? Views.board.dashboardCard() : '') +
 
@@ -366,6 +369,7 @@ Views.dashboard = (function () {
 
     renderUpcomingTasks();
     renderSelectedTasks(today);
+    if (Views.classes && Views.classes.bindDashboard) Views.classes.bindDashboard(el);
     if (Views.hwvideo && Views.hwvideo.fillToday) Views.hwvideo.fillToday(el.querySelector('#dash-hw'));
 
     // 이벤트
