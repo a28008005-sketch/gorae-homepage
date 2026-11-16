@@ -202,6 +202,12 @@ var Store = (function () {
   function get() { if (!data) load(); return data; }
 
   /* ---------- 반 (클래스) ---------- */
+  /** 담당 선생님 목록 — 반마다 이 중에서 고릅니다 */
+  var TEACHERS = ['Jinny', 'Binny'];
+  function teachers() {
+    var t = get().academy.teachers;
+    return (t && t.length) ? t : TEACHERS;
+  }
   function classes() {
     return alive(get().classes).slice().sort(function (a, b) {
       var ta = get().academy.times.indexOf(a.time), tb = get().academy.times.indexOf(b.time);
@@ -256,9 +262,14 @@ var Store = (function () {
    */
   function scheduleOf(s) {
     var c = s && s.classId ? klass(s.classId) : null;
+    // 학생에게 요일이 따로 정해져 있으면 학생 요일이 우선입니다.
+    // (같은 반이라도 화수목만 오는 학생, 월수금만 오는 학생이 섞여 있기 때문)
+    var own = s && s.days && s.days.length ? s.days : null;
     return {
-      days: c ? (c.days || []) : (s && s.days ? s.days : []),
+      days: own || (c ? (c.days || []) : []),
       time: c ? (c.time || '') : (s && s.time ? s.time : ''),
+      arrive: s && s.arrive ? s.arrive : '',   // 실제 오는 시각 (예: 1:40, 화 2:30)
+      teacher: c && c.teacher ? c.teacher : '',
       className: c ? c.name : '',
       color: c ? c.color : '',
       classId: c ? c.id : ''
@@ -1634,6 +1645,7 @@ var Store = (function () {
     setAttendance: setAttendance, toggleFlag: toggleFlag,
     autoCheckout: autoCheckout, autoCheckoutMin: autoCheckoutMin,
     isIssue: isIssue, toggleAttitude: toggleAttitude,
+    teachers: teachers,
     classes: classes, klass: klass, saveClass: saveClass, deleteClass: deleteClass,
     studentsInClass: studentsInClass, scheduleOf: scheduleOf,
     memos: memos, addMemo: addMemo, deleteMemo: deleteMemo,

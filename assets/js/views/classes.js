@@ -2,6 +2,21 @@
 window.Views = window.Views || {};
 Views.classes = (function () {
 
+  // 담당 선생님 보기 필터 ('' = 전체, '__none__' = 미지정)
+  var tFilter = '';
+
+  function visible(c) {
+    if (!tFilter) return true;
+    if (tFilter === '__none__') return !c.teacher;
+    return c.teacher === tFilter;
+  }
+
+  /** 담당 선생님 표시 (반 카드·시간표) */
+  function teacherTag(t) {
+    if (!t) return '<span class="tag gray">담당 미지정</span>';
+    return '<span class="tag teacher-tag t-' + U.esc(String(t).toLowerCase()) + '">' + U.esc(t) + '</span>';
+  }
+
   function title() { return '반 · 시간표'; }
   function sub() {
     var cs = Store.classes();
@@ -20,8 +35,8 @@ Views.classes = (function () {
           '<div class="class-meta">' +
             (c.days && c.days.length ? U.esc(c.days.join('·')) : '요일 미정') +
             (c.time ? ' · ' + U.esc(c.time) : '') +
-            (c.teacher ? ' · ' + U.esc(c.teacher) : '') +
           '</div>' +
+          '<div style="margin-top:6px">' + teacherTag(c.teacher) + '</div>' +
         '</div>' +
         '<span class="tag ' + (full ? 'warn' : 'gray') + '">' + members.length +
           (c.capacity ? '/' + c.capacity : '') + '명</span>' +
@@ -30,10 +45,21 @@ Views.classes = (function () {
       '<div class="class-members">' +
         (members.length
           ? members.map(function (s) {
-              return '<span class="pill" data-open="' + s.id + '">' + U.esc(s.name) +
-                (s.grade ? ' · ' + U.esc(s.grade.replace('학년', '')) : '') + '</span>';
+              var sc = Store.scheduleOf(s);
+              return '<span class="pill" data-open="' + s.id + '"' +
+                (sc.arrive ? ' title="오는 시간 ' + U.esc(sc.arrive) + ' · ' + U.esc(sc.days.join('')) + '"' : '') + '>' +
+                U.esc(s.name) +
+                (sc.arrive ? ' <span class="pill-sub">' + U.esc(sc.arrive) + '</span>' : '') + '</span>';
             }).join('')
           : '<span class="hint">배정된 학생이 없습니다.</span>') +
+      '</div>' +
+      '<div class="teacher-pick">' +
+        '<span class="hint">담당</span>' +
+        Store.teachers().map(function (t) {
+          var on = c.teacher === t;
+          return '<button class="chip' + (on ? ' on blue' : '') + '" data-teach="' + c.id + '" data-t="' + U.esc(t) + '">' +
+            U.esc(t) + '</button>';
+        }).join('') +
       '</div>' +
       '<div class="class-actions">' +
         '<button class="btn sm" data-members="' + c.id + '">학생 배정</button>' +
@@ -45,7 +71,7 @@ Views.classes = (function () {
   /* ---------- 주간 시간표 ---------- */
   function board() {
     var ac = Store.get().academy;
-    var cs = Store.classes();
+    var cs = Store.classes().filter(visible);
     var days = Store.WEEKDAYS.slice(0, 6);
 
     var out = '<div class="tt" style="grid-template-columns:74px repeat(' + days.length + ',1fr)">' +
@@ -88,7 +114,13 @@ Views.classes = (function () {
               var on = c && (c.days || []).indexOf(d) >= 0;
               return '<button type="button" class="chip' + (on ? ' on blue' : '') + '" data-day="' + d + '">' + d + '</button>';
             }).join('') + '</div></label>' +
-          '<label class="fld">담당 선생님<input type="text" id="k-teacher" value="' + U.esc(c && c.teacher ? c.teacher : '') + '" placeholder="예: 김선생"></label>' +
+          '<label class="fld">담당 선생님' +
+            '<div class="chips" id="k-teacher">' +
+              Store.teachers().map(function (t) {
+                var on = c && c.teacher === t;
+                return '<button type="button" class="chip' + (on ? ' on blue' : '') + '" data-tc="' + U.esc(t) + '">' + U.esc(t) + '</button>';
+              }).join('') +
+            '</div></label>' +
           '<label class="fld">정원 <span style="font-weight:400">(비우면 제한 없음)</span>' +
             '<input type="number" id="k-cap" min="1" max="40" value="' + (c && c.capacity ? c.capacity : '') + '" placeholder="예: 6"></label>' +
           '<label class="fld full">반 색상' +
@@ -103,6 +135,15 @@ Views.classes = (function () {
       onMount: function (w) {
         var days = (c && c.days ? c.days.slice() : []);
         var color = cur;
+        var teacher = c && c.teacher ? c.teacher : '';
+        UI.on(w, '[data-tc]', 'click', function (e, btn) {
+          var t = btn.getAttribute('data-tc');
+          teacher = teacher === t ? '' : t;   // 한 번 더 누르면 해제
+          w.querySelectorAll('[data-tc]').forEach(function (b) {
+            var on = b.getAttribute('data-tc') === teacher;
+            b.classList.toggle('on', on); b.classList.toggle('blue', on);
+          });
+        });
         UI.on(w, '[data-day]', 'click', function (e, btn) {
           var d = btn.getAttribute('data-day');
           var i = days.indexOf(d);
@@ -123,7 +164,7 @@ Views.classes = (function () {
             name: name,
             days: days,
             time: w.querySelector('#k-time').value,
-            teacher: w.querySelector('#k-teacher').value.trim(),
+            teacher: teacher,
             capacity: cap === '' ? '' : Number(cap),
             color: color,
             note: w.querySelector('#k-note').value.trim()
@@ -237,7 +278,8 @@ Views.classes = (function () {
 
   /* ---------- 렌더 ---------- */
   function render(el) {
-    var cs = Store.classes();
+    var all = Store.classes();
+    var cs = all.filter(visible);
     var unassigned = Store.students({ active: true }).filter(function (s) { return !s.classId; });
 
     el.innerHTML =
@@ -245,17 +287,26 @@ Views.classes = (function () {
 
         '<div class="card">' +
           '<div class="card-h"><h2>반 목록</h2><div class="sp"></div>' +
-            (cs.length ? '' : '<button class="btn" id="auto">기존 시간표로 반 만들기</button>') +
+            (all.length ? '' : '<button class="btn" id="auto">기존 시간표로 반 만들기</button>') +
             '<button class="btn primary" id="add">+ 반 만들기</button></div>' +
           '<div class="card-b">' +
+            (all.length ? '<div class="chips" id="t-filter" style="margin-bottom:14px">' +
+              [['', '전체']].concat(Store.teachers().map(function (t) { return [t, t]; }))
+                .concat([['__none__', '담당 미지정']]).map(function (o) {
+                  var n = all.filter(function (c) {
+                    return !o[0] ? true : o[0] === '__none__' ? !c.teacher : c.teacher === o[0];
+                  }).length;
+                  return '<button class="chip' + (tFilter === o[0] ? ' on' : '') + '" data-tf="' + U.esc(o[0]) + '">' +
+                    U.esc(o[1]) + ' ' + n + '</button>';
+                }).join('') + '</div>' : '') +
             (cs.length
               ? '<div class="class-grid">' + cs.map(classCard).join('') + '</div>'
-              : UI.emptyBox('아직 만든 반이 없습니다. [+ 반 만들기]로 시작하세요.', 'calendar')) +
+              : UI.emptyBox(all.length ? '이 선생님이 맡은 반이 없습니다.' : '아직 만든 반이 없습니다. [+ 반 만들기]로 시작하세요.', 'calendar')) +
           '</div>' +
         '</div>' +
 
-        (cs.length ?
-        '<div class="card"><div class="card-h"><h2>주간 시간표</h2><div class="sp"></div>' +
+        (all.length ?
+        '<div class="card"><div class="card-h"><h2>주간 시간표' + (tFilter ? ' · ' + U.esc(tFilter === '__none__' ? '담당 미지정' : tFilter) : '') + '</h2><div class="sp"></div>' +
           '<span class="hint">반을 누르면 수정할 수 있습니다</span></div>' +
           '<div class="card-b" style="overflow-x:auto">' + board() + '</div></div>' : '') +
 
@@ -264,7 +315,7 @@ Views.classes = (function () {
           '<span class="tag warn">' + unassigned.length + '명</span></div>' +
           '<div class="card-b">' +
             '<p class="hint" style="margin-top:0">반에 넣지 않아도 학생 개인의 요일·시간으로 출결이 잡힙니다. ' +
-            '반에 넣으면 반 시간표를 따릅니다.</p>' +
+            '반에 넣어도 학생에게 요일이 따로 있으면 학생 요일을 따릅니다.</p>' +
             '<div class="chips" style="margin-top:12px">' +
               unassigned.map(function (s) {
                 var sc = Store.scheduleOf(s);
@@ -282,6 +333,20 @@ Views.classes = (function () {
     var auto = el.querySelector('#auto');
     if (auto) auto.addEventListener('click', autoCreate);
 
+    UI.on(el, '[data-tf]', 'click', function (e, b) {
+      tFilter = b.getAttribute('data-tf');
+      App.rerender();
+    });
+    // 반 카드에서 바로 담당 선생님 지정 (같은 이름을 한 번 더 누르면 해제)
+    UI.on(el, '[data-teach]', 'click', function (e, b) {
+      var c = Store.klass(b.getAttribute('data-teach'));
+      if (!c) return;
+      var t = b.getAttribute('data-t');
+      var next = c.teacher === t ? '' : t;
+      Store.saveClass({ id: c.id, teacher: next });
+      UI.toast(U.esc(c.name) + (next ? ' 담당: ' + next : ' 담당을 비웠습니다.'));
+      App.rerender();
+    });
     UI.on(el, '[data-edit]', 'click', function (e, b) { openClassForm(b.getAttribute('data-edit')); });
     UI.on(el, '[data-members]', 'click', function (e, b) { openMembers(b.getAttribute('data-members')); });
     UI.on(el, '[data-open]', 'click', function (e, b) {
