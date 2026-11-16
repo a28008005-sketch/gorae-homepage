@@ -12,6 +12,8 @@ var Store = (function () {
   var STATUS = ['등록생', '대기생', '휴원생', '퇴원생'];
   var GRADES = ['1학년', '2학년', '3학년', '4학년', '5학년', '6학년', '중1', '중2', '중3'];
   var FLAGS = ['지각', '외출', '조퇴'];
+  // 결석 사유 빠른 선택 (직접 쓰기도 됩니다 → attendance.absentReason)
+  var ABSENT_REASONS = ['아파서', '가족 일정', '학교 행사', '여행·체험학습', '연락 없음'];
   // 수업 태도 (예전 '순회 점검 기록'을 일일학습 안으로 합쳤습니다)
   // 이모지를 뺀 글자만 씁니다. 예전에 이모지가 붙어 저장된 기록은 migrateAttitudes() 가 옮깁니다.
   var ATTITUDES = ['집중', '졸음', '이탈/부재', '휴대폰 사용', '잡담/소란'];
@@ -1619,7 +1621,7 @@ var Store = (function () {
   migrateAttitudes();
 
   return {
-    STATUS: STATUS, GRADES: GRADES, FLAGS: FLAGS,
+    STATUS: STATUS, GRADES: GRADES, FLAGS: FLAGS, ABSENT_REASONS: ABSENT_REASONS,
     ATTITUDES: ATTITUDES, WEEKDAYS: WEEKDAYS, PAY_METHODS: PAY_METHODS,
     COUNSEL_WITH: COUNSEL_WITH, COUNSEL_CHANNELS: COUNSEL_CHANNELS, COUNSEL_TOPICS: COUNSEL_TOPICS,
     grades: grades, gradeRecord: gradeRecord, saveGrade: saveGrade, deleteGrade: deleteGrade,

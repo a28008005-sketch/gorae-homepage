@@ -606,11 +606,12 @@ Views.classes = (function () {
           '<div class="tl-names">' +
             '<span class="tl-count"><b>' + came + '</b>/' + list.length + '<i><em style="width:' + rate + '%"></em></i></span>' +
             list.map(function (x) {
-              var t = x.st === 'bad' ? '결석'
+              var t = x.st === 'bad' ? '결석' + (x.rec.absentReason ? ' · ' + x.rec.absentReason : '')
                 : x.rec.checkIn ? x.rec.checkIn.replace(/^1([3-9]):/, function (a, d) { return (Number('1' + d) - 12) + ':'; })
                 : x.exp !== null ? hmText(x.exp) : '';
               return '<span class="tl-dot st-' + x.st + '" data-open="' + x.s.id + '" title="' +
-                U.esc(x.s.name + ' · ' + TL_LABEL[x.st] + (x.exp !== null ? ' (오는 시간 ' + hmText(x.exp) + ')' : '')) + '">' +
+                U.esc(x.s.name + ' · ' + TL_LABEL[x.st] + (x.st === 'bad' && x.rec.absentReason ? ' (' + x.rec.absentReason + ')' : '') +
+                  (x.exp !== null ? ' (오는 시간 ' + hmText(x.exp) + ')' : '')) + '">' +
                 U.esc(x.s.name) + (t ? '<small>' + U.esc(t) + '</small>' : '') + '</span>';
             }).join('') +
           '</div>' +

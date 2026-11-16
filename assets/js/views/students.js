@@ -235,7 +235,9 @@ Views.students = (function () {
               ? '<span class="tag ' + (att.some(Store.isIssue) ? 'warn' : 'ok') + '">' + U.esc(att.join(' ')) + '</span>'
               : '–') + '</td>' +
             '<td>' + (r.planner ? '○' : '–') + '</td><td>' + (r.planDone ? '○' : '–') + '</td>' +
-            '<td>' + (r.homework ? '○' : '–') + '</td><td>' + U.esc(r.note || '') + '</td></tr>';
+            '<td>' + (r.homework ? '○' : '–') + '</td><td>' +
+              (r.status === '결석' && r.absentReason ? '<span class="tag bad">사유: ' + U.esc(r.absentReason) + '</span> ' : '') +
+              U.esc(r.note || '') + '</td></tr>';
         }).join('') + '</tbody></table></div>'
         : '<div class="hint">기록이 없습니다.</div>') +
 

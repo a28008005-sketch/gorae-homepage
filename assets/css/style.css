@@ -254,6 +254,16 @@ table.tbl .nm{font-weight:700}
 .att-checks{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .mini-note{border:1px solid var(--line);border-radius:8px;padding:6px 9px;font-size:12.5px;width:100%}
 
+/* 결석 사유 */
+.absent-box{margin-bottom:6px;padding:7px 9px;border-radius:9px;background:var(--bad-soft)}
+.absent-box .chip{padding:4px 10px;font-size:12px}
+.absent-box .absent-in{flex:1;min-width:150px;width:auto;background:#fff}
+.absent-today{border-top:1px solid #edf0f3;padding:12px 12px 4px}
+.absent-h{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:13.5px}
+.absent-row{display:grid;grid-template-columns:150px 1fr;gap:12px;align-items:center;padding:6px 0}
+.absent-row .absent-box{margin-bottom:0}
+@media(max-width:760px){ .absent-row{grid-template-columns:1fr;gap:6px} }
+
 .check{
   display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);background:#fff;
   border-radius:8px;padding:5px 9px;font-size:12.5px;cursor:pointer;font-weight:600;color:var(--muted);

@@ -57,9 +57,52 @@ Views.attendance = (function () {
             return '<button class="chip' + (on ? ' on ' + cls : '') + '" data-attitude="' + U.esc(a) + '">' + U.esc(a) + '</button>';
           }).join('') +
         '</div>' +
+        (r.status === '결석' ? absentField(r) : '') +
         '<input type="text" class="mini-note" data-note placeholder="비고 (오늘 학습 내용, 전달 사항)" value="' + U.esc(r.note || '') + '">' +
       '</div>' +
     '</div>';
+  }
+
+  /* ---------- 결석 사유 (출결 화면 · 대시보드 같이 씀) ---------- */
+  /** 결석 사유 입력 줄 — 빠른 선택 칩 + 직접 쓰기. [data-sid] 안에 넣어 씁니다. */
+  function absentField(r) {
+    var cur = (r && r.absentReason) || '';
+    return '<div class="att-checks absent-box">' +
+      '<span class="att-label">결석 사유</span>' +
+      Store.ABSENT_REASONS.map(function (a) {
+        var on = cur === a;
+        return '<button class="chip' + (on ? ' on bad' : '') + '" data-absr="' + U.esc(a) + '" data-on="' + (on ? 1 : 0) + '">' + U.esc(a) + '</button>';
+      }).join('') +
+      '<input type="text" class="mini-note absent-in" data-absr-in placeholder="직접 쓰기 (예: 감기로 병원)" value="' +
+        U.esc(Store.ABSENT_REASONS.indexOf(cur) >= 0 ? '' : cur) + '">' +
+    '</div>';
+  }
+
+  /**
+   * 결석 사유 저장 연결. 칩은 한 번 더 누르면 지워집니다.
+   * 출결 화면과 대시보드가 같은 화면 틀(el)을 번갈아 쓰므로, 연결은 한 번만 하고
+   * 마지막에 그린 화면의 날짜·다시그리기 함수를 씁니다.
+   */
+  function bindAbsent(el, dateOf, after) {
+    el.__absent = { dateOf: dateOf, after: after };
+    if (el.__absentBound) return;
+    el.__absentBound = true;
+    function saveReason(sid, val, msg) {
+      var cfg = el.__absent;
+      Store.setAttendance(sid, cfg.dateOf(), { absentReason: val });
+      UI.toast(msg);
+      cfg.after();
+    }
+    UI.on(el, '[data-absr]', 'click', function (e, btn) {
+      var sid = btn.closest('[data-sid]').getAttribute('data-sid');
+      var val = btn.getAttribute('data-on') === '1' ? '' : btn.getAttribute('data-absr');
+      saveReason(sid, val, val ? '결석 사유: ' + val : '결석 사유를 지웠습니다.');
+    });
+    UI.on(el, '[data-absr-in]', 'change', function (e, input) {
+      var sid = input.closest('[data-sid]').getAttribute('data-sid');
+      var val = input.value.trim();
+      saveReason(sid, val, val ? '결석 사유를 저장했습니다.' : '결석 사유를 지웠습니다.');
+    });
   }
 
   function list() {
@@ -178,6 +221,7 @@ Views.attendance = (function () {
       Store.setAttendance(sid, date, patch);
       cb.parentNode.classList.toggle('on', cb.checked);
     });
+    bindAbsent(el, function () { return date; }, refresh);
     UI.on(el, '[data-note]', 'change', function (e, input) {
       var sid = input.closest('[data-sid]').getAttribute('data-sid');
       Store.setAttendance(sid, date, { note: input.value });
@@ -185,5 +229,5 @@ Views.attendance = (function () {
     });
   }
 
-  return { title: title, sub: sub, render: render };
+  return { title: title, sub: sub, render: render, absentField: absentField, bindAbsent: bindAbsent };
 })();

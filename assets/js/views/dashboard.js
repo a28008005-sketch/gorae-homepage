@@ -101,7 +101,8 @@ Views.dashboard = (function () {
     }
     if (!pending.length) {
       return '<div class="empty"><span class="big">' + Icon.svg('check', 30) + '</span>오늘 출결 체크를 모두 마쳤습니다.<br>' +
-        '<span style="font-size:12.5px">출석 ' + o.present + '명 · 결석 ' + o.absent + '명</span></div>';
+        '<span style="font-size:12.5px">출석 ' + o.present + '명 · 결석 ' + o.absent + '명</span></div>' +
+        absentToday(o);
     }
     return pending.map(function (s) {
       return '<div class="att-row" data-sid="' + s.id + '">' +
@@ -118,7 +119,34 @@ Views.dashboard = (function () {
           '<button class="btn sm ghost" data-mark="출석" data-flag="지각">지각 출석</button>' +
         '</div>' +
       '</div>';
-    }).join('');
+    }).join('') + absentToday(o);
+  }
+
+  /** 오늘 결석한 학생 — 결석 사유를 바로 적습니다 */
+  function absentToday(o) {
+    var list = o.expected.filter(function (s) {
+      var r = Store.attendanceFor(s.id, o.date);
+      return r && r.status === '결석';
+    });
+    if (!list.length) return '';
+    var noReason = list.filter(function (s) { return !Store.attendanceFor(s.id, o.date).absentReason; }).length;
+    return '<div class="absent-today">' +
+      '<div class="absent-h"><b>오늘 결석 ' + list.length + '명</b>' +
+        (noReason ? '<span class="tag warn">사유 미기입 ' + noReason + '명</span>' : '<span class="tag ok">사유 모두 기입</span>') +
+      '</div>' +
+      list.map(function (s) {
+        var r = Store.attendanceFor(s.id, o.date);
+        var sc = Store.scheduleOf(s);
+        return '<div class="absent-row" data-sid="' + s.id + '">' +
+          '<div class="att-who">' +
+            '<span class="klass-dot" style="background:' + U.esc(sc.color || '#cbd5e0') + '"></span>' +
+            '<span><span class="nm">' + U.esc(s.name) + '</span><br>' +
+            '<span class="gr">' + U.esc(sc.className || s.grade || '') + '</span></span>' +
+          '</div>' +
+          Views.attendance.absentField(r) +
+        '</div>';
+      }).join('') +
+    '</div>';
   }
 
   /** 오늘 기록된 수업 태도 */
@@ -382,6 +410,8 @@ Views.dashboard = (function () {
       UI.toast(patch.status + ' 체크 완료');
       render(el);
     });
+    // 오늘 결석 · 사유 기입
+    Views.attendance.bindAbsent(el, function () { return U.ymd(); }, function () { render(el); });
 
     function addTask() {
       var input = el.querySelector('#task-text');
